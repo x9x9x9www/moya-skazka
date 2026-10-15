@@ -39,9 +39,17 @@ export const App: React.FC = () => {
   const [wizardData, setWizardData] = useState<WizardHeroData>({
     childName: 'Миша',
     age: 4,
+    gender: 'boy',
     interests: ['Динозавры', 'Космос'],
     theme: 'Дружба',
-    appearance: { avatar_id: 'boy_1', hair: 'светлые', clothing: 'уютный свитер' },
+    appearance: {
+      avatar_id: 'hero_custom',
+      hairColor: 'светлые',
+      hairType: 'кудрявые',
+      clothingItem: 'уютный свитер',
+      clothingColor: 'изумрудный',
+      toy: 'плюшевый динозаврик',
+    },
   });
   const [isCreatingStory, setIsCreatingStory] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -290,11 +298,13 @@ export const App: React.FC = () => {
       const generatedBook = await generateDynamicStory({
         childName: wizardData.childName,
         age: wizardData.age,
+        gender: wizardData.gender,
         theme: wizardData.theme || 'Дружба',
         interests: wizardData.interests,
         personality: details.personality,
         customWishes: details.customWishes,
         includeQuestions: details.includeQuestions,
+        appearance: wizardData.appearance,
       });
 
       clearInterval(progressInterval);
@@ -446,6 +456,10 @@ export const App: React.FC = () => {
             book={currentReadingBook}
             currentSceneIndex={currentSceneIndex}
             settings={settings}
+            childName={wizardData.childName}
+            theme={wizardData.theme}
+            interest={wizardData.interests[0] || 'Волшебство'}
+            appearance={wizardData.appearance}
             onPrevScene={() => {
               haptic.light();
               setCurrentSceneIndex((prev) => Math.max(1, prev - 1));

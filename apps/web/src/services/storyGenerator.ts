@@ -3,11 +3,19 @@ import { BookDetailsDTO } from '@moya-skazka/shared';
 export interface GenerateStoryParams {
   childName: string;
   age: number;
+  gender?: 'boy' | 'girl';
   theme: string;
   interests: string[];
   personality: string;
   customWishes?: string | null;
   includeQuestions: boolean;
+  appearance?: {
+    hairColor?: string;
+    hairType?: string;
+    clothingItem?: string;
+    clothingColor?: string;
+    toy?: string;
+  };
 }
 
 function getGeminiApiKey(): string {
@@ -24,42 +32,42 @@ function getGeminiApiKey(): string {
 
 const GEMINI_API_KEY = getGeminiApiKey();
 
-// Коллекция сказочных иллюстраций высокого разрешения по тематикам и сценам
+// Курированная коллекция тёплых книжных сказочных иллюстраций
 const THEME_IMAGES: Record<string, string[]> = {
   Динозавры: [
+    'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1569074187119-c87815b476da?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&auto=format&fit=crop&q=80',
   ],
   Космос: [
     'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
   ],
   Животные: [
+    'https://images.unsplash.com/photo-1569074187119-c87815b476da?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
   ],
   Волшебство: [
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
   ],
   Машинки: [
     'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
   ],
   Природа: [
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
   ],
 };
@@ -70,16 +78,16 @@ function getImagesForInterest(interest: string): string[] {
 
 /**
  * Основная функция генерации сказки:
- * 1. Запрашивает уникальную терапевтическую сказку через Google Gemini 3.8 Flash.
- * 2. При отсутствии связи запускает глубокий процедурный генератор,
- *    создающий уникальный сюжет на основе темы, характера и интересов.
+ * 1. Запрашивает Gemini 3.8 Flash со строгим таймаутом 7 секунд.
+ * 2. Если API недоступен / заблокирован / превышен таймаут — мгновенно
+ *    генерирует уникальную историю через умный процедурный движок (2-3 сек).
  */
 export async function generateDynamicStory(params: GenerateStoryParams): Promise<BookDetailsDTO> {
   const primaryInterest = params.interests[0] || 'Волшебство';
   const images = getImagesForInterest(primaryInterest);
 
   try {
-    const geminiStory = await callGeminiAPI(params);
+    const geminiStory = await callGeminiWithTimeout(params, 7500);
     if (geminiStory && Array.isArray(geminiStory.scenes) && geminiStory.scenes.length >= 4) {
       return {
         id: `book_${Date.now()}`,
@@ -105,187 +113,206 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
       };
     }
   } catch (err) {
-    console.warn('[StoryGenerator] Gemini generation failed, switching to dynamic procedural synthesis:', err);
+    console.warn('[StoryGenerator] Gemini timed out or failed, using dynamic procedural generator:', err);
   }
 
-  // Динамический процедурный генератор для офлайн/запасного режима
+  // Мгновенный процедурный генератор, никогда не зависающий
   return generateProceduralStory(params, images);
 }
 
 /**
- * Вызов Google Gemini 3.8 Flash по API
+ * Вызов Gemini 3.8 Flash со строгим таймаутом (AbortController)
  */
-async function callGeminiAPI(params: GenerateStoryParams): Promise<any> {
+async function callGeminiWithTimeout(params: GenerateStoryParams, timeoutMs: number): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const genderStr = params.gender === 'girl' ? 'девочка' : 'мальчик';
+  const hairStr = `${params.appearance?.hairColor || 'светлые'} ${params.appearance?.hairType || 'кудрявые'} волосы`;
+  const clothesStr = `${params.appearance?.clothingColor || 'изумрудный'} ${params.appearance?.clothingItem || 'свитер'}`;
+  const toyStr = params.appearance?.toy || 'плюшевый динозаврик';
+
   const prompt = `Ты — профессиональный детский сказкотерапевт и писатель для детей возраста ${params.age} года/лет.
-Напиши добрую, поучительную, безопасную персонализированную сказку перед сном.
+Напиши добрую, безопасную персонализированную сказку перед сном.
 Параметры героя:
 - Имя: ${params.childName}
+- Пол: ${genderStr}
 - Возраст: ${params.age} года/лет
-- Главная тема / урок сказки: "${params.theme}"
-- Любимые увлечения: ${params.interests.join(', ')}
+- Внешность: ${hairStr}, одет в ${clothesStr}
+- Любимая игрушка-спутник: ${toyStr} (обязательно включи игрушку в сюжет как верного помощника!)
+- Главная тема: "${params.theme}"
+- Любимые интересы: ${params.interests.join(', ')}
 - Характер: ${params.personality}
-- Особые пожелания родителя: ${params.customWishes ? `"${params.customWishes}"` : 'нет'}
+- Особые пожелания: ${params.customWishes ? `"${params.customWishes}"` : 'нет'}
 
-Обязательные требования:
-1. Сказка состоит СТРОГО из 4 сцен (scenes 1, 2, 3, 4), главный герой — ${params.childName}.
-2. Тема "${params.theme}" должна быть ключевой осью сюжета, гармонично переплетённой с интересами (${params.interests.join(', ')}).
-3. Никаких страшилок, агрессии, злых персонажей. Всё тепло, нежно и терапевтично.
-4. Включи 2 вопроса для родителя: после сцены 2 (на чувства/эмоции) и после сцены 4 (на рефлексию/выводы), с подсказками родителю parent_hint.
+Требования:
+1. Сказка СТРОГО из 4 сцен (scenes 1, 2, 3, 4). Герой — ${params.childName}.
+2. В первой сцене обязательно упомяни внешность героя (${clothesStr}, ${hairStr}) и его игрушку (${toyStr}).
+3. Тема "${params.theme}" — ключевая ось сюжета.
+4. 2 вопроса для родителя: после сцены 2 (на чувства/эмоции) и после сцены 4 (на рефлексию/выводы), с подсказками родителю parent_hint.
 
-Верни строго JSON без каких-либо обрамляющих символов:
+Верни СТРОГО JSON без markdown:
 {
-  "title": "Интересное название сказки",
+  "title": "Название сказки",
   "scenes": [
-    {"index": 1, "text": "Текст 1 сцены (завязка, знакомство с миром)..."},
-    {"index": 2, "text": "Текст 2 сцены (вызов или ситуация, связанная с темой)..."},
-    {"index": 3, "text": "Текст 3 сцены (кульминация, доброе решение)..."},
-    {"index": 4, "text": "Текст 4 сцены (счастливое завершение, умиротворение перед сном)..."}
+    {"index": 1, "text": "Текст 1 сцены..."},
+    {"index": 2, "text": "Текст 2 сцены..."},
+    {"index": 3, "text": "Текст 3 сцены..."},
+    {"index": 4, "text": "Текст 4 сцены..."}
   ],
   "questions": [
-    {"after_scene": 2, "question": "Вопрос для малыша...", "parent_hint": "Подсказка для родителя...", "skill_tag": "emotions"},
-    {"after_scene": 5, "question": "Вопрос для малыша в конце...", "parent_hint": "Подсказка для родителя...", "skill_tag": "reflection"}
+    {"after_scene": 2, "question": "Вопрос 1...", "parent_hint": "Подсказка...", "skill_tag": "emotions"},
+    {"after_scene": 5, "question": "Вопрос 2...", "parent_hint": "Подсказка...", "skill_tag": "reflection"}
   ]
 }`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        temperature: 0.85,
-        max_output_tokens: 2500,
-      },
-    }),
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          response_mime_type: 'application/json',
+          temperature: 0.8,
+          max_output_tokens: 2200,
+        },
+      }),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini error ${response.status}: ${errText}`);
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      throw new Error(`Gemini status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) throw new Error('Пустой ответ');
+
+    const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
   }
-
-  const data = await response.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error('Пустой ответ Gemini API');
-
-  // Очистка от возможных markdown-тегов ```json
-  const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-  return JSON.parse(cleanedText);
 }
 
 /**
  * Динамический процедурный генератор:
- * Синтезирует сюжет на основе комбинации: Тема + Интерес + Характер + Возраст
+ * Синтезирует сюжет с учётом внешности, одежды, игрушки-спутника, темы и возраста.
  */
 function generateProceduralStory(params: GenerateStoryParams, images: string[]): BookDetailsDTO {
-  const { childName, age, theme, interests, personality, customWishes } = params;
+  const { childName, age, theme, interests, personality, customWishes, gender, appearance } = params;
   const interest = interests[0] || 'Волшебство';
 
-  // Различные завязки в зависимости от интереса
+  const isGirl = gender === 'girl';
+  const pronoun = isGirl ? 'она' : 'он';
+  const verbEnd = isGirl ? 'ла' : 'л';
+  const himHer = isGirl ? 'её' : 'его';
+
+  const hairDesc = `${appearance?.hairColor || 'светлые'} ${appearance?.hairType || 'кудрявые'} волосы`;
+  const clothesDesc = `любимый ${appearance?.clothingColor || 'изумрудный'} ${appearance?.clothingItem || 'свитер'}`;
+  const toyDesc = appearance?.toy || 'плюшевый динозаврик';
+
+  // Различные завязки сцены 1
   const intros: Record<string, string[]> = {
     Динозавры: [
-      `В одном уютном городке жил ${personality.toLowerCase()} ${childName}. Больше всего на свете он любил книжки про добрых динозавриков и мечтал однажды найти настоящие следы маленького бронтозавра.`,
-      `Каждый вечер перед сном ${childName} раскладывал на ковре своих игрушечных динозавров. Сегодня был особенный день — в комнату тихо залетел золотистый светлячок, маня за собой.`,
-      `В детской комнате стояла тёплая тишина. ${childName} строил из кубиков уютный домик для своего любимого травоядного динозаврика Трикси.`,
+      `В одном уютном городке жил${isGirl ? 'а' : ''} ${personality.toLowerCase()} ${childName}. Больше всего на свете ${pronoun} любил${verbEnd} надевать свой ${clothesDesc}, поправлять ${hairDesc} и прижимать к себе ${toyDesc}а. Сегодня в комнате витал тёплый дух приключений: за окном послышался ласковый шорох папоротников.`,
+      `${childName} сидел${verbEnd} на мягком ковре, бережно держа в ручках ${toyDesc}а. На ${childName}е был надет ${clothesDesc}, а в глазах мерцали озорные искорки. Тема «${theme}» тихонько постучалась в окошко с лёгким вечерним ветерком.`,
     ],
     Космос: [
-      `Когда на небе загорались первые звёздочки, ${childName} садился у окна и смотрел в свой серебристый телескоп. Его ${personality.toLowerCase()} характер всегда манил его к тайнам далёких планет.`,
-      `Маленький мечтатель ${childName} знал названия всех созвездий. Сегодня ночью космический ветерок принёс в его комнату загадочное тихое мерцание.`,
-      `${childName} надел воображаемый серебристый шлем звездоплавателя. В его руках был маленький игрушечный звездолёт, готовый отправиться к Млечному Пути.`,
+      `Когда на небе зажглись первые звёздочки, ${childName} в своём ${clothesDesc}е подош${verbEnd} к подоконнику. Поправив ${hairDesc}, ${pronoun} крепко обнял${verbEnd} ${toyDesc}а и посмотрел${verbEnd} в ночное небо, где мягко светил полумесяц.`,
+      `Маленький звездоплаватель ${childName} очень любил тайны далёких планет. Взяв с собой верного спутника — ${toyDesc}а, ${pronoun} почувствовал${verbEnd}, что сегодняшний вечер приготовил для них особенную историю про «${theme}».`,
     ],
     Животные: [
-      `На пушистой лесной опушке стоял маленький домик, где жил ${childName}. Все птицы и зверушки знали его, ведь он был невероятно ${personality.toLowerCase()} и заботливый.`,
-      `Утро для ${childName}а началось с весёлого птичьего щебета. За окном шелестели зелёные ветви, а в траве показался маленький пушистый лисёнок.`,
-      `${childName} обожал гулять по тропинкам и наблюдать за белками, прыгающими с ветки на ветку, угощая их кедровыми орешками.`,
+      `На пушистой лесной опушке стоял сказочный домик, где жил${isGirl ? 'а' : ''} ${childName}. На ${himHer} был надет уютный ${clothesDesc}, а рядом всегда был верный ${toyDesc}. Все лесные зверушки знали ${himHer} как очень ${personality.toLowerCase()}${isGirl ? 'ую' : 'ого'} друга.`,
+      `Утро для ${childName}а началось с весёлого пения синичек. Погладив ${toyDesc}а по пушистой спинке, ${childName} улыбнул${isGirl ? 'а' : ''}сь новому дню, полному заботы и темы «${theme}».`,
     ],
     Волшебство: [
-      `В старинном книжном шкафу ${childName} нашёл сияющую звёздную пыльцу. Будучи очень ${personality.toLowerCase()}м, он аккуратно прикоснулся к ней пальчиком, и всё вокруг наполнилось мягким золотистым светом.`,
-      `Жил-был ${childName}, который верил, что самое настоящее волшебство прячется в добрых поступках, тёплых объятиях и искренней улыбке.`,
-      `На подоконнике у ${childName}а распустился необычный цветок с лепестками цвета вечерней зари. Лепестки тихо звенели, словно маленькие колокольчики.`,
+      `В детской комнате у ${childName}а стоял старинный резной сундучок. ${childName} в своём ${clothesDesc}е аккуратно присел${verbEnd} рядом, держа в ладошках ${toyDesc}а. Вдруг из сундучка выпорхнула золотистая искорка сказочного сияния!`,
+      `Жил${isGirl ? 'а' : ''}-был${isGirl ? 'а' : ''} ${childName}. Больше всего на свете ${pronoun} верил${verbEnd}, что самое настоящее волшебство рождается из доброты. Поправив ${hairDesc}, ${pronoun} вместе с ${toyDesc}ом отправил${isGirl ? 'а' : ''}сь навстречу тайне «${theme}».`,
     ],
     Машинки: [
-      `У ${childName}а был целый гараж разноцветных машинок, но самой любимой была маленькая машинка-спасатель. С ней он всегда учился выручать тех, кто попал в беду.`,
-      `${childName} построил из мягких подушек и деревянных брусков целый сказочный городок со светофорами и перекрёстками.`,
-      `Тихий гудок любимого грузовичка позвал ${childName}а в новое вечернее путешествие по дорожкам воображаемого парка.`,
+      `${childName} построил${verbEnd} из подушек и одеял целый волшебный гараж. Посадив ${toyDesc}а на пассажирское сиденье маленькой машинки, ${childName} в своём ${clothesDesc}е весело нажал${verbEnd} на игрушечный клаксон. Путь лежал в страну взаимовыручки!`,
+      `По сказочной дорожке катилась маленькая машинка-спасатель, а рядом шагал${verbEnd} ${childName}, крепко держа любимого ${toyDesc}а. Впереди ждало приключение на тему «${theme}».`,
     ],
     Природа: [
-      `${childName} обожал гулять по тенистым тропинкам и слушать, как журчит звонкий лесной ручеёк. Природа открывала ему свои самые сокровенные тайны.`,
-      `Тёплый летний ветерок играл листьями старого мудрого дуба. ${childName} сидел в мягкой траве и любовался порхающими солнечными бабочками.`,
-      `В саду распустились душистые ромашки. ${childName} вдохнул их сладкий аромат и почувствовал, как мир наполняется спокойствием.`,
+      `${childName} обожал${verbEnd} гулять по мягкой зелёной травке. На ${himHer} был надет ${clothesDesc}, а в ручках ${pronoun} нёс ${toyDesc}а, показывая ему цветущие колокольчики и порхающих бабочек.`,
+      `Шелест дубовых листочков нежно убаюкивал лесную полянку. ${childName} присел${verbEnd} в тени ветвей, поправил${verbEnd} ${hairDesc} и прислушал${isGirl ? 'а' : ''}сь к мудрому шёпоту природы.`,
     ],
   };
 
-  // Развитие событий в зависимости от темы
+  // Развитие событий (Сцена 2)
   const themeDevelopments: Record<string, string[]> = {
     Дружба: [
-      `Вдруг ${childName} заметил, что его новый знакомый загрустил. Оказалось, что делиться любимой игрушкой поначалу было непросто. Но ${childName} улыбнулся и сказал: «Вместе играть в сто раз веселее!» — и протянул руку дружбы.`,
-      `На пути встретился маленький потерявшийся малыш. Он боялся сделать шаг вперёд. ${childName} ласково обнял его: «Не бойся, я с тобой! Настоящие друзья никогда не бросают друг друга».`,
-      `Два маленьких героя не могли решить, в какую игру играть первой. ${childName} предложил честную считалочку и соединил обе игры в одну большую и весёлую забаву.`,
+      `Впереди на тропинке показался маленький грустный зверёк. Он уронил свою любимую игрушку в ручеёк. ${childName} не растерял${isGirl ? 'а' : ''}сь: крепко сжав лапку ${toyDesc}а, ${pronoun} протянул${verbEnd} малышу руку: «Не грусти, давай достанем вместе! Друзья всегда помогают друг другу».`,
+      `${childName} заметил, что новому знакомому было одиноко играть одному. ${childName} с улыбкой поделил${verbEnd}ся своими кубиками и показал своего ${toyDesc}а. Глазки малыша сразу засияли радостью!`,
     ],
     Смелость: [
-      `Впереди показался таинственный тенистый уголок, откуда доносился незнакомый шорох. Сначала сердечко ${childName}а забилось чуть быстрее, но он сделал глубокий вдох, вспомнил, что он ${personality.toLowerCase()}, и смело шагнул вперёд, включив маленький фонарик. Оказалось, там просто играл пушистый ёжик!`,
-      `Нужно было перебраться через небольшой ручеёк по камушкам. Другие сомневались, но ${childName} показал пример спокойствия: осторожно поставил ножку и смело протянул руку остальным.`,
-      `Когда погас свет, комната показалась великанской и незнакомой. ${childName} улыбнулся темноте: «Ты просто время для отдыха звёздочек!» — и страх сразу растаял.`,
+      `Впереди была небольшая тёмная рощица, откуда доносился незнакомый шорох. Сердечко ${childName}а на мгновение ёкнуло, но ${pronoun} прижал${verbEnd} к себе ${toyDesc}а, глубоко вдохнул${verbEnd} и смело шагнул${verbEnd} вперёд. Оказалось, там просто играл с сухими листьями смешной пушистый зайчонок!`,
+      `Нужно было сделать первый шаг через узкий мостик над ручейком. ${childName} вспомнил${verbEnd}, что ${pronoun} ${personality.toLowerCase()}, улыбнул${isGirl ? 'а' : ''}сь своему ${toyDesc}у и уверенно перешёл${isGirl ? 'ла' : ''} на другой бережок.`,
     ],
     'Спокойный сон': [
-      `Солнышко начало медленно опускаться за пушистые облака, окрашивая горизонт в нежно-лиловые тона. Всё вокруг готовилось ко сну, а маленькая звёздочка никак не могла найти своё мягкое облачко-подушку. ${childName} помог ей найти самое тихое место на небе.`,
-      `Вечерний туман бережно укутал деревья колыбельным одеялом. ${childName} вместе с друзьями закрыл глазки, сделал медленный вдох носиком и выдох ротиком, слушая тихую колыбельную сверчка.`,
-      `Звёздочки на небе зажглись мягким тёплым светом. ${childName} почувствовал, как веки становятся тяжёлыми, а в сердце разливается сладкое чувство покоя.`,
+      `Солнышко ласково опустилось за розовые облачка. Всё вокруг начало затихать, а маленькая звёздочка на небе никак не могла уснуть. ${childName} бережно уложил${verbEnd} рядом ${toyDesc}а и тихонько запел${verbEnd} убаюкивающую песенку про мягкие сны.`,
+      `Вечерний туман бережно укутал деревья пушистым одеялом. ${childName} сладко зевнул${verbEnd}, поправил${verbEnd} ${clothesDesc} и почувствовал${verbEnd}, как глазки сами собой закрываются в уютном тепле.`,
     ],
     'Доброта и забота': [
-      `${childName} заметил птичку, уронившую веточку для своего гнезда. Он бережно поднял веточку, положил её поближе к дереву и насыпал горстку хлебных крошек. Птичка радостно защебетала в знак благодарности.`,
-      `Каждое доброе слово, сказанное ${childName}ом, превращалось в крошечный сияющий огонёк, который согревал всех вокруг в прохладный вечер.`,
+      `${childName} увидел птичку, которая не могла дотянуться до сладких ягод рябины. Проявив заботу, ${childName} бережно сорвал${verbEnd} ягодку и положил${verbEnd} на пенёк, а ${toyDesc} словно одобрительно кивнул головой.`,
+      `Каждое доброе слово, которое произносил${verbEnd} ${childName}, превращалось в крошечный золотистый светлячок, согревающий всё вокруг.`,
     ],
     Любознательность: [
-      `${childName} задался вопросом: откуда берутся капельки росы на траве? Исследуя лужайку шаг за шагом, он узнал удивительный секрет утренней прохлады и тумана.`,
-      `Мир вокруг хранил столько загадок! ${childName} с интересом рассматривал узоры на кленовом листочке, удивляясь, как мудро устроена природа.`,
+      `${childName} с интересом спросил${verbEnd} у ${toyDesc}а: «А почему звёздочки мерцают ночью?» Вместе они начали внимательно наблюдать за вечерним небом и разгадали удивительную тайну небесного света!`,
+      `Каждый листик на тропинке таил свой маленький секрет. ${childName} с восторгом изучал узоры природы, радуясь новым открытиям.`,
     ],
     Честность: [
-      `Случайно задев башню из кубиков, ${childName} не стал прятаться или винить сквозняк. Он честно и смело сказал: «Это я случайно задел, но я помогу построить её ещё крепче!» От правды на душе сразу стало легко и светло.`,
-      `${childName} нашёл потерянную кем-то красивую пуговицу. Вместо того чтобы забрать себе, он помог найти её владельца, заслужив искреннее уважение друзей.`,
+      `Случайно задев красивую пирамидку из шишек, ${childName} не стал${verbEnd} прятаться, а честно сказал${verbEnd}: «Это я случайно, но я помогу сделать её ещё лучше!» От правдивых слов на душе стало легко и тепло.`,
+      `Честность оказалась самым надёжным ключиком к доверию всех сказочных друзей.`,
     ],
     'Капризы и эмоции': [
-      `Когда что-то пошло не по плану, внутри ${childName}а поднялась маленькая сердитая тучка. Но ${childName} вспомнил совет мамы: положил ладошку на животик, сосчитал до трёх и глубоко выдохнул — сердитая тучка растаяла, уступив место солнцу.`,
-      `Иногда бывает грустно без причины. ${childName} позволил себе немного погрустить, обнял любимую игрушку, и грусть сама ушла, сменившись лёгкой улыбкой.`,
+      `Когда что-то пошло не так, внутри ${childName}а заворочалась сердитая тучка. Но ${childName} вспомнил${verbEnd} совет мамы: обнял${verbEnd} ${toyDesc}а, сосчитал${verbEnd} до трёх и глубоко выдохнул — тучка растаяла, а на смену ей вернулась ясная улыбка.`,
+      `Иногда бывает грустно, но верный ${toyDesc} и тёплые объятия всегда помогают вернуть солнечное настроение.`,
     ],
     'Волшебные сны': [
-      `В комнату тихо вошла добрая Фея Снов. В её хрустальной шкатулке мерцали сны о полётах над радугой, тёплом море и вкусных леденцах. ${childName} выбрал самый сказочный сон.`,
-      `Облака за окном превратились в воздушные зефирные замки, приглашая ${childName}а в путешествие по стране добрых сновидений.`,
+      `Фея Снов принесла хрустальное блюдечко со звёздной пыльцой. ${childName} загадал${verbEnd} самый сладкий сон, где ${pronoun} вместе с ${toyDesc}ом летает на пушистых облаках.`,
+      `Волшебные сны бережно окружили кроватку ${childName}а мерцающим куполом спокойствия и уюта.`,
     ],
   };
 
   const introList = intros[interest] || intros['Волшебство'];
   const introText = introList[Math.floor(Math.random() * introList.length)];
 
-  // Подбираем развитие сюжета по теме
   const devList = themeDevelopments[theme] || [
-    `Сегодня перед ${childName}ом стояла важная задача, связанная с темой «${theme}». Проявив свой ${personality.toLowerCase()} характер, ${childName} подошёл к делу с душой и заботой.`,
-    `${childName} понял, что тема «${theme}» — это не просто слова, а настоящее умение слышать себя и помогать тем, кто рядом.`,
+    `Сегодня перед ${childName}ом стояла важная задача, связанная с темой «${theme}». Проявив чуткость и держа рядом ${toyDesc}а, ${childName} подош${verbEnd} к делу с добрым сердцем.`,
+    `${childName} понял${verbEnd}, что тема «${theme}» — это умение верить в себя и быть чутким к тем, кто рядом.`,
   ];
   const conflictText = devList[Math.floor(Math.random() * devList.length)];
 
-  const wishesAddition = customWishes ? ` Как ${childName} и загадал, ${customWishes.toLowerCase()}.` : '';
+  const wishesAddition = customWishes ? ` Как ${childName} и загадал${verbEnd}, ${customWishes.toLowerCase()}.` : '';
 
-  const climaxText = `Благодаря тому, что ${childName} проявил чуткость и верность теме «${theme}», все преграды легко рассеялись.${wishesAddition} Вокруг засияли тысячи тёплых огоньков радости и гармонии.`;
+  // Кульминация (Сцена 3)
+  const climaxText = `Благодаря тому, что ${childName} проявил${verbEnd} ${personality.toLowerCase()} характер и верность уроку «${theme}», всё сложилось наилучшим образом.${wishesAddition} Маленький ${toyDesc} словно улыбнулся в ответ, а вокруг разлилось мягкое сияние добра и спокойствия.`;
 
-  const conclusionText = `Удивительное приключение подошло к концу. ${childName} сладко зевнул и уютно укутался в тёплое мягкое одеяло. Мама нежно погладила его по волосам: «Спи сладко, мой маленький герой». Впереди ждали только добрые и светлые сны.`;
+  // Финал (Сцена 4)
+  const conclusionText = `Сказочное приключение благополучно завершилось. ${childName} сладко зевнул${verbEnd}, переодел${verbEnd}ся в мягкую пижамку и забрал${verbEnd}ся под тёплое, воздушное одеяло, бережно уложив рядом ${toyDesc}а. Мама нежно погладила ${himHer} по ${hairDesc}м: «Спи сладко, мой маленький герой». Впереди ждали только добрые, волшебные сны.`;
 
+  // Вопросы
   const questionsList = [
     {
       id: 'q1',
       after_scene: 2,
       question: `Как ты думаешь, почему для ${childName}а было так важно проявить внимание к теме «${theme}»?`,
-      parent_hint: `Выслушайте ответ малыша. Поддержите его рассуждения о доброте и смелости.`,
+      parent_hint: `Выслушайте ответ малыша. Поддержите его рассуждения о том, как поступок героя помог окружающим.`,
       skill_tag: 'emotions',
     },
     {
       id: 'q2',
       after_scene: 5,
-      question: `Что в этой сказке показалось тебе самым добрым и уютным?`,
-      parent_hint: `Обнимите ребёнка, обсудите любимый момент и пожелайте спокойной ночи.`,
+      question: `Что в этой сказке тебе понравилось больше всего? Какую игрушку взял бы с собой ты?`,
+      parent_hint: `Обнимите ребёнка, поговорите о его любимой игрушке и пожелайте спокойной ночи.`,
       skill_tag: 'reflection',
     },
   ];

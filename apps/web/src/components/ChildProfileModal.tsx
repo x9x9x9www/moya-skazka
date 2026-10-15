@@ -22,18 +22,22 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
   const [age, setAge] = useState(4);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(['динозавры', 'волшебство']);
+  const [gender, setGender] = useState<'boy' | 'girl'>('boy');
+  const [hairColor, setHairColor] = useState('светлые');
+  const [clothingColor, setClothingColor] = useState('изумрудный');
+  const [toy, setToy] = useState('плюшевый динозаврик');
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(['Динозавры', 'Волшебство']);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const interestsList = [
-    { id: 'динозавры', label: 'Динозавры 🦖' },
-    { id: 'космос', label: 'Космос 🚀' },
-    { id: 'животные', label: 'Животные 🦊' },
-    { id: 'волшебство', label: 'Волшебство 🪄' },
-    { id: 'машинки', label: 'Машинки 🚗' },
-    { id: 'природа', label: 'Природа 🌿' },
+    { id: 'Динозавры', label: 'Динозавры 🦖' },
+    { id: 'Космос', label: 'Космос 🚀' },
+    { id: 'Животные', label: 'Животные 🦊' },
+    { id: 'Волшебство', label: 'Волшебство 🪄' },
+    { id: 'Машинки', label: 'Машинки 🚗' },
+    { id: 'Природа', label: 'Природа 🌿' },
   ];
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -46,7 +50,15 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
         name: name.trim(),
         age,
         interests: selectedInterests,
-        appearance: { avatar_id: 'child_1', hair: 'светлые', clothing: 'уютный свитер' },
+        appearance: {
+          avatar_id: 'hero_custom',
+          gender,
+          hairColor,
+          hairType: 'кудрявые',
+          clothingItem: gender === 'girl' ? 'платьице' : 'уютный свитер',
+          clothingColor,
+          toy,
+        },
       });
       setName('');
       setIsCreating(false);
@@ -66,7 +78,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
       <div className="bg-cream-100 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-cream-300 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-cream-300">
           <div className="font-serif font-bold text-lg text-stone-800">
-            {isCreating ? 'Новый герой сказок' : 'Профили детей'}
+            {isCreating ? 'Создание профиля героя' : 'Профили детей'}
           </div>
           <button
             onClick={onClose}
@@ -79,7 +91,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
         {!isCreating ? (
           <div className="py-4 space-y-3">
             <p className="text-xs text-stone-500 mb-2">
-              Выберите, для какого ребёнка сейчас создавать или читать сказку:
+              Выберите героя для сказок или добавьте нового:
             </p>
 
             {childrenList.map((child) => {
@@ -103,7 +115,9 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     </div>
                     <div>
                       <div className="font-bold text-stone-800 text-sm">{child.name}</div>
-                      <div className="text-xs text-stone-500">{child.age} года</div>
+                      <div className="text-xs text-stone-500">
+                        {child.age} года • {(child.interests || []).join(', ')}
+                      </div>
                     </div>
                   </div>
                   {isSelected && <Check className="w-5 h-5 text-brand-600" />}
@@ -129,12 +143,44 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Например, Соня"
+                placeholder="Например, Петька"
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium"
               />
             </div>
 
+            {/* Пол */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                Пол
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGender('boy')}
+                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                    gender === 'boy'
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'bg-white text-stone-700 border-cream-300'
+                  }`}
+                >
+                  👦 Мальчик
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('girl')}
+                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                    gender === 'girl'
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'bg-white text-stone-700 border-cream-300'
+                  }`}
+                >
+                  👧 Девочка
+                </button>
+              </div>
+            </div>
+
+            {/* Возраст */}
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1.5">
                 Возраст ({age} года)
@@ -145,13 +191,70 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     key={num}
                     type="button"
                     onClick={() => setAge(num)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
                       age === num
                         ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                        : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-200'
+                        : 'bg-white text-stone-700 border-cream-300'
                     }`}
                   >
                     {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Волосы */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                Цвет волос
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: 'светлые', label: 'Светлые' },
+                  { id: 'русые', label: 'Русые' },
+                  { id: 'тёмные', label: 'Тёмные' },
+                  { id: 'рыжие', label: 'Рыжие' },
+                ].map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => setHairColor(h.id)}
+                    className={`py-1.5 text-[11px] font-bold rounded-lg border transition-all ${
+                      hairColor === h.id
+                        ? 'bg-brand-50 border-brand-500 text-brand-800'
+                        : 'bg-white border-cream-300 text-stone-600'
+                    }`}
+                  >
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Любимая игрушка-спутник */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                Игрушка-спутник
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'плюшевый динозаврик', label: '🦖 Динозаврик' },
+                  { id: 'плюшевый мишка', label: '🧸 Мишка' },
+                  { id: 'пушистый зайка', label: '🐰 Зайка' },
+                  { id: 'маленький котёнок', label: '🐱 Котёнок' },
+                  { id: 'волшебная звёздочка', label: '⭐ Звёздочка' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setToy(t.id)}
+                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border truncate transition-all ${
+                      toy === t.id
+                        ? 'bg-brand-50 border-brand-500 text-brand-800'
+                        : 'bg-white border-cream-300 text-stone-600'
+                    }`}
+                  >
+                    {t.label}
                   </button>
                 ))}
               </div>

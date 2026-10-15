@@ -2,11 +2,16 @@ import React from 'react';
 import { ArrowLeft, ArrowRight, MessageSquareQuote } from 'lucide-react';
 import { BookDetailsDTO } from '@moya-skazka/shared';
 import { ReaderSettings } from '../hooks/useReaderSettings';
+import { FairytaleIllustration, ChildAppearanceProps } from '../components/FairytaleIllustration';
 
 interface Screen5ReaderProps {
   book: BookDetailsDTO;
   currentSceneIndex: number;
   settings: ReaderSettings;
+  childName?: string;
+  theme?: string;
+  interest?: string;
+  appearance?: ChildAppearanceProps;
   onPrevScene: () => void;
   onNextScene: () => void;
   onClose: () => void;
@@ -16,6 +21,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   book,
   currentSceneIndex,
   settings,
+  childName,
+  theme,
+  interest,
+  appearance,
   onPrevScene,
   onNextScene,
   onClose,
@@ -61,20 +70,15 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
 
       {/* Основной контент: Иллюстрация + Текст + Вопрос */}
       <div className="flex-1 p-5 space-y-6 overflow-y-auto">
-        {/* Крупная иллюстрация сцены (для иллюстрированной книги) */}
-        {currentScene?.image_url ? (
-          <div className="w-full h-64 rounded-3xl overflow-hidden shadow-card border border-cream-300/60 bg-cream-200">
-            <img
-              src={currentScene.image_url}
-              alt={`Сцена ${currentSceneIndex}`}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-24 rounded-2xl bg-amber-50/60 border border-amber-200/50 flex items-center justify-center text-xs text-amber-800 font-medium">
-            📖 Текстовый формат сказки
-          </div>
-        )}
+        {/* Крупная сказочная иллюстрация сцены в тёплом акварельном стиле */}
+        <FairytaleIllustration
+          sceneIndex={currentSceneIndex}
+          theme={theme || book.title}
+          interest={interest || 'Волшебство'}
+          childName={childName || 'Герой'}
+          appearance={appearance}
+          imageUrl={currentScene?.image_url}
+        />
 
         {/* Текст сцены с уютной книжной типографикой Literata */}
         <div className={`font-serif leading-relaxed px-1 text-justify ${fontClass}`}>

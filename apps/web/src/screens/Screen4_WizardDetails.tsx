@@ -113,20 +113,32 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
       </div>
 
       {/* Карточка превью сгенерированного героя */}
-      <div className="rounded-3xl bg-amber-50/80 border border-amber-200/80 p-4 flex items-center gap-3.5">
-        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-amber-200 shrink-0 border border-amber-300 shadow-sm">
-          <img
-            src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=200&auto=format&fit=crop&q=80"
-            alt="Превью героя"
-            className="w-full h-full object-cover"
-          />
+      <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center">
+          <span className="text-2xl">
+            {heroData.appearance?.toy?.includes('дино')
+              ? '🦖'
+              : heroData.appearance?.toy?.includes('миш')
+              ? '🧸'
+              : heroData.appearance?.toy?.includes('зай')
+              ? '🐰'
+              : heroData.appearance?.toy?.includes('кот')
+              ? '🐱'
+              : '⭐'}
+          </span>
+          <span className="text-[10px] font-bold text-amber-900 mt-0.5">
+            {heroData.gender === 'girl' ? '👧' : '👦'} Герой
+          </span>
         </div>
-        <div>
-          <div className="text-sm font-bold text-stone-900">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-stone-900 truncate">
             {heroData.childName}, {heroData.age} года
           </div>
           <div className="text-xs text-stone-600 mt-0.5">
-            Тема: {heroData.theme} • {heroData.interests.join(', ')}
+            {heroData.appearance?.hairColor} {heroData.appearance?.hairType} волосы • {heroData.appearance?.clothingColor} {heroData.appearance?.clothingItem}
+          </div>
+          <div className="text-[11px] font-semibold text-brand-700 mt-1">
+            Спутник: {heroData.appearance?.toy || 'любимая игрушка'}
           </div>
         </div>
       </div>
