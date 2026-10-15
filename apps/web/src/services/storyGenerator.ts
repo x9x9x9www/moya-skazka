@@ -100,6 +100,7 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
           scene_index: idx + 1,
           text: s.text,
           image_url: images[idx % images.length],
+          image_prompt: s.image_prompt || buildFairytaleImagePrompt(params, `experiencing fairytale adventure on theme "${params.theme}" with ${params.appearance?.toy || 'small companion toy'}`),
         })),
         questions: params.includeQuestions && Array.isArray(geminiStory.questions)
           ? geminiStory.questions.map((q: any, i: number) => ({
@@ -149,16 +150,18 @@ async function callGeminiWithTimeout(params: GenerateStoryParams, timeoutMs: num
 1. Сказка СТРОГО из 4 сцен (scenes 1, 2, 3, 4). Герой — ${params.childName}.
 2. В первой сцене обязательно упомяни внешность героя (${clothesStr}, ${hairStr}) и его игрушку (${toyStr}).
 3. Тема "${params.theme}" — ключевая ось сюжета.
-4. 2 вопроса для родителя: после сцены 2 (на чувства/эмоции) и после сцены 4 (на рефлексию/выводы), с подсказками родителю parent_hint.
+4. Для каждой сцены составь детальный английский image_prompt СТРОГО по формуле:
+   "A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${params.age}-year-old ${genderStr} with ${hairStr}, wearing ${clothesStr}, holding a small ${toyStr}. The hero is [action]. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words."
+5. 2 вопроса для родителя: после сцены 2 (на чувства/эмоции) и после сцены 4 (на рефлексию/выводы), с подсказками родителю parent_hint.
 
 Верни СТРОГО JSON без markdown:
 {
   "title": "Название сказки",
   "scenes": [
-    {"index": 1, "text": "Текст 1 сцены..."},
-    {"index": 2, "text": "Текст 2 сцены..."},
-    {"index": 3, "text": "Текст 3 сцены..."},
-    {"index": 4, "text": "Текст 4 сцены..."}
+    {"index": 1, "text": "Текст 1 сцены...", "image_prompt": "A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style..."},
+    {"index": 2, "text": "Текст 2 сцены...", "image_prompt": "..."},
+    {"index": 3, "text": "Текст 3 сцены...", "image_prompt": "..."},
+    {"index": 4, "text": "Текст 4 сцены...", "image_prompt": "..."}
   ],
   "questions": [
     {"after_scene": 2, "question": "Вопрос 1...", "parent_hint": "Подсказка...", "skill_tag": "emotions"},
@@ -324,11 +327,59 @@ function generateProceduralStory(params: GenerateStoryParams, images: string[]):
     format: 'ILLUSTRATED',
     can_upgrade: false,
     scenes: [
-      { id: 's1', scene_index: 1, text: introText, image_url: images[0] },
-      { id: 's2', scene_index: 2, text: conflictText, image_url: images[1] },
-      { id: 's3', scene_index: 3, text: climaxText, image_url: images[2] },
-      { id: 's4', scene_index: 4, text: conclusionText, image_url: images[3] },
+      {
+        id: 's1',
+        scene_index: 1,
+        text: introText,
+        image_url: images[0],
+        image_prompt: buildFairytaleImagePrompt(
+          params,
+          `in a cozy warm room or meadow, lovingly holding ${toyDesc}`
+        ),
+      },
+      {
+        id: 's2',
+        scene_index: 2,
+        text: conflictText,
+        image_url: images[1],
+        image_prompt: buildFairytaleImagePrompt(
+          params,
+          `bravely exploring a magical path on theme "${theme}", holding ${toyDesc} for courage`
+        ),
+      },
+      {
+        id: 's3',
+        scene_index: 3,
+        text: climaxText,
+        image_url: images[2],
+        image_prompt: buildFairytaleImagePrompt(
+          params,
+          `celebrating kindness and wonder, surrounded by glowing golden fairytale lights and cheerful forest friends`
+        ),
+      },
+      {
+        id: 's4',
+        scene_index: 4,
+        text: conclusionText,
+        image_url: images[3],
+        image_prompt: buildFairytaleImagePrompt(
+          params,
+          `curled up in a soft warm bedtime nest under a starry sky with gentle crescent moon and ${toyDesc}`
+        ),
+      },
     ],
     questions: params.includeQuestions ? questionsList : [],
   };
+}
+
+/**
+ * Эталонный генератор промпта детской книжной иллюстрации
+ */
+export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneAction: string): string {
+  const genderWord = params.gender === 'girl' ? 'girl' : 'boy';
+  const hair = `${params.appearance?.hairColor || 'blond'} ${params.appearance?.hairType || 'curly'} hair`;
+  const clothes = `cozy ${params.appearance?.clothingColor || 'emerald green'} ${params.appearance?.clothingItem || 'sweater'}`;
+  const toy = params.appearance?.toy || 'small plush toy';
+
+  return `A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${params.age}-year-old ${genderWord} with ${hair}, wearing a ${clothes}, holding a small ${toy}. The hero is ${sceneAction}. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, gentle whimsical atmosphere, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words, 8k resolution.`;
 }

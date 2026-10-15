@@ -38,7 +38,8 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
   * 2-3 года: узнавание героев, простые эмоции (грусть/радость), указание на действия.
   * 4-5 лет: причины поступков, помощь другу, варианты решения.
   * 6 лет: мотивы, причинно-следственные связи, моральный выбор.
-- Для каждой сцены составь детальный английский image_prompt в стиле тёплой акварельной детской иллюстрации ("warm cozy children book fairytale illustration").
+- Для каждой сцены составь детальный английский image_prompt СТРОГО по эталонной формуле детской сказочной книжной иллюстрации:
+  "A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${input.age}-year-old child with [visual hair], wearing [cozy clothing], holding a small [companion toy]. The hero is [scene specific action]. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words."
 
 Ты ОБЯЗАН вернуть валидный JSON-объект без markdown-разметки:
 {
@@ -123,11 +124,16 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       // Imagen 3 endpoint в Google Generative Language API
       const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
+      // Эталонная формула сказочной иллюстрации
+      const finalPrompt = input.prompt.includes('watercolor and gouache')
+        ? input.prompt
+        : `A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. ${input.prompt}. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, peaceful bedtime story vibe, highly detailed hand-drawn art, no photorealistic, no 3D render, no CGI, no text.`;
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt: input.prompt }],
+          instances: [{ prompt: finalPrompt }],
           parameters: {
             sampleCount: 1,
             aspectRatio: input.type === 'cover' ? '4:3' : '16:9',

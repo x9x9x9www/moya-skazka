@@ -162,6 +162,7 @@ export interface BookSceneDTO {
   scene_index: number;
   text: string;
   image_url?: string | null;
+  image_prompt?: string | null;
 }
 
 export interface BookQuestionDTO {
