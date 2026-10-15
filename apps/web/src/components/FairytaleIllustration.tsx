@@ -112,12 +112,17 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
 
   const backdrop = getSceneBackdrop();
 
+  // Защита от случайных стоковых фотографий (типа Unsplash с казино):
+  // Показываем внешнюю картинку только если это НЕ Unsplash
+  const isUnsplash = Boolean(imageUrl && imageUrl.includes('unsplash.com'));
+  const canShowImage = Boolean(imageUrl) && !isUnsplash && !imageFailed;
+
   return (
     <div className="relative w-full h-64 sm:h-72 rounded-3xl overflow-hidden shadow-card border-2 border-amber-100/80 bg-cream-100 select-none">
-      {/* Если есть внешняя иллюстрация и она загрузилась */}
-      {imageUrl && !imageFailed ? (
+      {/* Если есть проверенная внешняя иллюстрация и она загрузилась */}
+      {canShowImage ? (
         <img
-          src={imageUrl}
+          src={imageUrl!}
           alt={`Сцена ${sceneIndex}`}
           onError={() => setImageFailed(true)}
           className="w-full h-full object-cover transition-opacity duration-300"
@@ -128,15 +133,15 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
           className="w-full h-full relative overflow-hidden flex items-end justify-center"
           style={{ background: backdrop.sky }}
         >
-          {/* Декоративные мягкие облака и звёзды */}
+          {/* Декоративные мягкие облака, звёздочки и мягкое акварельное сияние */}
           <div className="absolute top-3 left-4 text-white/70 text-lg animate-pulse">✨</div>
           <div className="absolute top-6 right-6 text-amber-200/90 text-2xl">
-            {interest === 'Космос' ? '🌙' : interest === 'Волшебство' ? '🌟' : '☀️'}
+            {interest === 'Космос' || sceneIndex === 4 ? '🌙' : interest === 'Волшебство' ? '🌟' : '☀️'}
           </div>
           <div className="absolute top-10 left-12 w-20 h-7 bg-white/30 rounded-full blur-[1px]" />
           <div className="absolute top-14 right-16 w-28 h-8 bg-white/25 rounded-full blur-[1px]" />
 
-          {/* Тематические задние планы */}
+          {/* Тематические сказочные задние планы */}
           {backdrop.elements === 'space' && (
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-8 left-1/3 text-xl opacity-80">🪐</div>
@@ -171,8 +176,11 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
 
           {backdrop.elements === 'cars' && (
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute bottom-8 right-6 text-4xl opacity-90">🚗</div>
-              <div className="absolute bottom-12 left-6 text-3xl opacity-80">🚦</div>
+              <div className="absolute top-7 left-1/4 text-2xl opacity-80">🌈</div>
+              <div className="absolute bottom-10 right-6 text-4xl opacity-95">🚗</div>
+              <div className="absolute bottom-12 left-6 text-2xl opacity-85">🚦</div>
+              <div className="absolute bottom-8 left-1/3 text-xl opacity-80">🚙</div>
+              <div className="absolute top-10 right-1/4 text-lg opacity-80">🎈</div>
             </div>
           )}
 
