@@ -1,0 +1,21 @@
+{
+  "name": "moya-skazka-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram Mini App «Моя сказка» для родителей детей 2–6 лет",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@moya-skazka/api",
+    "dev:web": "npm run dev --workspace=@moya-skazka/web",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace=@moya-skazka/web",
+    "test": "npm run test --workspace=@moya-skazka/api",
+    "bot": "node bot/bot.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,435 @@
+// ========================================================
+// Проект «Моя сказка» — Prisma Data Model (14 таблиц)
+// Строгая схема данных с индексами, ограничениями и связями
+// ========================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------------------------
+// Перечисления (Enums)
+// --------------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum BookStatus {
+  DRAFT
+  TEXT_GENERATING
+  TEXT_READY
+  ILLUSTRATIONS_QUEUED
+  ILLUSTRATING
+  ILLUSTRATED
+  FAILED_RETRYABLE
+  FAILED_FINAL
+}
+
+enum BookFormat {
+  TEXT
+  ILLUSTRATED
+}
+
+enum DailyIdeaStatus {
+  ACTIVE
+  SAVED
+  USED
+  REFRESHED
+}
+
+enum AssetType {
+  COVER
+  SCENE
+}
+
+enum AssetStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum OrderSku {
+  SINGLE_BOOK_1
+  PACK_5
+}
+
+enum OrderStatus {
+  CREATED
+  INVOICE_OPENED
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum CreditSourceType {
+  PAID
+  GIFT
+  SPEND
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+enum CreditLedgerStatus {
+  PENDING
+  CONFIRMED
+  REVERSED
+}
+
+enum CreditReservationStatus {
+  AVAILABLE
+  RESERVED
+  CONSUMED
+  RELEASED
+}
+
+enum ReferralRewardStatus {
+  AWARDED
+  REVOKED
+  FLAGGED_REVIEW
+}
+
+enum JobType {
+  GENERATE_TEXT
+  GENERATE_ILLUSTRATIONS
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED_RETRYABLE
+  FAILED_FINAL
+}
+
+// --------------------------------------------------------
+// 1. users
+// --------------------------------------------------------
+model User {
+  id                        String    @id @default(uuid()) @db.Uuid
+  telegram_user_id          BigInt    @unique
+  first_name                String?
+  username                  String?
+  role                      UserRole  @default(USER)
+  free_text_claimed_at      DateTime? // nullable timestamp для атомарного резервирования первой бесплатной книги
+  consent_version           String    @default("1.0")
+  default_questions_enabled Boolean   @default(true)
+  timezone                  String    @default("Europe/Moscow")
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  child_profiles            ChildProfile[]
+  books                     Book[]
+  orders                    Order[]
+  credit_ledger             CreditLedger[]
+  credit_reservations       CreditReservation[]
+  invitations_sent          Referral[]           @relation("InviterRelation")
+  invitation_received       Referral?            @relation("InviteeRelation")
+  assets                    Asset[]
+  events                    Event[]
+
+  @@map("users")
+}
+
+// --------------------------------------------------------
+// 2. child_profiles
+// --------------------------------------------------------
+model ChildProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String   @db.Uuid
+  name            String   @db.VarChar(50)
+  age             Int      // 2..6 лет
+  interests_json  Json     // массив интересов (динозавры, космос, животные, волшебство, машинки, природа)
+  appearance_json Json     // аватар, волосы/причёска, одежда, характер
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  books           Book[]
+  daily_ideas     DailyIdea[]
+
+  @@index([user_id])
+  @@map("child_profiles")
+}
+
+// --------------------------------------------------------
+// 3. books
+// --------------------------------------------------------
+model Book {
+  id                   String     @id @default(uuid()) @db.Uuid
+  user_id              String     @db.Uuid
+  child_id             String     @db.Uuid
+  title                String     @db.VarChar(200)
+  status               BookStatus @default(DRAFT)
+  format               BookFormat @default(TEXT)
+  text_version         Int        @default(1)
+  theme                String     @db.VarChar(100)
+  character_bible_json Json?      // визуальные признаки ребёнка и героев для консистентности иллюстраций
+  story_outline_json   Json?      // план 4 сцен
+  cover_asset_id       String?    @db.Uuid
+  source_idea_id       String?    @db.Uuid
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+
+  user                 User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  child                ChildProfile @relation(fields: [child_id], references: [id], onDelete: Cascade)
+  cover_asset          Asset?     @relation("BookCoverAsset", fields: [cover_asset_id], references: [id])
+  source_idea          DailyIdea? @relation(fields: [source_idea_id], references: [id])
+
+  scenes               BookScene[]
+  questions            BookQuestion[]
+  jobs                 Job[]
+  credit_reservations  CreditReservation[]
+  credit_ledger_records CreditLedger[]
+
+  @@index([user_id])
+  @@index([child_id])
+  @@index([status])
+  @@map("books")
+}
+
+// --------------------------------------------------------
+// 4. book_scenes (строго 4 сцены на книгу)
+// --------------------------------------------------------
+model BookScene {
+  id             String   @id @default(uuid()) @db.Uuid
+  book_id        String   @db.Uuid
+  scene_index    Int      // 1..4
+  text           String   @db.Text
+  image_asset_id String?  @db.Uuid
+  image_prompt   String   @db.Text
+  created_at     DateTime @default(now())
+
+  book           Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  image_asset    Asset?   @relation("SceneImageAsset", fields: [image_asset_id], references: [id])
+
+  @@unique([book_id, scene_index])
+  @@index([book_id])
+  @@map("book_scenes")
+}
+
+// --------------------------------------------------------
+// 5. book_questions (педагогические вопросы после 2, 4 сцены или финал)
+// --------------------------------------------------------
+model BookQuestion {
+  id          String   @id @default(uuid()) @db.Uuid
+  book_id     String   @db.Uuid
+  after_scene Int      // 2, 4 или 5 (финал)
+  question    String   @db.Text
+  parent_hint String?  @db.Text
+  skill_tag   String   @db.VarChar(50) // emotions, logic, empathy, memory
+  created_at  DateTime @default(now())
+
+  book        Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@index([book_id])
+  @@map("book_questions")
+}
+
+// --------------------------------------------------------
+// 6. daily_ideas (1 идея на профиль ребёнка в календарный день)
+// --------------------------------------------------------
+model DailyIdea {
+  id         String          @id @default(uuid()) @db.Uuid
+  child_id   String          @db.Uuid
+  local_date String          @db.VarChar(10) // Формат YYYY-MM-DD
+  title      String          @db.VarChar(200)
+  blurb      String          @db.Text
+  theme      String          @db.VarChar(100)
+  status     DailyIdeaStatus @default(ACTIVE)
+  created_at DateTime        @default(now())
+
+  child      ChildProfile    @relation(fields: [child_id], references: [id], onDelete: Cascade)
+  books      Book[]
+
+  @@unique([child_id, local_date])
+  @@index([child_id])
+  @@map("daily_ideas")
+}
+
+// --------------------------------------------------------
+// 7. assets (приватное хранение иллюстраций и обложек)
+// --------------------------------------------------------
+model Asset {
+  id              String      @id @default(uuid()) @db.Uuid
+  owner_id        String      @db.Uuid
+  storage_key     String      @db.VarChar(255)
+  type            AssetType
+  status          AssetStatus @default(PENDING)
+  generation_cost Decimal     @default(0.0000) @db.Decimal(10, 4)
+  mime_type       String      @default("image/webp") @db.VarChar(50)
+  width           Int?
+  height          Int?
+  created_at      DateTime    @default(now())
+
+  owner           User        @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  book_covers     Book[]      @relation("BookCoverAsset")
+  scene_images    BookScene[] @relation("SceneImageAsset")
+
+  @@index([owner_id])
+  @@index([status])
+  @@map("assets")
+}
+
+// --------------------------------------------------------
+// 8. orders (заказы Telegram Stars с защитой от дубликатов)
+// --------------------------------------------------------
+model Order {
+  id                   String      @id @default(uuid()) @db.Uuid
+  user_id              String      @db.Uuid
+  sku                  OrderSku
+  stars_amount         Int
+  rub_reference_amount Decimal     @db.Decimal(10, 2)
+  status               OrderStatus @default(CREATED)
+  telegram_charge_id   String?     @unique @db.VarChar(128)
+  idempotency_key      String      @unique @db.VarChar(128)
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  user                 User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  referral_reward      ReferralReward?
+  qualifying_referrals Referral[]
+
+  @@index([user_id])
+  @@index([status])
+  @@map("orders")
+}
+
+// --------------------------------------------------------
+// 9. credit_ledger (неизменяемый журнал операций с балансом)
+// --------------------------------------------------------
+model CreditLedger {
+  id          String             @id @default(uuid()) @db.Uuid
+  user_id     String             @db.Uuid
+  source_type CreditSourceType   // PAID (+1/+5), GIFT (+1), SPEND (-1), REFUND, ADMIN_ADJUSTMENT
+  source_id   String             @db.VarChar(128) // order_id, referral_reward_id, admin_id
+  delta       Int                // +1, +5, -1
+  status      CreditLedgerStatus @default(CONFIRMED)
+  book_id     String?            @db.Uuid
+  reason      String?            @db.VarChar(255)
+  created_at  DateTime           @default(now())
+
+  user        User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book        Book?              @relation(fields: [book_id], references: [id])
+
+  reservations     CreditReservation[]
+  referral_rewards ReferralReward[]
+
+  @@index([user_id])
+  @@index([source_type])
+  @@index([created_at])
+  @@map("credit_ledger")
+}
+
+// --------------------------------------------------------
+// 10. credit_reservations (атомарное резервирование 1 кредита на книгу)
+// --------------------------------------------------------
+model CreditReservation {
+  id               String                  @id @default(uuid()) @db.Uuid
+  user_id          String                  @db.Uuid
+  book_id          String                  @db.Uuid
+  credit_source_id String?                 @db.Uuid
+  status           CreditReservationStatus @default(RESERVED) // AVAILABLE -> RESERVED -> CONSUMED | RELEASED
+  created_at       DateTime                @default(now())
+  updated_at       DateTime                @updatedAt
+
+  user             User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book             Book                    @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  credit_source    CreditLedger?           @relation(fields: [credit_source_id], references: [id])
+
+  @@index([user_id])
+  @@index([book_id])
+  @@index([status])
+  @@map("credit_reservations")
+}
+
+// --------------------------------------------------------
+// 11. referrals (фиксация пригласившего навсегда)
+// --------------------------------------------------------
+model Referral {
+  id                  String    @id @default(uuid()) @db.Uuid
+  inviter_id          String    @db.Uuid
+  invitee_id          String    @unique @db.Uuid // Ровно 1 пригласивший на пользователя навсегда
+  referral_token      String    @db.VarChar(64)
+  attributed_at       DateTime  @default(now())
+  qualifying_order_id String?   @db.Uuid
+
+  inviter             User      @relation("InviterRelation", fields: [inviter_id], references: [id], onDelete: Cascade)
+  invitee             User      @relation("InviteeRelation", fields: [invitee_id], references: [id], onDelete: Cascade)
+  qualifying_order    Order?    @relation(fields: [qualifying_order_id], references: [id])
+
+  reward              ReferralReward?
+
+  @@index([inviter_id])
+  @@map("referrals")
+}
+
+// --------------------------------------------------------
+// 12. referral_rewards (награда строго 1 раз за первую оплату)
+// --------------------------------------------------------
+model ReferralReward {
+  id               String               @id @default(uuid()) @db.Uuid
+  referral_id      String               @unique @db.Uuid // Только 1 награда на реферала
+  order_id         String               @unique @db.Uuid // Привязана к первой подтверждённой оплате
+  credit_ledger_id String               @db.Uuid
+  status           ReferralRewardStatus @default(AWARDED)
+  created_at       DateTime             @default(now())
+
+  referral         Referral             @relation(fields: [referral_id], references: [id], onDelete: Cascade)
+  order            Order                @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  credit_ledger    CreditLedger         @relation(fields: [credit_ledger_id], references: [id], onDelete: Cascade)
+
+  @@index([credit_ledger_id])
+  @@map("referral_rewards")
+}
+
+// --------------------------------------------------------
+// 13. jobs (очередь фоновой генерации с retries и dead-letter)
+// --------------------------------------------------------
+model Job {
+  id            String    @id @default(uuid()) @db.Uuid
+  book_id       String    @db.Uuid
+  type          JobType   // GENERATE_TEXT | GENERATE_ILLUSTRATIONS
+  status        JobStatus @default(PENDING)
+  attempts      Int       @default(0)
+  max_attempts  Int       @default(3)
+  last_error    String?   @db.Text
+  provider_cost Decimal   @default(0.0000) @db.Decimal(10, 4)
+  locked_at     DateTime? // Для блокировки воркером: SELECT ... FOR UPDATE SKIP LOCKED
+  locked_by     String?   @db.VarChar(64)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  book          Book      @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@index([book_id])
+  @@index([status])
+  @@index([locked_at])
+  @@map("jobs")
+}
+
+// --------------------------------------------------------
+// 14. events (аудит и продуктовая аналитика)
+// --------------------------------------------------------
+model Event {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String?  @db.Uuid
+  event_name      String   @db.VarChar(100)
+  properties_json Json
+  created_at      DateTime @default(now())
+
+  user            User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([event_name])
+  @@index([created_at])
+  @@map("events")
+}

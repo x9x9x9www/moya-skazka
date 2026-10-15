@@ -1,0 +1,554 @@
+openapi: 3.1.0
+info:
+  title: API «Моя сказка» — Telegram Mini App
+  version: 1.0.0
+  description: Полная OpenAPI 3.1 спецификация серверного API сервиса персонализированных детских сказок для Telegram Mini App.
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Локальный сервер разработки
+  - url: https://api.moyaskazka.ru/api/v1
+    description: Production сервер
+
+paths:
+  # ========================================================
+  # Авторизация
+  # ========================================================
+  /auth/telegram:
+    post:
+      summary: Авторизация через Telegram WebApp initData
+      description: Криптографически проверяет HMAC-SHA256 подпись initData и auth_date (< 24ч). Извлекает telegram_user_id. При первом входе проверяет и связывает реферальный startapp параметр.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [init_data]
+              properties:
+                init_data:
+                  type: string
+                  description: Сырая строка window.Telegram.WebApp.initData
+                start_param:
+                  type: string
+                  nullable: true
+                  description: Реферальный токен из startapp (например ref_123)
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT Bearer токен
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+
+  # ========================================================
+  # Пользователь и профили
+  # ========================================================
+  /me:
+    get:
+      summary: Получение текущего профиля, баланса и права на бесплатную книгу
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  balance:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      paid: { type: integer }
+                      gift: { type: integer }
+                      reserved: { type: integer }
+                  can_claim_free_story:
+                    type: boolean
+
+  /children:
+    get:
+      summary: Список профилей детей текущего пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChildProfile'
+    post:
+      summary: Создание нового профиля ребёнка
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChildProfileInput'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildProfile'
+
+  /children/{id}:
+    patch:
+      summary: Обновление профиля ребёнка
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChildProfileInput'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildProfile'
+
+  # ========================================================
+  # Сказка дня
+  # ========================================================
+  /daily-idea:
+    get:
+      summary: Получить персональную идею дня для выбранного ребёнка
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: child_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyIdea'
+
+  /daily-idea/refresh:
+    post:
+      summary: Запросить другую идею дня
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [child_id]
+              properties:
+                child_id: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyIdea'
+
+  # ========================================================
+  # Книги и генерация
+  # ========================================================
+  /books/free:
+    post:
+      summary: Создание первой бесплатной текстовой сказки
+      description: Атомарно проверяет и резервирует free_text_claimed_at. Генерирует 4 сцены и 2–3 вопроса без картинок.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFreeBookInput'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCreationResponse'
+        '403':
+          description: Бесплатная сказка уже была получена
+
+  /books:
+    post:
+      summary: Создание платной иллюстрированной сказки за 1 кредит
+      description: Атомарно проверяет баланс, резервирует 1 доступный кредит и ставит задачу в очередь jobs.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaidBookInput'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCreationResponse'
+        '402':
+          description: Недостаточно кредитов
+
+  /books/{id}/upgrade:
+    post:
+      summary: Улучшение существующей текстовой книги до иллюстрированной
+      description: Резервирует 1 кредит и генерирует обложку + 4 иллюстрации к уже зафиксированному тексту. Исходный текст и вопросы не меняются.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCreationResponse'
+
+  /books:
+    get:
+      summary: Список книг текущего пользователя (библиотека)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          schema: { type: string, enum: [text, illustrated] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookSummary'
+
+  /books/{id}:
+    get:
+      summary: Полные данные книги (текст 4 сцен, подписанные URL иллюстраций, вопросы)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetails'
+
+  /jobs/{id}:
+    get:
+      summary: Статус генерации фоновой задачи
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+
+  # ========================================================
+  # Магазин и заказы (Telegram Stars)
+  # ========================================================
+  /catalog:
+    get:
+      summary: Получение каталога SKU и актуальных цен в Stars и рублях
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CatalogItem'
+
+  /orders:
+    post:
+      summary: Создание заказа и подготовка ссылки на Telegram Stars Invoice
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku, idempotency_key]
+              properties:
+                sku:
+                  type: string
+                  enum: [single_book_1, pack_5]
+                idempotency_key:
+                  type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+
+  /telegram/webhook:
+    post:
+      summary: Обработка вебхука Telegram (подтверждение платежей Stars pre_checkout_query & successful_payment)
+      responses:
+        '200':
+          description: Вебхук обработан успешно
+
+  /credits:
+    get:
+      summary: История начислений и списаний кредитов
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditLedgerItem'
+
+  /referrals/me:
+    get:
+      summary: Реферальная статистика и персональная ссылка
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralStats'
+
+  /privacy/delete:
+    post:
+      summary: Запрос на удаление профиля, детей, сгенерированных книг и персональных данных (152-ФЗ / GDPR)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Данные помечены к удалению и очищены
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        telegram_user_id: { type: string }
+        first_name: { type: string, nullable: true }
+        username: { type: string, nullable: true }
+        role: { type: string, enum: [USER, ADMIN] }
+        free_text_claimed_at: { type: string, format: date-time, nullable: true }
+        default_questions_enabled: { type: boolean }
+        timezone: { type: string }
+
+    ChildProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        name: { type: string }
+        age: { type: integer, minimum: 2, maximum: 6 }
+        interests: { type: array, items: { type: string } }
+        appearance:
+          type: object
+          properties:
+            avatar_id: { type: string }
+            hair: { type: string }
+            clothing: { type: string }
+            personality: { type: string }
+
+    CreateChildProfileInput:
+      type: object
+      required: [name, age, interests, appearance]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 50 }
+        age: { type: integer, minimum: 2, maximum: 6 }
+        interests: { type: array, items: { type: string } }
+        appearance: { type: object }
+
+    UpdateChildProfileInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 50 }
+        age: { type: integer, minimum: 2, maximum: 6 }
+        interests: { type: array, items: { type: string } }
+        appearance: { type: object }
+
+    DailyIdea:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        child_id: { type: string, format: uuid }
+        local_date: { type: string }
+        title: { type: string }
+        blurb: { type: string }
+        theme: { type: string }
+        status: { type: string, enum: [ACTIVE, SAVED, USED, REFRESHED] }
+
+    CreateFreeBookInput:
+      type: object
+      required: [child_id, theme, interests]
+      properties:
+        child_id: { type: string, format: uuid }
+        theme: { type: string }
+        interests: { type: array, items: { type: string } }
+        custom_wishes: { type: string, maxLength: 200 }
+        include_questions: { type: boolean, default: true }
+
+    CreatePaidBookInput:
+      type: object
+      required: [child_id, theme, interests]
+      properties:
+        child_id: { type: string, format: uuid }
+        theme: { type: string }
+        interests: { type: array, items: { type: string } }
+        custom_wishes: { type: string, maxLength: 200 }
+        include_questions: { type: boolean, default: true }
+
+    BookCreationResponse:
+      type: object
+      properties:
+        book_id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid }
+        status: { type: string }
+
+    BookSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        child_id: { type: string, format: uuid }
+        child_name: { type: string }
+        title: { type: string }
+        status: { type: string }
+        format: { type: string, enum: [TEXT, ILLUSTRATED] }
+        cover_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    BookDetails:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        status: { type: string }
+        format: { type: string }
+        scenes:
+          type: array
+          items:
+            type: object
+            properties:
+              scene_index: { type: integer }
+              text: { type: string }
+              image_url: { type: string, nullable: true }
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              after_scene: { type: integer }
+              question: { type: string }
+              parent_hint: { type: string, nullable: true }
+              skill_tag: { type: string }
+
+    JobStatusResponse:
+      type: object
+      properties:
+        job_id: { type: string, format: uuid }
+        book_id: { type: string, format: uuid }
+        type: { type: string }
+        status: { type: string }
+        attempts: { type: integer }
+        progress_percentage: { type: integer }
+        error: { type: string, nullable: true }
+
+    CatalogItem:
+      type: object
+      properties:
+        sku: { type: string }
+        title: { type: string }
+        description: { type: string }
+        credits: { type: integer }
+        stars_amount: { type: integer }
+        rub_reference_amount: { type: number }
+        discount_percent: { type: integer }
+
+    OrderResponse:
+      type: object
+      properties:
+        order_id: { type: string, format: uuid }
+        invoice_link: { type: string }
+        stars_amount: { type: integer }
+
+    CreditLedgerItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        source_type: { type: string }
+        delta: { type: integer }
+        reason: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    ReferralStats:
+      type: object
+      properties:
+        referral_link: { type: string }
+        qualified_friends_count: { type: integer }
+        gift_credits_earned: { type: integer }
+
+  responses:
+    ErrorResponse:
+      description: Стандартный ответ об ошибке
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, request_id]
+            properties:
+              code: { type: string }
+              message: { type: string }
+              request_id: { type: string }

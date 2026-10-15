@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  background-color: #FAF6F0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Стилизация скроллбара */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #EADFCF;
+  border-radius: 9999px;
+}
+
+/* Темы для читалки (Экран 12) */
+.reader-theme-warm {
+  --reader-bg: #FAF6F0;
+  --reader-card: #F4ECE1;
+  --reader-text: #292524;
+  --reader-border: #E5D7C5;
+  --reader-question-bg: #EAE0D2;
+}
+
+.reader-theme-light {
+  --reader-bg: #FFFFFF;
+  --reader-card: #F9FAFB;
+  --reader-text: #111827;
+  --reader-border: #E5E7EB;
+  --reader-question-bg: #F3F4F6;
+}
+
+.reader-theme-dark {
+  --reader-bg: #1C1917;
+  --reader-card: #292524;
+  --reader-text: #F5F5F4;
+  --reader-border: #44403C;
+  --reader-question-bg: #38332E;
+}
+
+/* Размеры шрифта для читалки */
+.reader-font-small {
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.reader-font-medium {
+  font-size: 1.25rem;
+  line-height: 1.75;
+}
+.reader-font-large {
+  font-size: 1.45rem;
+  line-height: 1.85;
+}
+
+/* Мягкие переходы и микроанимации */
+.card-hover-effect {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-hover-effect:active {
+  transform: scale(0.98);
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.015); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}
