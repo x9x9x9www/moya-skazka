@@ -35,7 +35,16 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'Природа', icon: '🌿', label: 'Природа' },
   ];
 
-  const themesList = ['Дружба', 'Смелость', 'Спокойный сон'];
+  const themesList = [
+    'Дружба',
+    'Смелость',
+    'Спокойный сон',
+    'Доброта и забота',
+    'Любознательность',
+    'Честность',
+    'Капризы и эмоции',
+    'Волшебные сны',
+  ];
 
   const toggleInterest = (id: string) => {
     const updated = data.interests.includes(id)
@@ -165,6 +174,15 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </button>
             );
           })}
+        </div>
+        <div className="pt-1">
+          <input
+            type="text"
+            value={data.theme}
+            onChange={(e) => setTheme(e.target.value)}
+            placeholder="Или введите свою тему (например: Любовь к садику, Уборка игрушек...)"
+            className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-sm"
+          />
         </div>
       </div>
 

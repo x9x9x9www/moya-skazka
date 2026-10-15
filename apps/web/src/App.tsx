@@ -19,6 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
+import { generateDynamicStory } from './services/storyGenerator';
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -119,52 +120,102 @@ export const App: React.FC = () => {
     }
   };
 
+  const DAILY_IDEAS = [
+    {
+      title: 'Миша и потерянная звёздочка',
+      blurb: 'Добрая сказка о смелости, дружбе и о том, как зажечь свет в темноте.',
+      theme: 'Смелость',
+    },
+    {
+      title: 'Миша и тайна сонного облачка',
+      blurb: 'Уютная терапевтическая история для мягкого и спокойного отхода ко сну.',
+      theme: 'Спокойный сон',
+    },
+    {
+      title: 'Динозаврик, который научился дружить',
+      blurb: 'О том, как весело и радостно делиться игрушками и играть вместе.',
+      theme: 'Дружба',
+    },
+    {
+      title: 'Миша и волшебный огонёк доброты',
+      blurb: 'Сказка о заботе, внимании к окружающим и теплых словах поддержки.',
+      theme: 'Доброта и забота',
+    },
+    {
+      title: 'Куда прячутся солнечные зайчики?',
+      blurb: 'Увлекательное приключение любознательного исследователя.',
+      theme: 'Любознательность',
+    },
+  ];
+
   const loadBooks = async () => {
     try {
       const list = await api.getBooks();
-      setBooks(list);
-    } catch {
-      // Моковые книги для демонстрации из макета 7
-      setBooks([
-        {
-          id: 'b1',
-          child_id: 'child_1',
-          child_name: 'Миша',
-          title: 'Миша и маленький динозавр Дино',
-          status: 'ILLUSTRATED',
-          format: 'ILLUSTRATED',
-          cover_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 'b2',
-          child_id: 'child_1',
-          child_name: 'Миша',
-          title: 'Миша и звёздочка',
-          status: 'TEXT_READY',
-          format: 'TEXT',
-          cover_url: null,
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 'b3',
-          child_id: 'child_1',
-          child_name: 'Миша',
-          title: 'Миша и волшебный лес',
-          status: 'ILLUSTRATED',
-          format: 'ILLUSTRATED',
-          cover_url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500',
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      if (list && list.length > 0) {
+        setBooks(list);
+        return;
+      }
+    } catch {}
+
+    const saved = localStorage.getItem('ms_books');
+    if (saved) {
+      try {
+        setBooks(JSON.parse(saved));
+        return;
+      } catch {}
     }
+
+    const defaultBooks: BookSummaryDTO[] = [
+      {
+        id: 'b1',
+        child_id: 'child_1',
+        child_name: 'Миша',
+        title: 'Миша и маленький динозавр Дино',
+        status: 'ILLUSTRATED',
+        format: 'ILLUSTRATED',
+        cover_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'b2',
+        child_id: 'child_1',
+        child_name: 'Миша',
+        title: 'Миша и звёздочка',
+        status: 'TEXT_READY',
+        format: 'TEXT',
+        cover_url: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'b3',
+        child_id: 'child_1',
+        child_name: 'Миша',
+        title: 'Миша и волшебный лес',
+        status: 'ILLUSTRATED',
+        format: 'ILLUSTRATED',
+        cover_url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500',
+        created_at: new Date().toISOString(),
+      },
+    ];
+    setBooks(defaultBooks);
+    try {
+      localStorage.setItem('ms_books', JSON.stringify(defaultBooks));
+    } catch {}
   };
 
   const loadDailyIdea = async (childId: string) => {
     try {
       const idea = await api.getDailyIdea(childId);
       setDailyIdea(idea);
-    } catch {}
+    } catch {
+      setDailyIdea(DAILY_IDEAS[0]);
+    }
+  };
+
+  const refreshLocalDailyIdea = () => {
+    const nextIndex = Math.floor(Math.random() * DAILY_IDEAS.length);
+    setDailyIdea(DAILY_IDEAS[nextIndex]);
+    haptic.selection();
   };
 
   const loadReferrals = async () => {
@@ -196,7 +247,6 @@ export const App: React.FC = () => {
           haptic.success();
           loadBooks();
 
-          // Открываем созданную книгу в читалке
           const bookDetails = await api.getBook(job.job_id);
           openReader(bookDetails);
         } else if (job.status.includes('FAILED')) {
@@ -206,76 +256,13 @@ export const App: React.FC = () => {
           alert('Ошибка генерации: зарезервированный кредит возвращён на баланс.');
         }
       } catch {
-        // Fallback завершения для демо
-        setJobProgress((p) => {
-          if (p >= 90) {
-            clearInterval(interval);
-            setActiveJobId(null);
-            setIsCreatingStory(false);
-            haptic.success();
-            openMockStory();
-            return 100;
-          }
-          return p + 25;
-        });
+        clearInterval(interval);
+        setActiveJobId(null);
       }
     }, 1500);
 
     return () => clearInterval(interval);
   }, [activeJobId]);
-
-  const openMockStory = () => {
-    const demoBook: BookDetailsDTO = {
-      id: 'demo_book',
-      title: `${wizardData.childName} и тайна звездного ручья`,
-      status: 'ILLUSTRATED',
-      format: canClaimFree ? 'TEXT' : 'ILLUSTRATED',
-      can_upgrade: canClaimFree,
-      scenes: [
-        {
-          id: 's1',
-          scene_index: 1,
-          text: `Жил-был добрый и смелый ${wizardData.childName}. Больше всего на свете он любил изучать звёзды и слушать шелест листьев в волшебном саду. Однажды перед сном в окно заглянул крошечный лучик света.`,
-          image_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-        },
-        {
-          id: 's2',
-          scene_index: 2,
-          text: `${wizardData.childName} побежал за лучиком и на лесной полянке встретил маленького динозаврика Дино. Дино сидел возле большой лужи и тихо вздыхал: «Я боюсь переходить, там слишком глубоко!» ${wizardData.childName} подумал и предложил сделать крепкий мостик из веточек.`,
-          image_url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800',
-        },
-        {
-          id: 's3',
-          scene_index: 3,
-          text: `Вместе они бережно уложили ветки и сделали мост. Дино сделал первый шаг, почувствовал поддержку друга и смело перебежал на другой берег. «Спасибо! Теперь мы настоящие друзья!» — радостно закричал динозаврик.`,
-          image_url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800',
-        },
-        {
-          id: 's4',
-          scene_index: 4,
-          text: `Вскоре Дино вернулся к своей маме, а ${wizardData.childName} с улыбкой смотрел на звёздное небо. Вечером ${wizardData.childName} засыпал в своей тёплой кроватке, зная, что доброта и смелость помогают совершать настоящие чудеса.`,
-          image_url: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800',
-        },
-      ],
-      questions: [
-        {
-          id: 'q1',
-          after_scene: 2,
-          question: `Как ты думаешь, почему Дино испугался?`,
-          parent_hint: `Выслушайте ответ. Можно спросить: «А что помогло ему почувствовать себя смелее?»`,
-          skill_tag: 'emotions',
-        },
-        {
-          id: 'q2',
-          after_scene: 5,
-          question: `Что тебе больше всего понравилось в этой истории?`,
-          parent_hint: `Предложите рассказать, что запомнилось. Спросите, как бы малыш поступил на месте героя.`,
-          skill_tag: 'reflection',
-        },
-      ],
-    };
-    openReader(demoBook);
-  };
 
   const openReader = (book: BookDetailsDTO) => {
     setCurrentReadingBook(book);
@@ -283,7 +270,7 @@ export const App: React.FC = () => {
     setCurrentScreen('reader');
   };
 
-  // Обработчик создания сказки из визарда
+  // Обработчик создания сказки из визарда: уникальная генерация на каждый запуск
   const handleCreateStorySubmit = async (details: {
     personality: string;
     customWishes: string;
@@ -293,38 +280,67 @@ export const App: React.FC = () => {
     setJobProgress(15);
     haptic.medium();
 
+    // Плавный визуальный прогресс ожидания ответа ИИ
+    const progressInterval = setInterval(() => {
+      setJobProgress((prev) => (prev < 88 ? prev + 12 : prev));
+    }, 600);
+
     try {
+      // 1. Прямая генерация через Gemini 3.8 Flash с умным процедурным fallback
+      const generatedBook = await generateDynamicStory({
+        childName: wizardData.childName,
+        age: wizardData.age,
+        theme: wizardData.theme || 'Дружба',
+        interests: wizardData.interests,
+        personality: details.personality,
+        customWishes: details.customWishes,
+        includeQuestions: details.includeQuestions,
+      });
+
+      clearInterval(progressInterval);
+      setJobProgress(100);
+
+      // 2. Сохраняем новую книгу в состояние и локальное хранилище
+      const newSummary: BookSummaryDTO = {
+        id: generatedBook.id,
+        child_id: activeChildId || 'default',
+        child_name: wizardData.childName,
+        title: generatedBook.title,
+        status: 'ILLUSTRATED',
+        format: 'ILLUSTRATED',
+        cover_url: generatedBook.scenes[0]?.image_url || null,
+        created_at: new Date().toISOString(),
+      };
+
+      setBooks((prev) => {
+        const updated = [newSummary, ...prev];
+        try {
+          localStorage.setItem('ms_books', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      try {
+        localStorage.setItem(`ms_story_${generatedBook.id}`, JSON.stringify(generatedBook));
+      } catch {}
+
+      // 3. Списываем кредит / бесплатную попытку
       if (canClaimFree) {
-        const res = await api.createFreeBook({
-          child_id: activeChildId || 'default',
-          theme: wizardData.theme,
-          interests: wizardData.interests,
-          custom_wishes: details.customWishes,
-          include_questions: details.includeQuestions,
-        });
-        setActiveJobId(res.job_id);
         setCanClaimFree(false);
       } else {
-        const res = await api.createPaidBook({
-          child_id: activeChildId || 'default',
-          theme: wizardData.theme,
-          interests: wizardData.interests,
-          custom_wishes: details.customWishes,
-          include_questions: details.includeQuestions,
-        });
-        setActiveJobId(res.job_id);
         setBalance((prev) => Math.max(0, prev - 1));
       }
-    } catch {
-      // Имитируем генерацию для мгновенного теста UI
+
+      // 4. Открываем читалку со свежей уникальной сказкой
       setTimeout(() => {
-        setJobProgress(60);
-        setTimeout(() => {
-          setIsCreatingStory(false);
-          haptic.success();
-          openMockStory();
-        }, 1200);
-      }, 1000);
+        setIsCreatingStory(false);
+        haptic.success();
+        openReader(generatedBook);
+      }, 350);
+    } catch (err) {
+      clearInterval(progressInterval);
+      setIsCreatingStory(false);
+      alert('Произошла ошибка при генерации сказки. Пожалуйста, попробуйте еще раз.');
     }
   };
 
@@ -395,8 +411,14 @@ export const App: React.FC = () => {
             dailyIdea={dailyIdea}
             onStartCreateStory={() => setCurrentScreen('wizard_hero')}
             onNavigateTab={handleTabChange}
-            onRefreshIdea={() => activeChildId && api.refreshDailyIdea(activeChildId).then(setDailyIdea)}
-            onSaveIdea={() => haptic.success()}
+            onRefreshIdea={refreshLocalDailyIdea}
+            onSaveIdea={() => {
+              if (dailyIdea?.theme) {
+                setWizardData((prev) => ({ ...prev, theme: dailyIdea.theme }));
+              }
+              haptic.success();
+              setCurrentScreen('wizard_hero');
+            }}
           />
         )}
 
@@ -462,11 +484,30 @@ export const App: React.FC = () => {
           <Screen7_Library
             books={books}
             onSelectBook={async (id) => {
+              const localStory = localStorage.getItem(`ms_story_${id}`);
+              if (localStory) {
+                try {
+                  openReader(JSON.parse(localStory));
+                  return;
+                } catch {}
+              }
               try {
                 const book = await api.getBook(id);
                 openReader(book);
               } catch {
-                openMockStory();
+                const targetBook = books.find((b) => b.id === id);
+                const generated = await generateDynamicStory({
+                  childName: targetBook?.child_name || wizardData.childName,
+                  age: wizardData.age,
+                  theme: targetBook?.title || wizardData.theme,
+                  interests: wizardData.interests,
+                  personality: 'Добрый',
+                  includeQuestions: true,
+                });
+                try {
+                  localStorage.setItem(`ms_story_${id}`, JSON.stringify(generated));
+                } catch {}
+                openReader(generated);
               }
             }}
             onCreateNewStory={() => setCurrentScreen('wizard_hero')}
