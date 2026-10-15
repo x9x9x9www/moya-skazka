@@ -128,18 +128,21 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
           className="w-full h-full object-cover transition-opacity duration-300"
         />
       ) : (
-        /* Иллюстрация в тёплом сказочном стиле акварельной детской книги */
+        /* Иллюстрация в тёплом стиле 3D Disney Pixar анимации */
         <div
           className="w-full h-full relative overflow-hidden flex items-end justify-center"
           style={{ background: backdrop.sky }}
         >
-          {/* Декоративные мягкие облака, звёздочки и мягкое акварельное сияние */}
-          <div className="absolute top-3 left-4 text-white/70 text-lg animate-pulse">✨</div>
-          <div className="absolute top-6 right-6 text-amber-200/90 text-2xl">
+          {/* 3D Pixar Объёмный солнечный свет (God rays) и волшебные парящие искры */}
+          <div className="absolute -top-16 -left-16 w-64 h-64 bg-amber-200/25 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-yellow-100/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-3 left-4 text-white/80 text-lg animate-pulse">✨</div>
+          <div className="absolute top-8 left-1/4 text-amber-200/70 text-xs animate-ping">✦</div>
+          <div className="absolute top-6 right-6 text-amber-200/90 text-2xl drop-shadow-md">
             {interest === 'Космос' || sceneIndex === 4 ? '🌙' : interest === 'Волшебство' ? '🌟' : '☀️'}
           </div>
-          <div className="absolute top-10 left-12 w-20 h-7 bg-white/30 rounded-full blur-[1px]" />
-          <div className="absolute top-14 right-16 w-28 h-8 bg-white/25 rounded-full blur-[1px]" />
+          <div className="absolute top-10 left-12 w-20 h-7 bg-white/35 rounded-full blur-[2px]" />
+          <div className="absolute top-14 right-16 w-28 h-8 bg-white/30 rounded-full blur-[2px]" />
 
           {/* Тематические сказочные задние планы */}
           {backdrop.elements === 'space' && (
@@ -198,8 +201,8 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
 
           {/* Персонаж ребёнка (строго по выбранным параметрам внешности) */}
           <div className="relative z-10 flex flex-col items-center mb-4 transition-transform hover:scale-105 duration-300">
-            {/* Голова и волосы */}
-            <div className="relative w-14 h-14 rounded-full bg-[#FFE0BD] border-2 border-[#F3C59D] shadow-sm flex items-center justify-center">
+            {/* Голова и волосы (3D объём с подповерхностным рассеиванием SSS) */}
+            <div className="relative w-14 h-14 rounded-full bg-gradient-to-b from-[#FFF3E3] via-[#FFE2C2] to-[#F5CCA2] border-2 border-[#F3C59D] shadow-md flex items-center justify-center">
               {/* Причёска */}
               <div
                 className={`absolute -top-1 inset-x-0 ${
@@ -241,17 +244,23 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
                 </>
               )}
 
-              {/* Глазки и румяные щёчки */}
-              <div className="relative z-10 flex flex-col items-center mt-2 space-y-1">
+              {/* 3D Pixar Глазки с двойными бликами и румяные щёчки */}
+              <div className="relative z-10 flex flex-col items-center mt-1.5 space-y-0.5">
                 <div className="flex gap-3">
-                  <div className="w-1.5 h-2 bg-[#2D3436] rounded-full" />
-                  <div className="w-1.5 h-2 bg-[#2D3436] rounded-full" />
+                  <div className="w-2.5 h-3 bg-[#1A1A24] rounded-full relative overflow-hidden shadow-inner">
+                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
+                    <div className="absolute bottom-0.5 right-0.5 w-0.5 h-0.5 bg-white/80 rounded-full" />
+                  </div>
+                  <div className="w-2.5 h-3 bg-[#1A1A24] rounded-full relative overflow-hidden shadow-inner">
+                    <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white rounded-full" />
+                    <div className="absolute bottom-0.5 right-0.5 w-0.5 h-0.5 bg-white/80 rounded-full" />
+                  </div>
                 </div>
-                {/* Улыбка и щёчки */}
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1 bg-pink-300/80 rounded-full" />
+                {/* Улыбка и персиковые румяные щёчки (Subsurface scattering) */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <div className="w-2.5 h-1.5 bg-pink-400/50 rounded-full blur-[0.5px]" />
                   <div className="w-2.5 h-1 border-b-2 border-[#D35400] rounded-full" />
-                  <div className="w-1.5 h-1 bg-pink-300/80 rounded-full" />
+                  <div className="w-2.5 h-1.5 bg-pink-400/50 rounded-full blur-[0.5px]" />
                 </div>
               </div>
             </div>

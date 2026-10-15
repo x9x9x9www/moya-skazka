@@ -593,6 +593,17 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
     },
   ];
 
+  // Иллюстрации из макета привязаны ТОЛЬКО к канонической сказке про Мишу и Дино.
+  // Для любых других сказок и персонажей отображается динамическая персонализированная сцена
+  // с персональным 3D Pixar промптом для генерации.
+  const isDefaultMishaDino =
+    name.nom.toLowerCase() === 'миша' &&
+    (theme.toLowerCase().includes('динозавр') || interest.toLowerCase().includes('динозавр'));
+
+  const getSceneImageUrl = (idx: number): string | undefined => {
+    return isDefaultMishaDino ? `./illustrations/scene_${idx}.jpg` : undefined;
+  };
+
   return {
     id: `book_${Date.now()}`,
     title: `${name.nom} и тайна «${theme}»`,
@@ -604,7 +615,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's1',
         scene_index: 1,
         text: introText,
-        image_url: './illustrations/scene_1.jpg',
+        image_url: getSceneImageUrl(1),
         image_prompt: buildFairytaleImagePrompt(
           params,
           `in a cozy warm room, lovingly holding a small ${toy.nom}`
@@ -614,7 +625,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's2',
         scene_index: 2,
         text: conflictText,
-        image_url: './illustrations/scene_2.jpg',
+        image_url: getSceneImageUrl(2),
         image_prompt: buildFairytaleImagePrompt(
           params,
           `bravely exploring a magical fairytale path on theme "${theme}", holding ${toy.nom} for courage`
@@ -624,7 +635,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's3',
         scene_index: 3,
         text: climaxText,
-        image_url: './illustrations/scene_3.jpg',
+        image_url: getSceneImageUrl(3),
         image_prompt: buildFairytaleImagePrompt(
           params,
           `celebrating kindness and wonder, surrounded by gentle golden fairytale lights and cheerful forest friends`
@@ -634,7 +645,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's4',
         scene_index: 4,
         text: conclusionText,
-        image_url: './illustrations/scene_4.jpg',
+        image_url: getSceneImageUrl(4),
         image_prompt: buildFairytaleImagePrompt(
           params,
           `curled up in a soft warm bedtime nest under a starry sky with gentle crescent moon, holding ${toy.nom}`
@@ -700,5 +711,5 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
     'an adorable friendly little baby creature';
 
-  return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${params.age}-year-old ${genderWord} with ${hair}, rosy chubby cheeks, and large expressive curious eyes, wearing a ${clothes}. Accompanied by ${companion}. The hero is ${sceneAction}. Cinematic volumetric golden hour lighting, glowing dust motes, fireflies, soft bokeh light particles, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime storybook atmosphere, Octane 3D CGI render, masterpiece, ultra-detailed, 8k resolution, no text, no words.`;
+  return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${params.age}-year-old toddler ${genderWord} with ${hair}, rosy chubby cheeks with soft peach blush, and large expressive curious eyes with bright catchlights, wearing a ${clothes}. Accompanied by ${companion}. The hero is ${sceneAction}. Cinematic volumetric golden hour lighting, glowing fireflies and golden dust motes floating in the air, warm rim lighting, soft creamy bokeh background (85mm f/1.4 lens), modern 3D CGI render, Pixar RenderMan aesthetic, masterpiece, ultra-detailed, cozy bedtime storybook atmosphere, no text, no words.`;
 }

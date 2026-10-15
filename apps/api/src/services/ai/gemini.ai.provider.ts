@@ -124,10 +124,10 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       // Imagen 3 endpoint в Google Generative Language API
       const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
-      // Эталонная формула сказочной иллюстрации
-      const finalPrompt = input.prompt.includes('watercolor and gouache')
+      // Эталонная формула 3D Disney Pixar анимации для детской сказки
+      const finalPrompt = input.prompt.includes('3D Disney Pixar')
         ? input.prompt
-        : `A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. ${input.prompt}. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, peaceful bedtime story vibe, highly detailed hand-drawn art, no photorealistic, no 3D render, no CGI, no text.`;
+        : `A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. ${input.prompt}. Rosy chubby cheeks with soft peach blush, large expressive curious eyes with bright catchlights, cinematic volumetric golden hour lighting, floating glowing particles, warm rim lighting, soft creamy bokeh background (85mm f/1.4 lens), modern 3D CGI render, Pixar RenderMan aesthetic, masterpiece, ultra-detailed, cozy bedtime story atmosphere, no text, no words.`;
 
       const response = await fetch(url, {
         method: 'POST',
