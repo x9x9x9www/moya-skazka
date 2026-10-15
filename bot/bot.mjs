@@ -2,7 +2,7 @@
 // Token: 8896052559:AAEBk3qa4vDty9q58NflSuAodEkgQlmqH6k
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8896052559:AAEBk3qa4vDty9q58NflSuAodEkgQlmqH6k';
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.2';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 

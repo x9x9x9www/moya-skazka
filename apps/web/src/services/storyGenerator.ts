@@ -318,7 +318,7 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
           id: `scene_${idx + 1}`,
           scene_index: idx + 1,
           text: s.text,
-          image_url: null,
+          image_url: `./illustrations/scene_${(idx % 4) + 1}.jpg`,
           image_prompt:
             s.image_prompt ||
             buildFairytaleImagePrompt(
@@ -604,7 +604,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's1',
         scene_index: 1,
         text: introText,
-        image_url: null,
+        image_url: './illustrations/scene_1.jpg',
         image_prompt: buildFairytaleImagePrompt(
           params,
           `in a cozy warm room, lovingly holding a small ${toy.nom}`
@@ -614,7 +614,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's2',
         scene_index: 2,
         text: conflictText,
-        image_url: null,
+        image_url: './illustrations/scene_2.jpg',
         image_prompt: buildFairytaleImagePrompt(
           params,
           `bravely exploring a magical fairytale path on theme "${theme}", holding ${toy.nom} for courage`
@@ -624,7 +624,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's3',
         scene_index: 3,
         text: climaxText,
-        image_url: null,
+        image_url: './illustrations/scene_3.jpg',
         image_prompt: buildFairytaleImagePrompt(
           params,
           `celebrating kindness and wonder, surrounded by gentle golden fairytale lights and cheerful forest friends`
@@ -634,7 +634,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
         id: 's4',
         scene_index: 4,
         text: conclusionText,
-        image_url: null,
+        image_url: './illustrations/scene_4.jpg',
         image_prompt: buildFairytaleImagePrompt(
           params,
           `curled up in a soft warm bedtime nest under a starry sky with gentle crescent moon, holding ${toy.nom}`

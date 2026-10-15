@@ -14,8 +14,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({ onStart }
         <div className="w-full relative rounded-3xl overflow-hidden shadow-card border border-cream-300 bg-white mb-6">
           <div className="h-64 relative overflow-hidden bg-gradient-to-b from-brand-100 to-amber-50">
             <img
-              src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80"
-              alt="Сказочный лес"
+              src="./illustrations/scene_1.jpg"
+              alt="Сказочный герой и динозаврик"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />

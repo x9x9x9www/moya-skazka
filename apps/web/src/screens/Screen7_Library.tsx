@@ -84,10 +84,7 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
             >
               <div className="relative aspect-[4/3] bg-amber-50 overflow-hidden">
                 <img
-                  src={
-                    book.cover_url ||
-                    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
-                  }
+                  src={book.cover_url || './illustrations/cover_dino.jpg'}
                   alt={book.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />

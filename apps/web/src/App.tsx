@@ -166,7 +166,7 @@ export const App: React.FC = () => {
     } catch {}
 
     const saved = localStorage.getItem('ms_books');
-    if (saved) {
+    if (saved && !saved.includes('unsplash')) {
       try {
         setBooks(JSON.parse(saved));
         return;
@@ -181,7 +181,7 @@ export const App: React.FC = () => {
         title: 'Миша и маленький динозавр Дино',
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500',
+        cover_url: './illustrations/cover_dino.jpg',
         created_at: new Date().toISOString(),
       },
       {
@@ -191,7 +191,7 @@ export const App: React.FC = () => {
         title: 'Миша и звёздочка',
         status: 'TEXT_READY',
         format: 'TEXT',
-        cover_url: null,
+        cover_url: './illustrations/cover_star.jpg',
         created_at: new Date().toISOString(),
       },
       {
@@ -201,7 +201,7 @@ export const App: React.FC = () => {
         title: 'Миша и волшебный лес',
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500',
+        cover_url: './illustrations/cover_forest.jpg',
         created_at: new Date().toISOString(),
       },
     ];
@@ -501,10 +501,73 @@ export const App: React.FC = () => {
               const localStory = localStorage.getItem(`ms_story_${id}`);
               if (localStory) {
                 try {
-                  openReader(JSON.parse(localStory));
-                  return;
+                  const parsed = JSON.parse(localStory);
+                  const hasBadContent =
+                    JSON.stringify(parsed).includes('unsplash') ||
+                    JSON.stringify(parsed).includes('построилл');
+                  if (!hasBadContent) {
+                    openReader(parsed);
+                    return;
+                  }
                 } catch {}
               }
+
+              // Каноническая иллюстрированная история про Мишу и Дино из макета
+              if (id === 'b1') {
+                const dinoStory: BookDetailsDTO = {
+                  id: 'b1',
+                  title: 'Миша и маленький динозавр Дино',
+                  status: 'ILLUSTRATED',
+                  format: 'ILLUSTRATED',
+                  can_upgrade: false,
+                  scenes: [
+                    {
+                      id: 's1',
+                      scene_index: 1,
+                      text: 'Миша и его верный друг, маленький динозаврик Дино, уютно сидели на мягкой лесной полянке. Дино бережно прижимался к Мише, а на вечернем небе мягко светили сказочные звёздочки и золотистый полумесяц. Начиналось самое тёплое вечернее приключение!',
+                      image_url: './illustrations/scene_1.jpg',
+                    },
+                    {
+                      id: 's2',
+                      scene_index: 2,
+                      text: 'Миша и Дино подошли к большой луже. Дино остановился и испуганно посмотрел на воду. — Я боюсь переходить, — прошептал он. Миша ободряюще улыбнулся, взял друга за лапку и предложил сделать надёжный мостик из крепких веточек.',
+                      image_url: './illustrations/scene_2.jpg',
+                    },
+                    {
+                      id: 's3',
+                      scene_index: 3,
+                      text: 'Они дружно положили веточки через ручеёк. Дино сделал первый смелый шаг и радостно захлопал в ладоши! Малыши забрались в уютный шалаш из тёплых пледов и открыли светящуюся сказочную книгу, полную добрых историй.',
+                      image_url: './illustrations/scene_3.jpg',
+                    },
+                    {
+                      id: 's4',
+                      scene_index: 4,
+                      text: 'Вскоре Дино увидел свою семью. Он радостно обнял маму, а потом повернулся к Мише. — Спасибо! Теперь мы друзья навсегда! — сказал он. Вечером Миша сладко засыпал в своей кроватке, зная, что доброта помогает совершать настоящие чудеса.',
+                      image_url: './illustrations/scene_4.jpg',
+                    },
+                  ],
+                  questions: [
+                    {
+                      id: 'q1',
+                      after_scene: 2,
+                      question: 'Как ты думаешь, почему Дино испугался? А что помогло ему почувствовать себя смелее?',
+                      parent_hint: 'Выслушайте ребёнка. Обсудите, как поддержка друга помогает преодолеть любой страх.',
+                      skill_tag: 'emotions',
+                    },
+                    {
+                      id: 'q2',
+                      after_scene: 5,
+                      question: 'Что тебе больше всего понравилось в этой истории? Как бы ты поступил на месте Миши?',
+                      parent_hint: 'Обнимите малыша, похвалите за добрые рассуждения и пожелайте сказочных снов.',
+                      skill_tag: 'reflection',
+                    },
+                  ],
+                };
+                localStorage.setItem('ms_story_b1', JSON.stringify(dinoStory));
+                openReader(dinoStory);
+                return;
+              }
+
               try {
                 const book = await api.getBook(id);
                 openReader(book);

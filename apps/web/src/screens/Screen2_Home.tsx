@@ -114,7 +114,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           <div className="flex p-4 gap-3.5 items-center">
             <div className="w-20 h-20 rounded-2xl overflow-hidden bg-amber-50 shrink-0 border border-cream-300">
               <img
-                src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80"
+                src="./illustrations/cover_star.jpg"
                 alt="Сказка дня"
                 className="w-full h-full object-cover"
               />

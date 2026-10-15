@@ -70,7 +70,7 @@ export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
             <div className="flex-1 bg-brand-50/60 p-3.5 rounded-2xl border border-brand-300 text-center flex flex-col items-center relative overflow-hidden">
               <div className="w-16 h-20 rounded-xl overflow-hidden mb-2 shadow-sm border border-brand-200">
                 <img
-                  src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80"
+                  src="./illustrations/cover_dino.jpg"
                   alt="Станет"
                   className="w-full h-full object-cover"
                 />
