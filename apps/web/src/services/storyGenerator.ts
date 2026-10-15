@@ -376,8 +376,8 @@ async function callGeminiWithTimeout(params: GenerateStoryParams, timeoutMs: num
 2. Сказка СТРОГО из 4 сцен (scenes 1, 2, 3, 4).
 3. В первой сцене упомяни одежду героя (${clothesStr}) и его игрушку (${toyStr}).
 4. Тема "${params.theme}" — главная ось сюжета.
-5. Для каждой сцены составь детальный английский image_prompt СТРОГО по формуле детской книжной иллюстрации:
-   "A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${params.age}-year-old ${genderStr} with ${hairStr}, wearing ${clothesStr}, holding a small ${toyStr}. The hero is [action]. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words."
+5. Для каждой сцены составь детальный английский image_prompt СТРОГО по эталонной формуле 3D анимации Pixar/Disney для детской книги:
+   "A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${params.age}-year-old ${genderStr} with ${hairStr}, rosy chubby cheeks, and large expressive curious eyes, wearing a ${clothesStr}. Accompanied by [companion creature/toy]. The hero is [action]. [Enchanted environment description: glowing magical forest / fairytale road / cozy bedroom]. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words."
 6. 2 вопроса для родителя: после сцены 2 (на чувства/эмоции) и после сцены 4 (на рефлексию/выводы), с подсказками родителю parent_hint.
 
 Верни СТРОГО JSON без markdown:
@@ -646,13 +646,59 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
 }
 
 /**
- * Эталонный генератор промпта детской книжной иллюстрации
+ * Эталонный генератор промпта 3D анимации Pixar/Disney для детской книжной иллюстрации
+ * (в точном соответствии с референсным стилем дизайна)
  */
 export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneAction: string): string {
   const genderWord = params.gender === 'girl' ? 'girl' : 'boy';
-  const hair = `${params.appearance?.hairColor || 'blond'} ${params.appearance?.hairType || 'curly'} hair`;
-  const clothes = `cozy ${params.appearance?.clothingColor || 'emerald green'} ${params.appearance?.clothingItem || 'sweater'}`;
-  const toy = params.appearance?.toy || 'small plush toy';
 
-  return `A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${params.age}-year-old ${genderWord} with ${hair}, wearing a ${clothes}, holding a small ${toy}. The hero is ${sceneAction}. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, gentle whimsical atmosphere, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words, 8k resolution.`;
+  // Точные английские атрибуты внешности для 3D Pixar
+  const hairColorMap: Record<string, string> = {
+    светлые: 'golden blond',
+    русые: 'soft light-brown',
+    тёмные: 'warm chestnut dark brown',
+    рыжие: 'vibrant ginger reddish-brown',
+  };
+  const hairTypeMap: Record<string, string> = {
+    кудрявые: 'soft curly wavy',
+    короткие: 'neat short playful',
+    длинные: 'long braided with a cute ribbon',
+  };
+  const clothingColorMap: Record<string, string> = {
+    изумрудный: 'cozy emerald green',
+    'солнечно-жёлтый': 'bright sunny yellow',
+    'небесно-голубой': 'soft pastel sky-blue',
+    'нежно-розовый': 'gentle baby pink',
+    терракотовый: 'warm vibrant terracotta orange',
+  };
+  const clothingItemMap: Record<string, string> = {
+    'уютный свитер': 'knitted sweater with soft yarn texture',
+    комбинезончик: 'cute denim overalls dungarees',
+    платьице: 'charming fairytale dress with soft ruffles',
+    толстовка: 'warm cozy hooded sweatshirt',
+  };
+  const companionMap: Record<string, string> = {
+    'плюшевый динозаврик':
+      'an adorable friendly little green baby dinosaur with big innocent puppy-dog eyes and gentle spots',
+    'плюшевый мишка':
+      'a soft fluffy plush teddy bear with hand-stitched details and shiny button eyes',
+    'пушистый зайка':
+      'a cute fluffy little bunny rabbit with long velvety ears and a pink twitching nose',
+    'маленький котёнок':
+      'an adorable tiny kitten with big luminous curious eyes and soft whiskers',
+    'волшебная звёздочка':
+      'a glowing friendly fairytale star creature with a warm smiling face and glittering stardust',
+  };
+
+  const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'светлые'] || 'golden blond'} ${
+    hairTypeMap[params.appearance?.hairType?.toLowerCase() || 'кудрявые'] || 'curly wavy'
+  } hair`;
+  const clothes = `${clothingColorMap[params.appearance?.clothingColor?.toLowerCase() || 'изумрудный'] || 'cozy emerald green'} ${
+    clothingItemMap[params.appearance?.clothingItem?.toLowerCase() || 'уютный свитер'] || 'knitted sweater'
+  }`;
+  const companion =
+    companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
+    'an adorable friendly little baby creature';
+
+  return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${params.age}-year-old ${genderWord} with ${hair}, rosy chubby cheeks, and large expressive curious eyes, wearing a ${clothes}. Accompanied by ${companion}. The hero is ${sceneAction}. Cinematic volumetric golden hour lighting, glowing dust motes, fireflies, soft bokeh light particles, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime storybook atmosphere, Octane 3D CGI render, masterpiece, ultra-detailed, 8k resolution, no text, no words.`;
 }

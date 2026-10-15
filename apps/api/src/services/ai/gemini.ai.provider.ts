@@ -38,8 +38,8 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
   * 2-3 года: узнавание героев, простые эмоции (грусть/радость), указание на действия.
   * 4-5 лет: причины поступков, помощь другу, варианты решения.
   * 6 лет: мотивы, причинно-следственные связи, моральный выбор.
-- Для каждой сцены составь детальный английский image_prompt СТРОГО по эталонной формуле детской сказочной книжной иллюстрации:
-  "A heartwarming, whimsical children's fairy tale picture book illustration in soft watercolor and gouache style. A cute ${input.age}-year-old child with [visual hair], wearing [cozy clothing], holding a small [companion toy]. The hero is [scene specific action]. Warm pastel color palette, soft creamy paper texture, gentle golden lighting, vintage European storybook aesthetic, Beatrix Potter and Oliver Jeffers inspired, safe, peaceful bedtime story vibe, highly detailed hand-drawn art, no text, no words."
+- Для каждой сцены составь детальный английский image_prompt СТРОГО по эталонной формуле 3D анимации Pixar/Disney для детской сказки:
+  "A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${input.age}-year-old child with [visual hair], rosy cheeks, large luminous curious eyes, wearing [cozy clothing]. Accompanied by [companion creature/toy]. The hero is [scene specific action]. [Enchanted environment description: glowing magical forest / fairytale road / cozy bedroom]. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words."
 
 Ты ОБЯЗАН вернуть валидный JSON-объект без markdown-разметки:
 {
