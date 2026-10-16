@@ -4,6 +4,7 @@ import { Check, ArrowRight, Sparkles, X, FileText, Image as ImageIcon } from 'lu
 interface Screen8UpgradeModalProps {
   isOpen: boolean;
   bookTitle?: string;
+  coverUrl?: string;
   userBalance: number;
   onUpgrade: () => void;
   onClose: () => void;
@@ -13,6 +14,7 @@ interface Screen8UpgradeModalProps {
 export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
   isOpen,
   bookTitle,
+  coverUrl,
   userBalance,
   onUpgrade,
   onClose,
@@ -70,7 +72,7 @@ export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
             <div className="flex-1 bg-brand-50/60 p-3.5 rounded-2xl border border-brand-300 text-center flex flex-col items-center relative overflow-hidden">
               <div className="w-16 h-20 rounded-xl overflow-hidden mb-2 shadow-sm border border-brand-200">
                 <img
-                  src="./illustrations/cover_dino.jpg"
+                  src={coverUrl || './illustrations/cover_star.jpg'}
                   alt="Станет"
                   className="w-full h-full object-cover"
                 />

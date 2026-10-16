@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Plus, Settings, Sparkles, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Sparkles, ShieldAlert, Bell } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface HeaderProps {
@@ -41,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onOpenChildModal}
               className="flex items-center gap-2 bg-cream-200/90 hover:bg-cream-300/80 active:scale-95 transition-all px-2.5 py-1.5 rounded-full border border-cream-300 shadow-sm"
             >
-              <div className="w-7 h-7 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center overflow-hidden shadow-inner">
-                {activeChild.name.charAt(0)}
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-200 to-amber-100 text-stone-800 text-xs flex items-center justify-center overflow-hidden border border-amber-300 shadow-inner">
+                {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? '👧' : '👦'}
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-stone-800 leading-tight">
@@ -71,8 +71,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Правая часть: Баланс кредитов и настройки */}
-        <div className="flex items-center gap-2">
+        {/* Правая часть: Баланс кредитов, колокольчик и настройки */}
+        <div className="flex items-center gap-1.5">
           <div
             className="flex items-center gap-1 bg-amber-100/90 text-amber-900 border border-amber-200/80 px-2 py-1 rounded-full text-xs font-bold shadow-sm"
             title="Доступные книжные кредиты"
@@ -82,11 +82,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <button
-            onClick={onOpenAdmin}
-            className="p-1.5 text-stone-500 hover:text-stone-800 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
-            title="Админ-панель"
+            onClick={() =>
+              alert(
+                '✨ Добро пожаловать в «Моя сказка»!\n\nПервая история для вашего малыша доступна совершенно бесплатно. Приятного чтения!'
+              )
+            }
+            className="relative p-1.5 text-stone-600 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
+            aria-label="Уведомления"
+            title="Уведомления"
           >
-            <ShieldAlert className="w-4 h-4 text-brand-600" />
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
           </button>
 
           <button

@@ -79,6 +79,65 @@ export const Screen11_Referrals: React.FC<Screen11ReferralsProps> = ({
           <Share2 className="w-5 h-5" />
           <span>Поделиться ссылкой</span>
         </button>
+
+        {/* 4 канала шеринга из макета 11 */}
+        <div className="flex items-center justify-around pt-3 px-2 text-stone-600">
+          <button
+            onClick={handleShare}
+            className="flex flex-col items-center gap-1.5 hover:text-brand-600 active:scale-95 transition-all text-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-200 shadow-xs">
+              <span className="text-lg">✈️</span>
+            </div>
+            <span className="text-[11px] font-medium">Telegram</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const text = 'Создай волшебную сказку для своего ребёнка: ' + referralLink;
+              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+            }}
+            className="flex flex-col items-center gap-1.5 hover:text-brand-600 active:scale-95 transition-all text-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs">
+              <span className="text-lg">💬</span>
+            </div>
+            <span className="text-[11px] font-medium">WhatsApp</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const text = 'Создай волшебную сказку для своего ребёнка: ' + referralLink;
+              window.open(`sms:?body=${encodeURIComponent(text)}`, '_blank');
+            }}
+            className="flex flex-col items-center gap-1.5 hover:text-brand-600 active:scale-95 transition-all text-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-xs">
+              <span className="text-lg">✉️</span>
+            </div>
+            <span className="text-[11px] font-medium">Сообщение</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: 'Моя сказка',
+                  text: 'Создай персональную сказку для ребёнка!',
+                  url: referralLink,
+                }).catch(() => {});
+              } else {
+                handleCopy();
+              }
+            }}
+            className="flex flex-col items-center gap-1.5 hover:text-brand-600 active:scale-95 transition-all text-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center border border-stone-200 shadow-xs">
+              <span className="text-base font-bold">•••</span>
+            </div>
+            <span className="text-[11px] font-medium">Ещё</span>
+          </button>
+        </div>
       </div>
 
       {/* Счётчики результатов из макета 11 */}

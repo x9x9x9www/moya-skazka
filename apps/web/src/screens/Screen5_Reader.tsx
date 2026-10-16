@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, MessageSquareQuote } from 'lucide-react';
 import { BookDetailsDTO } from '@moya-skazka/shared';
 import { ReaderSettings } from '../hooks/useReaderSettings';
+import { useLullabyAudio } from '../hooks/useLullabyAudio';
 import { FairytaleIllustration, ChildAppearanceProps } from '../components/FairytaleIllustration';
 
 interface Screen5ReaderProps {
@@ -51,6 +52,8 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
       ? 'reader-font-large'
       : 'reader-font-medium';
 
+  const { isPlaying, toggleMute } = useLullabyAudio(settings.music || 'calm', true);
+
   return (
     <div className={`min-h-screen flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 ${themeClass}`}>
       {/* Шапка читалки */}
@@ -67,7 +70,17 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           {currentSceneIndex} / 4
         </div>
 
-        <div className="w-8" />
+        <button
+          onClick={toggleMute}
+          className={`p-1.5 px-2.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
+            isPlaying
+              ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs'
+              : 'bg-black/5 text-stone-500 hover:text-stone-700'
+          }`}
+          title={isPlaying ? 'Музыка играет (нажмите для выключения)' : 'Включить фоновую колыбельную'}
+        >
+          <span>{isPlaying ? '🎵' : '🔇'}</span>
+        </button>
       </div>
 
       {/* Основной контент: Иллюстрация + Текст + Вопрос */}

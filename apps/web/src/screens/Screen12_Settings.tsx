@@ -154,7 +154,43 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
         </div>
       </div>
 
-      {/* 4. Секция «Аккаунт и правовая информация» (Разделы 4 и 15 ТЗ) */}
+      {/* 4. Музыка для фона (Экран 12 макета) */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-stone-700">Фоновая музыка для чтения</label>
+        <div className="bg-white rounded-3xl border border-cream-300 shadow-card divide-y divide-cream-200 overflow-hidden text-xs">
+          {[
+            { id: 'calm', label: 'Спокойная (колыбельная)', icon: '🎵' },
+            { id: 'fairy', label: 'Сказочные переливы', icon: '✨' },
+            { id: 'forest', label: 'Звуки волшебного леса', icon: '🍃' },
+            { id: 'off', label: 'Без музыки', icon: '🔇' },
+          ].map((item) => {
+            const isSelected = (settings.music || 'calm') === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onUpdateSetting('music' as any, item.id as any)}
+                className="w-full p-3.5 flex items-center justify-between text-stone-800 hover:bg-cream-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2.5 font-medium">
+                  <span className="text-base">{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+                {isSelected ? (
+                  <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-200">
+                    Активно ✓
+                  </span>
+                ) : (
+                  <span className="text-stone-300">›</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-stone-500 italic px-1">
+          Настройки применяются ко всем книгам.
+        </p>
+      </div>
       <div className="pt-2 space-y-3">
         <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider px-1">
           Аккаунт и правовая информация

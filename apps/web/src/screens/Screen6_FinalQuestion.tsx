@@ -80,22 +80,22 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
         )}
       </div>
 
-      {/* Кнопки действий */}
-      <div className="space-y-3 pt-3">
+      {/* Кнопки действий (Экран 6: горизонтальный ряд) */}
+      <div className="flex items-center gap-3 pt-3">
         <button
-          onClick={onGoToLibrary}
-          className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+          onClick={onRestart}
+          className="flex-1 py-3.5 px-4 rounded-2xl bg-cream-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 hover:bg-cream-300"
         >
-          <BookOpen className="w-4 h-4" />
-          <span>В библиотеку</span>
+          <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
+          <span>Прочитать ещё раз</span>
         </button>
 
         <button
-          onClick={onRestart}
-          className="w-full py-3.5 px-6 rounded-2xl bg-cream-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-cream-300"
+          onClick={onGoToLibrary}
+          className="flex-1 py-3.5 px-4 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
-          <RotateCcw className="w-4 h-4 text-stone-500" />
-          <span>Прочитать ещё раз</span>
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>В библиотеку</span>
         </button>
       </div>
     </div>

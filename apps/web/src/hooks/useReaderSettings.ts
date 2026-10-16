@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 
 export type ReaderFontSize = 'small' | 'medium' | 'large';
 export type ReaderTheme = 'warm' | 'light' | 'dark';
+export type ReaderMusic = 'calm' | 'fairy' | 'forest' | 'off';
 
 export interface ReaderSettings {
   fontSize: ReaderFontSize;
   theme: ReaderTheme;
   showQuestions: boolean;
   autoPlay: boolean;
+  music: ReaderMusic;
 }
 
 const STORAGE_KEY = 'moya_skazka_reader_settings';
@@ -23,6 +25,7 @@ export function useReaderSettings() {
       theme: 'warm',
       showQuestions: true,
       autoPlay: false,
+      music: 'calm',
     };
   });
 

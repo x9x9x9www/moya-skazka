@@ -568,6 +568,135 @@ export const App: React.FC = () => {
                 return;
               }
 
+              // Каноническая текстовая сказка про звёздочку из макета (Экран 7)
+              if (id === 'b2') {
+                const isUpgraded = books.find((b) => b.id === 'b2')?.format === 'ILLUSTRATED';
+                const starStory: BookDetailsDTO = {
+                  id: 'b2',
+                  title: 'Миша и звёздочка',
+                  status: isUpgraded ? 'ILLUSTRATED' : 'TEXT_READY',
+                  format: isUpgraded ? 'ILLUSTRATED' : 'TEXT',
+                  can_upgrade: !isUpgraded,
+                  scenes: [
+                    {
+                      id: 's1',
+                      scene_index: 1,
+                      text: 'Миша сидел у тёплого вечернего окна и смотрел на тёмно-синее небо. Вдруг среди мерцающих созвездий вспыхнула крошечная золотистая искорка. Она плавно скользнула вниз и тихо опустилась прямо на деревянный подоконник.',
+                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy looking at a tiny glowing friendly baby star on a cozy bedroom windowsill, golden hour magical dusk, starry sky, modern 3D CGI render, Pixar RenderMan aesthetic, no text.',
+                    },
+                    {
+                      id: 's2',
+                      scene_index: 2,
+                      text: 'Звёздочка тихонько звенела, как хрустальный колокольчик. Она потеряла дорогу к своей маме — Большой Медведице. Миша бережно подставил ладошки: — Не бойся, звёздочка, я помогу тебе вернуться домой! — ласково прошептал он.',
+                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy gently cupping a radiant glowing little star creature in hands, comforting smile, volumetric lighting, no text.',
+                    },
+                    {
+                      id: 's3',
+                      scene_index: 3,
+                      text: 'Миша поднялся на цыпочках, взял свой любимый телескоп и построил лесенку из мягких подушек. Он протянул ручки к ночному небу и помог звёздочке поймать лёгкое дуновение попутного звёздного ветерка.',
+                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Cute boy standing on pillow ladder near open attic window, releasing glowing star into starry night, no text.',
+                    },
+                    {
+                      id: 's4',
+                      scene_index: 4,
+                      text: 'Звёздочка взмыла высоко в небо и радостно засияла рядом с Большой Медведицей. С тех пор каждый вечер она светила в окно Миши самым добрым золотистым лучиком, охраняя его сказочные сны.',
+                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy sleeping peacefully under cozy blanket, radiant golden star shining warmly through window, cozy bedtime vibe, no text.',
+                    },
+                  ],
+                  questions: [
+                    {
+                      id: 'q1',
+                      after_scene: 2,
+                      question: 'Как ты думаешь, почему звёздочка сначала грустила? А что помогло ей снова заулыбаться?',
+                      parent_hint: 'Выслушайте ребёнка. Обсудите, как чуткость и готовность прийти на помощь согревают сердца.',
+                      skill_tag: 'emotions',
+                    },
+                    {
+                      id: 'q2',
+                      after_scene: 5,
+                      question: 'А если бы к тебе в гости прилетела волшебная звёздочка, о чём бы вы поговорили перед сном?',
+                      parent_hint: 'Помечтайте вместе с малышом о звёздах и пожелайте друг другу спокойной ночи.',
+                      skill_tag: 'reflection',
+                    },
+                  ],
+                };
+                localStorage.setItem('ms_story_b2', JSON.stringify(starStory));
+                openReader(starStory);
+                return;
+              }
+
+              // Каноническая иллюстрированная сказка про волшебный лес из макета (Экран 7)
+              if (id === 'b3') {
+                const forestStory: BookDetailsDTO = {
+                  id: 'b3',
+                  title: 'Миша и волшебный лес',
+                  status: 'ILLUSTRATED',
+                  format: 'ILLUSTRATED',
+                  can_upgrade: false,
+                  scenes: [
+                    {
+                      id: 's1',
+                      scene_index: 1,
+                      text: 'Миша шагал по мягкой тропинке, усыпанной золотыми осенними листьями. В волшебном лесу тихо шелестели вековые дубы, сквозь ветви пробивались тёплые лучи заходящего солнца, а в воздухе кружились светлячки.',
+                      image_url: './illustrations/cover_forest.jpg',
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy in overalls walking along a sun-dappled enchanted autumn forest path with glowing fireflies, no text.',
+                    },
+                    {
+                      id: 's2',
+                      scene_index: 2,
+                      text: 'Вдруг под кустом папоротника Миша заметил пушистого рыжего лисёнка с большими любопытными глазками. Лисёнок уронил корзинку со спелой земляникой и никак не мог собрать рассыпавшиеся ягодки.',
+                      image_url: './illustrations/cover_forest.jpg',
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy crouching down near an adorable fluffy baby fox in mossy woods, warm sunbeams, no text.',
+                    },
+                    {
+                      id: 's3',
+                      scene_index: 3,
+                      text: 'Миша присел на корточки, ласково улыбнулся и помог собрать все ягодки до единой. В благодарность лисёнок угостил его самой сладкой земляникой и показал Мише тайную поляну с весёлыми зверятами.',
+                      image_url: './illustrations/cover_forest.jpg',
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy and happy baby fox sharing sweet wild strawberries, woodland friends smiling in background, no text.',
+                    },
+                    {
+                      id: 's4',
+                      scene_index: 4,
+                      text: 'Солнышко скрылось за горизонтом, и лес озарился мягким лунным светом. Миша вернулся домой в свою тёплую постель, вспоминая доброго лисёнка и зная, что в волшебном лесу его всегда ждут друзья.',
+                      image_url: './illustrations/cover_forest.jpg',
+                      image_prompt:
+                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy cozily tucked in warm bed at night, smiling peacefully with a toy fox nearby, no text.',
+                    },
+                  ],
+                  questions: [
+                    {
+                      id: 'q1',
+                      after_scene: 2,
+                      question: 'Кому Миша помог в лесу? Как ты думаешь, что почувствовал лисёнок, когда они собирали ягодки вместе?',
+                      parent_hint: 'Обсудите с ребёнком радость взаимопомощи и дружеской поддержки.',
+                      skill_tag: 'emotions',
+                    },
+                    {
+                      id: 'q2',
+                      after_scene: 5,
+                      question: 'Какого лесного зверька ты хотел бы встретить на прогулке? Какую игру ты бы ему предложил?',
+                      parent_hint: 'Обнимите ребёнка, похвалите его фантазию и пожелайте сказочных снов.',
+                      skill_tag: 'reflection',
+                    },
+                  ],
+                };
+                localStorage.setItem('ms_story_b3', JSON.stringify(forestStory));
+                openReader(forestStory);
+                return;
+              }
+
               try {
                 const book = await api.getBook(id);
                 openReader(book);
@@ -660,14 +789,36 @@ export const App: React.FC = () => {
       {/* Модальное окно апгрейда книги (Экран 8) */}
       <Screen8_UpgradeModal
         isOpen={upgradeModalOpen}
-        bookTitle="Сказка"
+        bookTitle={books.find((b) => b.id === selectedBookForUpgrade)?.title || 'Сказка'}
+        coverUrl={selectedBookForUpgrade === 'b2' ? './illustrations/cover_star.jpg' : './illustrations/cover_dino.jpg'}
         userBalance={balance}
         onUpgrade={async () => {
           if (selectedBookForUpgrade) {
-            await api.upgradeBook(selectedBookForUpgrade);
+            try {
+              await api.upgradeBook(selectedBookForUpgrade);
+            } catch {}
+            setBooks((prev) => {
+              const updated = prev.map((b) =>
+                b.id === selectedBookForUpgrade
+                  ? {
+                      ...b,
+                      format: 'ILLUSTRATED' as const,
+                      status: 'ILLUSTRATED' as const,
+                      cover_url:
+                        b.id === 'b2'
+                          ? './illustrations/cover_star.jpg'
+                          : b.cover_url || './illustrations/cover_dino.jpg',
+                    }
+                  : b
+              );
+              try {
+                localStorage.setItem('ms_books', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
             setBalance((prev) => Math.max(0, prev - 1));
             setUpgradeModalOpen(false);
-            loadBooks();
+            haptic.success();
           }
         }}
         onOpenShop={() => {
