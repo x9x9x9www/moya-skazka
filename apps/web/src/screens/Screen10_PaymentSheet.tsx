@@ -33,8 +33,6 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
     haptic.medium();
 
     try {
-      // В реальном Telegram WebApp вызывается tg.openInvoice(...)
-      // Для мгновенной проверки симулируем подтверждение и начисление
       setTimeout(() => {
         setIsProcessing(false);
         setIsSuccess(true);
@@ -51,16 +49,16 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white w-full max-w-md rounded-t-3xl p-6 shadow-2xl border-t border-cream-300 max-h-[90vh] overflow-y-auto">
-        {/* Заголовок */}
-        <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-          <h2 className="font-serif font-bold text-lg text-stone-900">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-md animate-fade-in">
+      <div className="glass-card bg-glass-900/95 w-full max-w-md rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-white/5">
+          <h2 className="font-serif font-bold text-lg text-white">
             Оплата
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+            className="p-1 rounded-full text-glass-500 hover:text-white hover:bg-white/5"
           >
             <X className="w-5 h-5" />
           </button>
@@ -68,52 +66,52 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
 
         {isSuccess ? (
           <div className="py-12 text-center space-y-3">
-            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
-            <h3 className="font-serif font-bold text-xl text-stone-900">
+            <CheckCircle className="w-16 h-16 text-accent-500 mx-auto animate-bounce" />
+            <h3 className="font-serif font-bold text-xl text-white">
               Оплата успешно завершена!
             </h3>
-            <p className="text-xs text-stone-600">
+            <p className="text-xs text-glass-400">
               +{credits} {credits === 1 ? 'кредит добавлен' : 'кредитов добавлено'} на ваш баланс.
             </p>
           </div>
         ) : (
           <div className="py-5 space-y-5">
-            {/* Карточка товара из макета 10 */}
-            <div className="flex items-center gap-3.5 bg-cream-100/70 p-4 rounded-2xl border border-cream-300">
-              <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200 shadow-inner">
-                <Sparkles className="w-7 h-7 text-amber-500 fill-amber-400" />
+            {/* Product card */}
+            <div className="flex items-center gap-3.5 glass-card p-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 flex items-center justify-center shrink-0 border border-accent-500/20">
+                <Sparkles className="w-7 h-7 text-accent-400" />
               </div>
               <div>
-                <h3 className="font-serif font-bold text-base text-stone-900">
+                <h3 className="font-serif font-bold text-base text-white">
                   {title}
                 </h3>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-glass-400">
                   {subtitle}
                 </p>
               </div>
             </div>
 
-            {/* Детализация заказа */}
+            {/* Order details */}
             <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between text-stone-600">
+              <div className="flex justify-between text-glass-400">
                 <span>{credits} {credits === 1 ? 'книжный кредит' : 'книжных кредитов'}</span>
-                <span className="font-bold text-stone-900">{rubPrice} ₽</span>
+                <span className="font-bold text-white">{rubPrice} P</span>
               </div>
 
-              <div className="pt-2 border-t border-stone-200 flex justify-between items-baseline">
-                <span className="font-bold text-sm text-stone-900">К оплате</span>
+              <div className="pt-2 border-t border-white/5 flex justify-between items-baseline">
+                <span className="font-bold text-sm text-white">К оплате</span>
                 <div className="text-right">
-                  <div className="font-bold text-base text-stone-900">{rubPrice} ₽</div>
-                  <div className="text-xs text-amber-600 font-bold">≈ {starsPrice} ⭐</div>
+                  <div className="font-bold text-base text-white">{rubPrice} P</div>
+                  <div className="text-xs text-accent-400 font-bold">~ {starsPrice} Stars</div>
                 </div>
               </div>
             </div>
 
-            {/* Большая кнопка оплаты через Stars */}
+            {/* Pay button */}
             <button
               onClick={handlePayStars}
               disabled={isProcessing}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg btn-press flex items-center justify-center gap-2"
             >
               {isProcessing ? (
                 <div className="flex items-center gap-2">
@@ -122,20 +120,20 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
                 </div>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5 text-amber-300" />
-                  <span>Оплатить {starsPrice} ⭐</span>
+                  <Sparkles className="w-5 h-5" />
+                  <span>Оплатить {starsPrice} Stars</span>
                 </>
               )}
             </button>
 
-            {/* Подписи безопасности из макета 10 */}
-            <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 px-1">
+            {/* Security badges */}
+            <div className="flex items-center justify-between text-[11px] text-glass-500 pt-1 px-1">
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <ShieldCheck className="w-4 h-4 text-accent-500" />
                 <span>Безопасная оплата через Telegram</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <HeartHandshake className="w-4 h-4 text-blue-600" />
+                <HeartHandshake className="w-4 h-4 text-blue-400" />
                 <span>Кредиты сразу на балансе</span>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus, Sparkles } from 'lucide-react';
+import { X, Check, UserPlus, Sparkles, User } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface ChildProfileModalProps {
@@ -32,12 +32,12 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   if (!isOpen) return null;
 
   const interestsList = [
-    { id: 'Динозавры', label: 'Динозавры 🦖' },
-    { id: 'Космос', label: 'Космос 🚀' },
-    { id: 'Животные', label: 'Животные 🦊' },
-    { id: 'Волшебство', label: 'Волшебство 🪄' },
-    { id: 'Машинки', label: 'Машинки 🚗' },
-    { id: 'Природа', label: 'Природа 🌿' },
+    { id: 'Динозавры', label: 'Динозавры' },
+    { id: 'Космос', label: 'Космос' },
+    { id: 'Животные', label: 'Животные' },
+    { id: 'Волшебство', label: 'Волшебство' },
+    { id: 'Машинки', label: 'Машинки' },
+    { id: 'Природа', label: 'Природа' },
   ];
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -74,15 +74,15 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in">
-      <div className="bg-cream-100 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-cream-300 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-cream-300">
-          <div className="font-serif font-bold text-lg text-stone-800">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 screen-transition">
+      <div className="glass-card-elevated w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 border border-white/10 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="font-serif font-bold text-lg text-white">
             {isCreating ? 'Создание профиля героя' : 'Профили детей'}
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-cream-200"
+            className="p-1.5 rounded-full text-glass-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -90,7 +90,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
         {!isCreating ? (
           <div className="py-4 space-y-3">
-            <p className="text-xs text-stone-500 mb-2">
+            <p className="text-xs text-glass-400 mb-2">
               Выберите героя для сказок или добавьте нового:
             </p>
 
@@ -105,84 +105,84 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                   }}
                   className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-brand-50 border-brand-500 shadow-sm'
-                      : 'bg-white border-cream-300 hover:bg-cream-50'
+                      ? 'bg-accent-500/15 border-accent-500/50 shadow-glow-sm'
+                      : 'bg-white/5 border-white/8 hover:bg-white/10'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-brand-500 text-white font-serif font-bold flex items-center justify-center text-sm shadow-inner">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-500 to-accent-600 text-white font-serif font-bold flex items-center justify-center text-sm shadow-inner">
                       {child.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-bold text-stone-800 text-sm">{child.name}</div>
-                      <div className="text-xs text-stone-500">
+                      <div className="font-bold text-white text-sm">{child.name}</div>
+                      <div className="text-xs text-glass-400">
                         {child.age} года • {(child.interests || []).join(', ')}
                       </div>
                     </div>
                   </div>
-                  {isSelected && <Check className="w-5 h-5 text-brand-600" />}
+                  {isSelected && <Check className="w-5 h-5 text-accent-400" />}
                 </div>
               );
             })}
 
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 mt-4 rounded-2xl border-2 border-dashed border-brand-500/40 text-brand-700 font-bold text-sm hover:bg-brand-50/50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3.5 mt-4 rounded-2xl border border-dashed border-white/20 text-glass-200 font-bold text-sm hover:bg-white/5 hover:border-white/30 transition-colors"
             >
-              <UserPlus className="w-4 h-4" />
+              <UserPlus className="w-4 h-4 text-accent-400" />
               <span>Добавить ещё одного ребёнка</span>
             </button>
           </div>
         ) : (
           <form onSubmit={handleCreate} className="py-4 space-y-4">
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">
+              <label className="block text-xs font-semibold text-glass-300 mb-1">
                 Имя ребёнка
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Например, Петька"
+                placeholder="Например, Миша"
                 required
-                className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium"
+                className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-accent-500/50 text-white placeholder-glass-500 text-sm font-medium outline-none"
               />
             </div>
 
             {/* Пол */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-glass-300 mb-1.5">
                 Пол
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setGender('boy')}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
                     gender === 'boy'
-                      ? 'bg-brand-500 text-white border-brand-500'
-                      : 'bg-white text-stone-700 border-cream-300'
+                      ? 'bg-accent-500/20 text-white border-accent-500/50'
+                      : 'bg-white/5 text-glass-400 border-white/10 hover:text-white'
                   }`}
                 >
-                  👦 Мальчик
+                  Мальчик
                 </button>
                 <button
                   type="button"
                   onClick={() => setGender('girl')}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
                     gender === 'girl'
-                      ? 'bg-brand-500 text-white border-brand-500'
-                      : 'bg-white text-stone-700 border-cream-300'
+                      ? 'bg-accent-500/20 text-white border-accent-500/50'
+                      : 'bg-white/5 text-glass-400 border-white/10 hover:text-white'
                   }`}
                 >
-                  👧 Девочка
+                  Девочка
                 </button>
               </div>
             </div>
 
             {/* Возраст */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-glass-300 mb-1.5">
                 Возраст ({age} года)
               </label>
               <div className="flex gap-2">
@@ -193,8 +193,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     onClick={() => setAge(num)}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
                       age === num
-                        ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                        : 'bg-white text-stone-700 border-cream-300'
+                        ? 'bg-accent-500/20 text-white border-accent-500/50 shadow-sm'
+                        : 'bg-white/5 text-glass-400 border-white/10 hover:text-white'
                     }`}
                   >
                     {num}
@@ -205,7 +205,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
             {/* Волосы */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-glass-300 mb-1.5">
                 Цвет волос
               </label>
               <div className="grid grid-cols-4 gap-1.5">
@@ -219,10 +219,10 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     key={h.id}
                     type="button"
                     onClick={() => setHairColor(h.id)}
-                    className={`py-1.5 text-[11px] font-bold rounded-lg border transition-all ${
+                    className={`py-2 text-[11px] font-semibold rounded-xl border transition-all ${
                       hairColor === h.id
-                        ? 'bg-brand-50 border-brand-500 text-brand-800'
-                        : 'bg-white border-cream-300 text-stone-600'
+                        ? 'bg-accent-500/20 border-accent-500/50 text-white'
+                        : 'bg-white/5 border-white/10 text-glass-400 hover:text-white'
                     }`}
                   >
                     {h.label}
@@ -233,25 +233,25 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
             {/* Любимая игрушка-спутник */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-glass-300 mb-1.5">
                 Игрушка-спутник
               </label>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { id: 'плюшевый динозаврик', label: '🦖 Динозаврик' },
-                  { id: 'плюшевый мишка', label: '🧸 Мишка' },
-                  { id: 'пушистый зайка', label: '🐰 Зайка' },
-                  { id: 'маленький котёнок', label: '🐱 Котёнок' },
-                  { id: 'волшебная звёздочка', label: '⭐ Звёздочка' },
+                  { id: 'плюшевый динозаврик', label: 'Динозаврик' },
+                  { id: 'плюшевый мишка', label: 'Мишка' },
+                  { id: 'пушистый зайка', label: 'Зайка' },
+                  { id: 'маленький котёнок', label: 'Котёнок' },
+                  { id: 'волшебная звёздочка', label: 'Звёздочка' },
                 ].map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setToy(t.id)}
-                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border truncate transition-all ${
+                    className={`py-2 px-1 text-[11px] font-semibold rounded-xl border truncate transition-all ${
                       toy === t.id
-                        ? 'bg-brand-50 border-brand-500 text-brand-800'
-                        : 'bg-white border-cream-300 text-stone-600'
+                        ? 'bg-accent-500/20 border-accent-500/50 text-white'
+                        : 'bg-white/5 border-white/10 text-glass-400 hover:text-white'
                     }`}
                   >
                     {t.label}
@@ -261,7 +261,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold text-glass-300 mb-1.5">
                 Что любит ребёнок?
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -274,12 +274,12 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                       onClick={() => toggleInterest(item.id)}
                       className={`p-2.5 rounded-xl text-xs font-semibold border text-left flex items-center justify-between transition-all ${
                         isSelected
-                          ? 'bg-brand-50 border-brand-500 text-brand-800'
-                          : 'bg-white border-cream-300 text-stone-600'
+                          ? 'bg-accent-500/20 border-accent-500/50 text-white'
+                          : 'bg-white/5 border-white/10 text-glass-400 hover:text-white'
                       }`}
                     >
                       <span>{item.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-accent-400" />}
                     </button>
                   );
                 })}
@@ -290,14 +290,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="flex-1 py-3 rounded-2xl bg-cream-200 text-stone-700 font-bold text-sm"
+                className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-glass-300 font-semibold text-sm transition-colors"
               >
                 Отмена
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
-                className="flex-1 py-3 rounded-2xl bg-brand-500 text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all"
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-glow btn-press"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Сохранить</span>

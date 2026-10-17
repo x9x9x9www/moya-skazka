@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,35 +8,106 @@
   --app-height: 100vh;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  background-color: #FAF6F0;
+  background-color: #0a0a0a;
+  color: #fafafa;
   -webkit-tap-highlight-color: transparent;
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
-/* Стилизация скроллбара */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #EADFCF;
-  border-radius: 9999px;
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 9999px; }
+
+/* ─── Glassmorphism surfaces ─── */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Темы для читалки (Экран 12) */
+.glass-surface-light {
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.2);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 1rem;
+  color: #fafafa;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-input:focus {
+  border-color: rgba(20, 184, 166, 0.5);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ─── Glow accents ─── */
+.glow-top {
+  position: fixed;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse, rgba(20, 184, 166, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-bottom {
+  position: fixed;
+  bottom: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Reader themes (keep for reader screen) ─── */
 .reader-theme-warm {
-  --reader-bg: #FAF6F0;
-  --reader-card: #F4ECE1;
+  --reader-bg: #fafaf9;
+  --reader-card: #f5f5f4;
   --reader-text: #292524;
-  --reader-border: #E5D7C5;
-  --reader-question-bg: #EAE0D2;
+  --reader-border: #e7e5e4;
+  --reader-question-bg: #ece9e3;
 }
 
 .reader-theme-light {
@@ -46,40 +119,120 @@ body {
 }
 
 .reader-theme-dark {
-  --reader-bg: #1C1917;
-  --reader-card: #292524;
-  --reader-text: #F5F5F4;
-  --reader-border: #44403C;
-  --reader-question-bg: #38332E;
+  --reader-bg: #0a0a0a;
+  --reader-card: #171717;
+  --reader-text: #fafafa;
+  --reader-border: #262626;
+  --reader-question-bg: #1c1c1c;
 }
 
-/* Размеры шрифта для читалки */
-.reader-font-small {
-  font-size: 1.05rem;
-  line-height: 1.65;
-}
-.reader-font-medium {
-  font-size: 1.25rem;
-  line-height: 1.75;
-}
-.reader-font-large {
-  font-size: 1.45rem;
-  line-height: 1.85;
-}
+/* ─── Reader font sizes ─── */
+.reader-font-small { font-size: 1.05rem; line-height: 1.65; }
+.reader-font-medium { font-size: 1.25rem; line-height: 1.75; }
+.reader-font-large { font-size: 1.45rem; line-height: 1.85; }
 
-/* Мягкие переходы и микроанимации */
+/* ─── Card interactions ─── */
 .card-hover-effect {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 .card-hover-effect:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
+/* ─── Subtle pulse ─── */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.95; transform: scale(1.015); }
+  50% { opacity: 0.9; transform: scale(1.01); }
 }
 
 .animate-pulse-subtle {
   animation: pulse-subtle 3s infinite ease-in-out;
+}
+
+/* ─── Button press effect ─── */
+.btn-press {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* ─── 3D Phone perspective container ─── */
+.phone-3d-wrapper {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.phone-3d {
+  transform: perspective(1200px) rotateY(-12deg) rotateX(5deg);
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.phone-3d:hover {
+  transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
+}
+
+/* Phone reflection */
+.phone-reflection {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ─── Selection color ─── */
+::selection {
+  background: rgba(20, 184, 166, 0.3);
+  color: #fafafa;
+}
+
+/* ─── Smooth page transitions ─── */
+.screen-transition {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Toggle switch refinement ─── */
+.toggle-track {
+  width: 48px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.toggle-track.active {
+  background: rgba(20, 184, 166, 0.8);
+}
+
+.toggle-thumb {
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-track.active .toggle-thumb {
+  transform: translateX(20px);
 }

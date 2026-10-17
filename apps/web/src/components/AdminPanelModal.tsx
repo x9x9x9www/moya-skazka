@@ -78,7 +78,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
         {/* Шапка админки */}
         <div className="flex items-center justify-between pb-3 border-b border-stone-800">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-brand-400" />
+            <ShieldCheck className="w-5 h-5 text-accent-400" />
             <h2 className="font-serif font-bold text-lg text-white">
               Панель администратора
             </h2>
@@ -96,7 +96,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <button
             onClick={() => setTab('analytics')}
             className={`flex-1 py-2 rounded-xl transition-all ${
-              tab === 'analytics' ? 'bg-brand-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
+              tab === 'analytics' ? 'bg-accent-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             Воронка
@@ -104,7 +104,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <button
             onClick={() => setTab('orders')}
             className={`flex-1 py-2 rounded-xl transition-all ${
-              tab === 'orders' ? 'bg-brand-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
+              tab === 'orders' ? 'bg-accent-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             Заказы Stars
@@ -112,7 +112,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <button
             onClick={() => setTab('jobs')}
             className={`flex-1 py-2 rounded-xl transition-all ${
-              tab === 'jobs' ? 'bg-brand-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
+              tab === 'jobs' ? 'bg-accent-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             Очередь AI
@@ -120,7 +120,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <button
             onClick={() => setTab('credits')}
             className={`flex-1 py-2 rounded-xl transition-all ${
-              tab === 'credits' ? 'bg-brand-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
+              tab === 'credits' ? 'bg-accent-600 text-white shadow-sm' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             Баланс
@@ -148,7 +148,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
                 <div className="bg-stone-800/60 p-4 rounded-2xl border border-stone-700">
                   <div className="text-stone-400 mb-1">Бесплатных сказок</div>
-                  <div className="text-2xl font-bold text-brand-400">
+                  <div className="text-2xl font-bold text-accent-400">
                     {analytics?.free_stories_claimed || 0}
                   </div>
                 </div>
@@ -170,7 +170,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
               <div className="bg-stone-800/60 p-4 rounded-2xl border border-stone-700">
                 <div className="font-bold text-sm text-stone-200 mb-2 flex items-center gap-1.5">
-                  <BarChart3 className="w-4 h-4 text-brand-400" />
+                  <BarChart3 className="w-4 h-4 text-accent-400" />
                   <span>Статистика задач генерации</span>
                 </div>
                 <div className="space-y-1.5 text-stone-300">
@@ -249,7 +249,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     {j.status.includes('FAILED') && (
                       <button
                         onClick={() => handleRetryJob(j.id)}
-                        className="mt-1 py-1.5 px-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center justify-center gap-1"
+                        className="mt-1 py-1.5 px-3 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-bold text-xs flex items-center justify-center gap-1"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>Повторить генерацию (Retry)</span>
@@ -282,7 +282,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   onChange={(e) => setTargetUserId(e.target.value)}
                   placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-brand-500 font-mono text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-accent-500 font-mono text-xs"
                 />
               </div>
 
@@ -294,7 +294,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                     value={delta}
                     onChange={(e) => setDelta(parseInt(e.target.value, 10) || 0)}
                     required
-                    className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-brand-500 text-xs font-bold"
+                    className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-accent-500 text-xs font-bold"
                   />
                 </div>
 
@@ -303,7 +303,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <select
                     value={sourceType}
                     onChange={(e) => setSourceType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-brand-500 text-xs font-bold"
+                    className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-accent-500 text-xs font-bold"
                   >
                     <option value="gift">GIFT (подарок)</option>
                     <option value="paid">PAID (оплаченный)</option>
@@ -320,13 +320,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Обязательно: обращение в саппорт / компенсация сбоя"
                   required
-                  className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-brand-500 text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-white outline-none focus:border-accent-500 text-xs"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs mt-2"
+                className="w-full py-3 rounded-xl bg-accent-600 hover:bg-accent-500 text-white font-bold text-xs mt-2"
               >
                 Записать в журнал аудита и изменить баланс
               </button>

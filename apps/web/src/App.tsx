@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Sparkles } from 'lucide-react';
 import { useTelegram } from './hooks/useTelegram';
 import { useReaderSettings } from './hooks/useReaderSettings';
 import { api } from './api/client';
@@ -367,7 +368,11 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream-100 font-sans flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden">
+    <div className="min-h-screen bg-glass-950 text-glass-100 font-sans flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden border-x border-white/5">
+      {/* Ambient background glows */}
+      <div className="glow-top pointer-events-none" />
+      <div className="glow-bottom pointer-events-none" />
+
       {/* Шапка (кроме читалки и онбординга) */}
       {currentScreen !== 'reader' && currentScreen !== 'final_question' && currentScreen !== 'onboarding' && (
         <Header
@@ -386,20 +391,20 @@ export const App: React.FC = () => {
 
       {/* Оверлей прогресса генерации книги */}
       {isCreatingStory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-          <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center mx-auto animate-pulse">
-              ✨
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+          <div className="glass-card-elevated p-6 max-w-xs w-full text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/20 text-accent-400 flex items-center justify-center mx-auto animate-pulse">
+              <Sparkles className="w-8 h-8 text-accent-400" />
             </div>
-            <h3 className="font-serif font-bold text-lg text-stone-900">
+            <h3 className="font-serif font-bold text-lg text-white">
               Создаём волшебную сказку...
             </h3>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-glass-400">
               Пишем 4 добрые сцены и вопросы для {wizardData.childName}
             </p>
-            <div className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
               <div
-                className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-accent-500 to-accent-600 h-full rounded-full transition-all duration-500"
                 style={{ width: `${jobProgress}%` }}
               />
             </div>

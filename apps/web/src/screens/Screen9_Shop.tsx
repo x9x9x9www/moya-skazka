@@ -7,105 +7,100 @@ interface Screen9ShopProps {
 
 export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
   return (
-    <div className="p-4 space-y-5 pb-28 max-w-md mx-auto">
+    <div className="p-4 space-y-5 pb-28 max-w-md mx-auto screen-transition">
       <div className="text-center py-2">
-        <h2 className="font-serif font-bold text-2xl text-stone-900">
+        <h2 className="font-serif font-bold text-2xl text-white">
           Магазин сказок
         </h2>
-        <p className="text-xs text-stone-500 mt-1">
+        <p className="text-xs text-glass-400 mt-1">
           Покупайте книжные кредиты для создания иллюстрированных сказок
         </p>
       </div>
 
-      {/* Карточка 1: Одиночная сказка (Экран 9) */}
-      <div className="bg-white rounded-3xl p-5 border border-cream-300 shadow-card flex items-center justify-between gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-amber-100/80 flex items-center justify-center shrink-0 border border-amber-200">
-          <Star className="w-8 h-8 text-amber-500 fill-amber-400" />
+      {/* Single story card */}
+      <div className="glass-card p-5 flex items-center justify-between gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center shrink-0 border border-amber-500/20">
+          <Star className="w-8 h-8 text-amber-400" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-serif font-bold text-base text-stone-900">
+          <h3 className="font-serif font-bold text-base text-white">
             Одна сказка
           </h3>
-          <p className="text-xs text-stone-500 mb-1.5">
+          <p className="text-xs text-glass-400 mb-1.5">
             Для одного волшебного вечера
           </p>
-          <div className="font-bold text-sm text-stone-900">
-            199 ₽ <span className="text-xs text-stone-500 font-normal">(≈ 400 ⭐)</span>
+          <div className="font-bold text-sm text-white">
+            199 P <span className="text-xs text-glass-500 font-normal">(~ 400 Stars)</span>
           </div>
         </div>
 
         <button
           onClick={() => onBuySku('single_book_1')}
-          className="py-2.5 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+          className="py-2.5 px-4 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-bold text-xs btn-press"
         >
           Купить
         </button>
       </div>
 
-      {/* Карточка 2: Выгодный набор 5 сказок (Экран 9) */}
-      <div className="relative bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-3xl p-5 border-2 border-amber-300 shadow-card">
-        {/* Бейдж "Выгодный набор" */}
-        <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider">
-          <Flame className="w-3 h-3 fill-white" />
+      {/* Bundle card */}
+      <div className="relative glass-card p-5 border-accent-500/30">
+        {/* Badge */}
+        <div className="absolute -top-3 left-6 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider">
+          <Flame className="w-3 h-3" />
           <span>Выгодный набор</span>
         </div>
 
         <div className="flex items-center justify-between gap-4 mt-1">
-          <div className="w-16 h-16 rounded-2xl bg-amber-200/60 flex items-center justify-center shrink-0 border border-amber-300">
-            <Sparkles className="w-8 h-8 text-amber-600 fill-amber-500" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 flex items-center justify-center shrink-0 border border-accent-500/20">
+            <Sparkles className="w-8 h-8 text-accent-400" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif font-bold text-base text-stone-900">
+            <h3 className="font-serif font-bold text-base text-white">
               Пять сказок
             </h3>
-            <p className="text-xs text-stone-600 mb-1.5">
+            <p className="text-xs text-glass-400 mb-1.5">
               Создавайте истории, когда захотите
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="font-bold text-base text-stone-900">799 ₽</span>
-              <span className="text-xs text-stone-400 line-through">995 ₽</span>
-              <span className="text-xs font-bold text-rose-600 bg-rose-100 px-1.5 py-0.2 rounded-md">
+              <span className="font-bold text-base text-white">799 P</span>
+              <span className="text-xs text-glass-500 line-through">995 P</span>
+              <span className="text-xs font-bold text-rose-400 bg-rose-500/15 px-1.5 py-0.5 rounded-md">
                 -20%
               </span>
             </div>
-            <div className="text-[11px] text-stone-500">
-              (≈ 1 600 ⭐)
+            <div className="text-[11px] text-glass-500">
+              (~ 1 600 Stars)
             </div>
           </div>
         </div>
 
         <button
           onClick={() => onBuySku('pack_5')}
-          className="w-full mt-4 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+          className="w-full mt-4 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold text-sm shadow-glow btn-press flex items-center justify-center gap-2"
         >
-          <span>Купить набор за 799 ₽ (1 600 ⭐)</span>
+          <span>Купить набор за 799 P (1 600 Stars)</span>
         </button>
       </div>
 
-      {/* Буллиты гарантий из макета 9 */}
+      {/* Guarantees */}
       <div className="space-y-2.5 pt-2 px-2">
-        <div className="flex items-center gap-3 text-xs text-stone-700 font-semibold">
-          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-            <Check className="w-3.5 h-3.5" />
-          </div>
-          <span>Без подписки — покупайте только когда нужно</span>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-stone-700 font-semibold">
-          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-            <Check className="w-3.5 h-3.5" />
-          </div>
-          <span>Кредиты сохраняются навсегда на вашем балансе</span>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-stone-700 font-semibold">
-          <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-3.5 h-3.5" />
-          </div>
-          <span>Удобная и безопасная оплата через Telegram Stars</span>
-        </div>
+        {[
+          { icon: Check, label: 'Без подписки — покупайте только когда нужно' },
+          { icon: Check, label: 'Кредиты сохраняются навсегда на вашем балансе' },
+          { icon: ShieldCheck, label: 'Удобная и безопасная оплата через Telegram Stars' },
+        ].map((item, idx) => {
+          const Icon = item.icon;
+          return (
+            <div key={idx} className="flex items-center gap-3 text-xs text-glass-300 font-semibold">
+              <div className="w-5 h-5 rounded-full bg-accent-500/15 text-accent-400 flex items-center justify-center shrink-0">
+                <Icon className="w-3.5 h-3.5" />
+              </div>
+              <span>{item.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

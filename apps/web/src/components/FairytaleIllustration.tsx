@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BookOpen } from 'lucide-react';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -295,13 +296,13 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
       )}
 
       {/* Бейдж номера сцены */}
-      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/90 backdrop-blur-md border border-cream-300 text-stone-800 text-[11px] font-bold shadow-sm flex items-center gap-1">
-        <span>📖</span>
+      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-[11px] font-semibold shadow-sm flex items-center gap-1.5">
+        <BookOpen className="w-3.5 h-3.5 text-accent-400" />
         <span>Сцена {sceneIndex} из 4</span>
       </div>
 
       {/* Бейдж темы */}
-      <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-brand-500/90 backdrop-blur-md text-white text-[11px] font-bold shadow-sm">
+      <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-[11px] font-semibold shadow-sm">
         {theme}
       </div>
     </div>

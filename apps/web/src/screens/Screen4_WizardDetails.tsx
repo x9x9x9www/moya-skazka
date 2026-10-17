@@ -29,20 +29,20 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   };
 
   return (
-    <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
-      {/* Индикатор прогресса */}
+    <div className="p-4 space-y-6 pb-28 max-w-md mx-auto screen-transition">
+      {/* Progress */}
       <div className="text-center">
-        <span className="text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
+        <span className="text-xs font-bold text-accent-400 bg-accent-500/15 px-3 py-1 rounded-full border border-accent-500/20">
           2 из 3
         </span>
-        <h2 className="font-serif font-bold text-2xl text-stone-900 mt-2">
+        <h2 className="font-serif font-bold text-2xl text-white mt-2">
           Ещё немного деталей
         </h2>
       </div>
 
-      {/* Характер героя */}
+      {/* Personality */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-stone-700">
+        <label className="text-xs font-bold text-glass-300">
           Какой характер у героя?
         </label>
         <div className="flex flex-wrap gap-2">
@@ -53,10 +53,10 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
                 key={item}
                 type="button"
                 onClick={() => setPersonality(item)}
-                className={`px-4 py-2.5 rounded-full text-xs font-bold border transition-all ${
+                className={`px-4 py-2.5 rounded-full text-xs font-bold border transition-all btn-press ${
                   isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                    : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'
+                    ? 'bg-accent-500 text-white border-accent-500'
+                    : 'bg-white/5 text-glass-400 border-white/10 hover:bg-white/8'
                 }`}
               >
                 {item}
@@ -66,9 +66,9 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
         </div>
       </div>
 
-      {/* Особые пожелания */}
+      {/* Custom wishes */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-stone-700">
+        <label className="text-xs font-bold text-glass-300">
           Особые пожелания (необязательно)
         </label>
         <textarea
@@ -77,44 +77,40 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
           onChange={(e) => setCustomWishes(e.target.value)}
           placeholder="Например: чтобы герой жил рядом с морем или нашёл волшебный кристалл..."
           maxLength={200}
-          className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-medium text-stone-800 resize-none shadow-sm"
+          className="w-full px-4 py-3 rounded-2xl glass-input text-xs font-medium resize-none"
         />
-        <div className="text-[11px] text-stone-400 text-right">
+        <div className="text-[11px] text-glass-500 text-right">
           {customWishes.length} / 200
         </div>
       </div>
 
-      {/* Переключатель вопросов для обсуждения с ребёнком (Раздел 6 ТЗ) */}
-      <div className="flex items-center justify-between p-4 rounded-3xl bg-white border border-cream-300 shadow-card">
+      {/* Questions toggle */}
+      <div className="flex items-center justify-between glass-card p-4">
         <div className="flex items-start gap-3 pr-3">
-          <div className="w-9 h-9 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0 mt-0.5">
-            <MessageCircleQuestion className="w-5 h-5 text-brand-600" />
+          <div className="w-9 h-9 rounded-2xl bg-accent-500/15 text-accent-400 flex items-center justify-center shrink-0 mt-0.5 border border-accent-500/20">
+            <MessageCircleQuestion className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-sm font-bold text-stone-900 leading-snug">
+            <div className="text-sm font-bold text-white leading-snug">
               Показывать вопросы для ребёнка
             </div>
-            <div className="text-xs text-stone-500 mt-0.5">
+            <div className="text-xs text-glass-400 mt-0.5">
               2–3 вопроса по сюжету с подсказками для родителя
             </div>
           </div>
         </div>
 
-        {/* Нативный Toggle Switch */}
-        <label className="relative inline-flex items-center cursor-pointer shrink-0">
-          <input
-            type="checkbox"
-            checked={includeQuestions}
-            onChange={(e) => setIncludeQuestions(e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className="w-12 h-7 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-500"></div>
-        </label>
+        <div
+          className={`toggle-track shrink-0 ${includeQuestions ? 'active' : ''}`}
+          onClick={() => setIncludeQuestions(!includeQuestions)}
+        >
+          <div className="toggle-thumb" />
+        </div>
       </div>
 
-      {/* Карточка превью сгенерированного героя */}
-      <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-4 flex items-center gap-3.5 shadow-sm">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center">
+      {/* Hero preview card */}
+      <div className="glass-card p-4 flex items-center gap-3.5">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent-500/20 to-accent-600/10 shrink-0 border border-accent-500/20 flex flex-col items-center justify-center text-center">
           <span className="text-2xl">
             {heroData.appearance?.toy?.includes('дино')
               ? '🦖'
@@ -126,29 +122,29 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
               ? '🐱'
               : '⭐'}
           </span>
-          <span className="text-[10px] font-bold text-amber-900 mt-0.5">
-            {heroData.gender === 'girl' ? '👧' : '👦'} Герой
+          <span className="text-[10px] font-bold text-glass-400 mt-0.5">
+            Герой
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-stone-900 truncate">
+          <div className="text-sm font-bold text-white truncate">
             {heroData.childName}, {heroData.age} года
           </div>
-          <div className="text-xs text-stone-600 mt-0.5">
-            {heroData.appearance?.hairColor} {heroData.appearance?.hairType} волосы • {heroData.appearance?.clothingColor} {heroData.appearance?.clothingItem}
+          <div className="text-xs text-glass-400 mt-0.5">
+            {heroData.appearance?.hairColor} {heroData.appearance?.hairType} волосы — {heroData.appearance?.clothingColor} {heroData.appearance?.clothingItem}
           </div>
-          <div className="text-[11px] font-semibold text-brand-700 mt-1">
+          <div className="text-[11px] font-semibold text-accent-400 mt-1">
             Спутник: {heroData.appearance?.toy || 'любимая игрушка'}
           </div>
         </div>
       </div>
 
-      {/* Кнопка создания */}
+      {/* Submit button */}
       <div className="pt-2">
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 disabled:opacity-50 text-white font-bold text-base shadow-glow btn-press flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
@@ -157,7 +153,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
             </div>
           ) : (
             <>
-              <Sparkles className="w-5 h-5 text-amber-300" />
+              <Sparkles className="w-5 h-5" />
               <span>
                 {canClaimFreeStory ? 'Создать сказку бесплатно' : 'Создать сказку (1 кредит)'}
               </span>
