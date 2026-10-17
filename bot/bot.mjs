@@ -177,8 +177,21 @@ async function generateWellflowImageAI(prompt) {
   return url;
 }
 
+// Хранилище фоновых задач генерации
+const jobs = new Map();
+
+// Очистка старых задач каждые 5 минут
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, job] of jobs.entries()) {
+    if (now - job.createdAt > 10 * 60 * 1000) {
+      jobs.delete(id);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // ========================================================
-// 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy)
+// 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy, Job Queue)
 // ========================================================
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -199,69 +212,106 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Проверка статуса фоновой задачи (быстрый GET 5мс)
+  if (url.pathname === '/api/v1/ai/job-status' && req.method === 'GET') {
+    const jobId = url.searchParams.get('id');
+    const job = jobs.get(jobId);
+    if (!job) {
+      const notFoundStr = JSON.stringify({ status: 'not_found' });
+      res.writeHead(404, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(notFoundStr),
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(notFoundStr);
+      return;
+    }
+    const jsonStr = JSON.stringify(job);
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': Buffer.byteLength(jsonStr),
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(jsonStr);
+    return;
+  }
+
+  // Генерация сюжета через GPT-6-Astra (мгновенный 202 ответ + опрос)
   if (url.pathname === '/api/v1/ai/generate-story' && req.method === 'POST') {
-    let keepAliveTimer = null;
     try {
       let bodyStr = '';
       for await (const chunk of req) bodyStr += chunk;
       const params = JSON.parse(bodyStr || '{}');
 
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Transfer-Encoding': 'chunked',
+      const jobId = 'story_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      jobs.set(jobId, { status: 'pending', createdAt: Date.now(), progress: 'Генерация сюжета в GPT-6-Astra...' });
+
+      // Запуск в фоне
+      generateWellflowStoryAI(params)
+        .then(story => {
+          jobs.set(jobId, { status: 'ready', story, createdAt: Date.now() });
+        })
+        .catch(err => {
+          console.error('[API Bridge Error generate-story]:', err.message);
+          jobs.set(jobId, { status: 'error', error: err.message, createdAt: Date.now() });
+        });
+
+      // Мгновенный ответ клиенту (менее 10мс!)
+      const jsonStr = JSON.stringify({ jobId, status: 'pending' });
+      res.writeHead(202, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(jsonStr),
         'Access-Control-Allow-Origin': '*',
       });
-
-      // Keepalive: каждые 3 секунды шлём пустой пробел, чтобы туннель не закрывал сокет
-      keepAliveTimer = setInterval(() => {
-        try {
-          res.write(' ');
-        } catch {}
-      }, 3000);
-
-      const story = await generateWellflowStoryAI(params);
-      clearInterval(keepAliveTimer);
-      res.end(JSON.stringify(story));
+      res.end(jsonStr);
     } catch (err) {
-      if (keepAliveTimer) clearInterval(keepAliveTimer);
       console.error('[API Bridge Error generate-story]:', err.message);
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      }
-      res.end(JSON.stringify({ error: err.message }));
+      const errStr = JSON.stringify({ error: err.message });
+      res.writeHead(500, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(errStr),
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(errStr);
     }
     return;
   }
 
+  // Генерация иллюстрации через Nano-Banana-2 (мгновенный 202 ответ + опрос)
   if (url.pathname === '/api/v1/ai/generate-image' && req.method === 'POST') {
-    let keepAliveTimer = null;
     try {
       let bodyStr = '';
       for await (const chunk of req) bodyStr += chunk;
       const { prompt } = JSON.parse(bodyStr || '{}');
 
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Transfer-Encoding': 'chunked',
+      const jobId = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      jobs.set(jobId, { status: 'pending', createdAt: Date.now(), progress: 'Создание иллюстрации в Nano-Banana-2...' });
+
+      generateWellflowImageAI(prompt)
+        .then(imageUrl => {
+          jobs.set(jobId, { status: 'ready', imageUrl, createdAt: Date.now() });
+        })
+        .catch(err => {
+          console.error('[API Bridge Error generate-image]:', err.message);
+          jobs.set(jobId, { status: 'error', error: err.message, createdAt: Date.now() });
+        });
+
+      const jsonStr = JSON.stringify({ jobId, status: 'pending' });
+      res.writeHead(202, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(jsonStr),
         'Access-Control-Allow-Origin': '*',
       });
-
-      keepAliveTimer = setInterval(() => {
-        try {
-          res.write(' ');
-        } catch {}
-      }, 3000);
-
-      const imageUrl = await generateWellflowImageAI(prompt);
-      clearInterval(keepAliveTimer);
-      res.end(JSON.stringify({ imageUrl }));
+      res.end(jsonStr);
     } catch (err) {
-      if (keepAliveTimer) clearInterval(keepAliveTimer);
       console.error('[API Bridge Error generate-image]:', err.message);
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      }
-      res.end(JSON.stringify({ error: err.message }));
+      const errStr = JSON.stringify({ error: err.message });
+      res.writeHead(500, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(errStr),
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(errStr);
     }
     return;
   }
@@ -275,32 +325,37 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
 });
 
 // ========================================================
-// 4. ЗАПУСК БЕСПЛАТНОГО HTTPS ТУННЕЛЯ ДЛЯ MINI APP
+// 4. ЗАПУСК БЫСТРОГО И НАДЁЖНОГО HTTPS ТУННЕЛЯ (Serveo)
 // ========================================================
 function startTunnel() {
-  console.log('[Tunnel] 🌐 Запуск защищённого HTTPS туннеля для внешнего доступа...');
+  console.log('[Tunnel] 🌐 Запуск защищённого HTTPS туннеля через Serveo...');
   const child = spawn('ssh', [
     '-o', 'StrictHostKeyChecking=no',
-    '-o', 'ServerAliveInterval=30',
+    '-o', 'ServerAliveInterval=15',
+    '-o', 'ServerAliveCountMax=10',
     '-R', `80:localhost:${BRIDGE_PORT}`,
-    'nokey@localhost.run',
+    'serveo.net',
   ]);
 
-  child.stdout.on('data', async (data) => {
+  const handleData = async (data) => {
     const text = data.toString();
-    const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.lhr\.life/);
+    const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.serveousercontent\.com/);
     if (match && match[0] && match[0] !== publicTunnelUrl) {
       publicTunnelUrl = match[0];
-      console.log(`[Tunnel] 🚀 Публичный HTTPS URL активен: ${publicTunnelUrl}`);
+      console.log(`[Tunnel] 🚀 HTTPS туннель активен: ${publicTunnelUrl}`);
+      try {
+        fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
+      } catch {}
       await updateChatMenuWithApi(publicTunnelUrl);
     }
-  });
+  };
 
-  child.stderr.on('data', () => {});
+  child.stdout.on('data', handleData);
+  child.stderr.on('data', handleData);
 
-  child.on('close', () => {
-    console.log('[Tunnel] Туннель закрылся, переподключение через 5 секунд...');
-    setTimeout(startTunnel, 5000);
+  child.on('close', (code) => {
+    console.log(`[Tunnel] Туннель завершился (код: ${code}), перезапуск через 3 сек...`);
+    setTimeout(startTunnel, 3000);
   });
 }
 startTunnel();

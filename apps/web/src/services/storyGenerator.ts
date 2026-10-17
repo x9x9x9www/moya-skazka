@@ -22,6 +22,8 @@ export const WELLFLOW_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WELLFLOW_API_URL) ||
   'https://api.wellflow.dev/v1';
 
+export const DEFAULT_API_BRIDGE_URL = 'https://4358d69d27782dcc-193-178-226-18.serveousercontent.com';
+
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -39,7 +41,33 @@ export function getActiveApiUrl(): string {
       }
     } catch {}
   }
-  return '';
+  return DEFAULT_API_BRIDGE_URL;
+}
+
+/**
+ * Опрос фоновой задачи генерации на сервере/мосте
+ */
+async function pollJob<T>(activeApi: string, jobId: string, maxWaitMs = 60000): Promise<T> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const res = await fetch(`${activeApi}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'ready') {
+          return (data.story || data.imageUrl || data) as T;
+        }
+        if (data.status === 'error') {
+          throw new Error(data.error || 'Job failed');
+        }
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('Job failed')) throw err;
+      // Временные сетевые сбои игнорируем до следующего такта опроса
+    }
+  }
+  throw new Error('Job polling timed out');
 }
 
 function getWellflowTextKey(): string {
@@ -450,11 +478,21 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 25000): 
           body: JSON.stringify(candidate.body),
           signal: controller.signal,
         });
-        if (res.ok) {
-          clearTimeout(timer);
+        if (res.ok || res.status === 202) {
           const data = await res.json();
+          if (data.jobId) {
+            console.log(`[StoryGenerator] ⏳ Ожидание генерации иллюстрации (jobId: ${data.jobId})...`);
+            const polled = await pollJob<{ imageUrl?: string }>(activeApi, data.jobId, timeoutMs);
+            const img = polled?.imageUrl || (typeof polled === 'string' ? polled : null);
+            if (img) {
+              clearTimeout(timer);
+              console.log(`[StoryGenerator] ✅ Иллюстрация готова через мост: ${img.slice(0, 60)}...`);
+              return img;
+            }
+          }
           const imageUrl = data.imageUrl || data.data?.[0]?.url;
           if (imageUrl) {
+            clearTimeout(timer);
             console.log(`[StoryGenerator] ✅ Иллюстрация успешно получена: ${imageUrl.slice(0, 60)}...`);
             return imageUrl;
           }
@@ -588,10 +626,19 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
           signal: controller.signal,
         });
 
-        if (response.ok) {
-          clearTimeout(timer);
+        if (response.ok || response.status === 202) {
           const data = await response.json();
+          if (data.jobId) {
+            console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост (jobId: ${data.jobId})...`);
+            const polled = await pollJob<any>(activeApi, data.jobId, timeoutMs);
+            if (polled && polled.scenes) {
+              clearTimeout(timer);
+              console.log('[StoryGenerator] ✅ Сказка получена через мост GPT-6-Astra:', polled.title);
+              return polled;
+            }
+          }
           if (data.scenes && Array.isArray(data.scenes)) {
+            clearTimeout(timer);
             console.log('[StoryGenerator] ✅ Сказка получена через Wellflow API:', data.title);
             return data;
           }
@@ -599,6 +646,7 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
           if (rawText) {
             const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleaned);
+            clearTimeout(timer);
             console.log('[StoryGenerator] ✅ Сказка распарсена через Wellflow GPT-6-Astra:', parsed.title);
             return parsed;
           }
@@ -616,7 +664,7 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
 
 /**
  * Основная функция генерации сказки:
- * 1. Запрашивает Wellflow GPT-6-Astra с таймаутом.
+ * 1. Запрашивает Wellflow GPT-6-Astra с таймаутом 60с.
  * 2. Генерирует уникальную сказку на лету под ребёнка.
  * 3. Создаёт уникальные иллюстрации через Wellflow Nano Banana 2.
  */
@@ -624,7 +672,7 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
   let storyData: any = null;
 
   try {
-    storyData = await callWellflowStory(params, 20000);
+    storyData = await callWellflowStory(params, 60000);
   } catch (err) {
     console.warn('[StoryGenerator] Wellflow text API timed out or failed, using procedural story:', err);
   }
@@ -638,7 +686,7 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
         id: `scene_${sceneIndex}`,
         scene_index: sceneIndex,
         text: s.text,
-        image_url: `./illustrations/scene_${(idx % 4) + 1}.jpg`,
+        image_url: null, // Нет шаблонов! Чистое ожидание акварели от Nano-Banana-2
         image_prompt: prompt,
       };
     });
@@ -664,20 +712,31 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
 
     // Сначала генерируем реальную обложку сцены 1 от Nano Banana 2
     try {
-      const coverUrl = await generateWellflowImage(scenes[0].image_prompt, 15000);
+      const coverUrl = await generateWellflowImage(scenes[0].image_prompt, 45000);
       if (coverUrl) {
         scenes[0].image_url = coverUrl;
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ms_scene_image_updated', {
+            detail: { bookId, sceneIndex: 1, url: coverUrl },
+          }));
+        }
       }
     } catch (e) {
       console.warn('[StoryGenerator] Cover image generation delayed:', e);
     }
 
-    // Фоновая генерация остальных сцен через Nano Banana 2
-    for (let i = 1; i < scenes.length; i++) {
-      generateWellflowImage(scenes[i].image_prompt, 25000)
-        .then((url) => {
+    // Фоновая генерация остальных сцен через Nano Banana 2 по очереди
+    (async () => {
+      for (let i = 1; i < scenes.length; i++) {
+        try {
+          const url = await generateWellflowImage(scenes[i].image_prompt, 45000);
           if (url) {
             scenes[i].image_url = url;
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('ms_scene_image_updated', {
+                detail: { bookId, sceneIndex: i + 1, url },
+              }));
+            }
             try {
               const raw = localStorage.getItem('ms_books');
               if (raw) {
@@ -698,9 +757,11 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
               }
             } catch {}
           }
-        })
-        .catch(() => {});
-    }
+        } catch (err) {
+          console.warn(`[StoryGenerator] Scene ${i + 1} image delayed:`, err);
+        }
+      }
+    })();
 
     return book;
   }
@@ -899,13 +960,9 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
   // Иллюстрации из макета привязаны ТОЛЬКО к канонической сказке про Мишу и Дино.
   // Для любых других сказок и персонажей отображается динамическая персонализированная сцена
   // с персональным 3D Pixar промптом для генерации.
-  const isDefaultMishaDino =
-    name.nom.toLowerCase() === 'миша' &&
-    (theme.toLowerCase().includes('динозавр') || interest.toLowerCase().includes('динозавр'));
-
-  const getSceneImageUrl = (idx: number): string | undefined => {
-    return isDefaultMishaDino ? `./illustrations/scene_${idx}.jpg` : undefined;
-  };
+  // Все иллюстрации генерируются уникально через ИИ (Nano Banana 2) на лету под ребёнка.
+  // Никаких статичных заготовленных шаблонов!
+  const getSceneImageUrl = (_idx: number): string | undefined => undefined;
 
   return {
     id: `book_${Date.now()}`,
