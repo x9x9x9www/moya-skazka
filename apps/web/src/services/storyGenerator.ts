@@ -22,6 +22,26 @@ export const WELLFLOW_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WELLFLOW_API_URL) ||
   'https://api.wellflow.dev/v1';
 
+export function getActiveApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get('api_url');
+    if (paramUrl) {
+      try {
+        localStorage.setItem('ms_api_url', paramUrl);
+      } catch {}
+      return paramUrl.replace(/\/$/, '');
+    }
+    try {
+      const cached = localStorage.getItem('ms_api_url');
+      if (cached) {
+        return cached.replace(/\/$/, '');
+      }
+    } catch {}
+  }
+  return '';
+}
+
 function getWellflowTextKey(): string {
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WELLFLOW_TEXT_KEY) {
     return (import.meta as any).env.VITE_WELLFLOW_TEXT_KEY;
@@ -390,7 +410,18 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 25000): 
     ? prompt
     : styleTemplate.replace('[SCENE]', prompt);
 
-  const candidates = [
+  const activeApi = getActiveApiUrl();
+  const candidates: Array<{ url: string; headers?: Record<string, string>; body: any }> = [];
+
+  if (activeApi) {
+    candidates.push({
+      url: `${activeApi}/api/v1/ai/generate-image`,
+      headers: { 'Content-Type': 'application/json' },
+      body: { prompt: finalPrompt, type: 'scene' },
+    });
+  }
+
+  candidates.push(
     { url: '/api/v1/ai/generate-image', body: { prompt: finalPrompt, type: 'scene' } },
     {
       url: '/wellflow-api/images/generations',
@@ -407,15 +438,15 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 25000): 
         'Content-Type': 'application/json',
       },
       body: { model: WELLFLOW_IMAGE_MODEL, prompt: finalPrompt, n: 1, size: '1024x1024' },
-    },
-  ];
+    }
+  );
 
   try {
     for (const candidate of candidates) {
       try {
         const res = await fetch(candidate.url, {
           method: 'POST',
-          headers: (candidate as any).headers || { 'Content-Type': 'application/json' },
+          headers: candidate.headers || { 'Content-Type': 'application/json' },
           body: JSON.stringify(candidate.body),
           signal: controller.signal,
         });
@@ -423,7 +454,10 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 25000): 
           clearTimeout(timer);
           const data = await res.json();
           const imageUrl = data.imageUrl || data.data?.[0]?.url;
-          if (imageUrl) return imageUrl;
+          if (imageUrl) {
+            console.log(`[StoryGenerator] ✅ Иллюстрация успешно получена: ${imageUrl.slice(0, 60)}...`);
+            return imageUrl;
+          }
         }
       } catch {
         // try next candidate
@@ -471,7 +505,28 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
 
 Строго следуй системной инструкции и верни валидный JSON по указанному контракту!`;
 
-  const endpoints = [
+  const activeApi = getActiveApiUrl();
+  const endpoints: Array<{ url: string; headers?: Record<string, string>; body: any }> = [];
+
+  if (activeApi) {
+    endpoints.push({
+      url: `${activeApi}/api/v1/ai/generate-story`,
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        childName: params.childName,
+        age: params.age,
+        interests: params.interests,
+        theme: params.theme,
+        appearance: params.appearance,
+        personality: params.personality,
+        customWishes: params.customWishes,
+        includeQuestions: params.includeQuestions,
+        gender: params.gender,
+      },
+    });
+  }
+
+  endpoints.push(
     {
       url: '/api/v1/ai/generate-story',
       headers: { 'Content-Type': 'application/json' },
@@ -520,8 +575,8 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
         ],
         response_format: { type: 'json_object' },
       },
-    },
-  ];
+    }
+  );
 
   try {
     for (const ep of endpoints) {
@@ -537,12 +592,15 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
           clearTimeout(timer);
           const data = await response.json();
           if (data.scenes && Array.isArray(data.scenes)) {
+            console.log('[StoryGenerator] ✅ Сказка получена через Wellflow API:', data.title);
             return data;
           }
           const rawText = data.choices?.[0]?.message?.content;
           if (rawText) {
             const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleaned);
+            const parsed = JSON.parse(cleaned);
+            console.log('[StoryGenerator] ✅ Сказка распарсена через Wellflow GPT-6-Astra:', parsed.title);
+            return parsed;
           }
         }
       } catch {
@@ -559,9 +617,8 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
 /**
  * Основная функция генерации сказки:
  * 1. Запрашивает Wellflow GPT-6-Astra с таймаутом.
- * 2. Если API недоступен / заблокирован — мгновенно
- *    генерирует уникальную историю через умный процедурный движок.
- * 3. Запускает генерацию иллюстраций через Wellflow Nano Banana 2.
+ * 2. Генерирует уникальную сказку на лету под ребёнка.
+ * 3. Создаёт уникальные иллюстрации через Wellflow Nano Banana 2.
  */
 export async function generateDynamicStory(params: GenerateStoryParams): Promise<BookDetailsDTO> {
   let storyData: any = null;
@@ -605,31 +662,41 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
           : [],
     };
 
-    // Фоновая генерация реальных иллюстраций через Nano Banana 2
-    generateWellflowImage(scenes[0].image_prompt)
-      .then((url) => {
-        if (url) {
-          scenes[0].image_url = url;
-          try {
-            const raw = localStorage.getItem('ms_books');
-            if (raw) {
-              const list = JSON.parse(raw);
-              const found = list.find((b: any) => b.id === bookId);
-              if (found) {
-                found.cover_url = url;
-                localStorage.setItem('ms_books', JSON.stringify(list));
-              }
-            }
-          } catch {}
-        }
-      })
-      .catch(() => {});
+    // Сначала генерируем реальную обложку сцены 1 от Nano Banana 2
+    try {
+      const coverUrl = await generateWellflowImage(scenes[0].image_prompt, 15000);
+      if (coverUrl) {
+        scenes[0].image_url = coverUrl;
+      }
+    } catch (e) {
+      console.warn('[StoryGenerator] Cover image generation delayed:', e);
+    }
 
+    // Фоновая генерация остальных сцен через Nano Banana 2
     for (let i = 1; i < scenes.length; i++) {
-      generateWellflowImage(scenes[i].image_prompt)
+      generateWellflowImage(scenes[i].image_prompt, 25000)
         .then((url) => {
           if (url) {
             scenes[i].image_url = url;
+            try {
+              const raw = localStorage.getItem('ms_books');
+              if (raw) {
+                const list = JSON.parse(raw);
+                const found = list.find((b: any) => b.id === bookId);
+                if (found) {
+                  found.scenes = scenes;
+                  localStorage.setItem('ms_books', JSON.stringify(list));
+                }
+              }
+              const rawStory = localStorage.getItem(`ms_story_${bookId}`);
+              if (rawStory) {
+                const st = JSON.parse(rawStory);
+                if (st && st.scenes && st.scenes[i]) {
+                  st.scenes[i].image_url = url;
+                  localStorage.setItem(`ms_story_${bookId}`, JSON.stringify(st));
+                }
+              }
+            } catch {}
           }
         })
         .catch(() => {});

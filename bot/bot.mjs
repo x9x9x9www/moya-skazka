@@ -1,8 +1,10 @@
-// Telegram Bot Runner for «Моя сказка»
+// Telegram Bot & AI Bridge Runner for «Моя сказка»
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
+import { spawn } from 'child_process';
 
-// Автоматическая загрузка переменных из .env (всегда берёт актуальные значения из файла)
+// Автоматическая загрузка переменных из .env
 function loadEnv() {
   const envPaths = [
     path.resolve(process.cwd(), '.env'),
@@ -31,10 +33,281 @@ if (!BOT_TOKEN) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
 }
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.2';
+
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.2';
+const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
+const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || '';
+const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || 'gpt-6-astra';
+const WELLFLOW_IMAGE_KEY = process.env.WELLFLOW_IMAGE_KEY || '';
+const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const BRIDGE_PORT = 4040;
+let publicTunnelUrl = '';
 
+// ========================================================
+// 1. СИСТЕМНЫЙ ПРОМПТ ДЛЯ ПЕРСОНАЛЬНОЙ СКАЗКИ
+// ========================================================
+const WELLFLOW_STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's book author and child psychologist. Generate a personalized, therapeutic bedtime fairytale for a child aged 2–6 strictly as a valid JSON object without Markdown wrappers.
+
+### RULES:
+1. Warm, natural literary RUSSIAN for all user-facing text (title, scenes, questions).
+2. Anti-cliché: never start with "Жил-был" or "Однажды". Start directly with the provided opening_hook.
+3. Write exactly 4 scenes (2–3 cozy, vivid sentences each):
+   - Scene 1: Hook, cozy setting, meeting companion.
+   - Scene 2: Small obstacle or emotional challenge (triggers Question 1).
+   - Scene 3: Kind, creative climax where the child's good traits shine.
+   - Scene 4: Safe, comforting return and peaceful sleepiness.
+4. Include 2 warm discussion questions for parent and child (after scene 2 and scene 4).
+5. For each scene, include image_prompt in English (1 descriptive sentence + "Whimsical cozy 2D digital watercolor and gouache children's book illustration, warm natural palette, gentle storybook look, no text").
+
+### JSON CONTRACT:
+{
+  "title": "Название сказки на русском",
+  "scenes": [
+    { "index": 1, "text": "Текст сцены 1 на русском...", "image_prompt": "English scene prompt..." },
+    { "index": 2, "text": "Текст сцены 2 на русском...", "image_prompt": "English scene prompt..." },
+    { "index": 3, "text": "Текст сцены 3 на русском...", "image_prompt": "English scene prompt..." },
+    { "index": 4, "text": "Текст сцены 4 на русском...", "image_prompt": "English scene prompt..." }
+  ],
+  "questions": [
+    { "after_scene": 2, "question": "Вопрос на русском...", "parent_hint": "Подсказка родителю...", "skill": "emotions" },
+    { "after_scene": 4, "question": "Финальный вопрос на русском...", "parent_hint": "Подсказка родителю...", "skill": "empathy" }
+  ]
+}`;
+
+// ========================================================
+// 2. ВЫЗОВЫ WELLFLOW API (Node.js без ограничений CORS)
+// ========================================================
+async function generateWellflowStoryAI(params) {
+  console.log(`[Wellflow] ✍️ Генерация сюжета через ${WELLFLOW_TEXT_MODEL} для: ${params.childName || 'Малыш'} (${params.age || 4} г.)...`);
+
+  const mainInterest = (params.interests && params.interests[0]) || 'Волшебство';
+  const openingHooks = {
+    Динозавры: 'В комнате пахло сладкими сушёными яблоками и тёплым пледом, когда под мягким ковриком тихонько хрустнула сказочная скорлупка.',
+    Космос: 'За круглым окном вспыхнула крошечная золотая звёздочка, оставив в вечернем небе тонкий искрящийся хвостик.',
+    Машинки: 'На ковре тихонько заурчал маленький моторчик, а фары крошечной машинки осветили дорогу к волшебному туннелю.',
+    Животные: 'В раскрытую форточку заглянул пушистый рыжий лучик солнца и мягко пощекотал носик.',
+    Волшебство: 'Из резного деревянного сундучка выпорхнула звонкая синяя бабочка, осыпая вокруг мерцающую пыльцу.',
+    Природа: 'Капелька утренней росы на подоконнике отразила весь огромный зелёный лес за окном.',
+  };
+  const hook = openingHooks[mainInterest] || 'В тихой вечерней комнате послышался ласковый перелив колокольчика.';
+
+  const userPrompt = `Входные данные для генерации персонализированной сказки:
+- Имя ребёнка: ${params.childName || 'Малыш'}
+- Пол: ${params.gender === 'girl' ? 'девочка' : 'мальчик'}
+- Возраст: ${params.age || 4} года/лет
+- Внешность: ${params.appearance?.hairColor || 'светлые'} ${params.appearance?.hairType || 'кудрявые'} волосы, одет в ${params.appearance?.clothingColor || 'изумрудный'} ${params.appearance?.clothingItem || 'свитер'}
+- Любимая игрушка-спутник: ${params.appearance?.toy || 'плюшевый динозаврик'}
+- Главная тема: "${params.theme || 'Доброта и дружба'}"
+- Интересы: ${(params.interests || []).join(', ') || 'сказки'}
+- Характер: ${params.personality || 'Добрый'}
+- Особые пожелания: ${params.customWishes ? `"${params.customWishes}"` : 'нет'}
+- opening_hook: ${hook}
+- plot_archetype: Преодоление маленького препятствия с помощью дружбы и доброты
+- atmosphere_seed: Тёплый вечер, мягкий свет, шелест трав, аромат яблочного пирога и лесной мяты
+
+Строго следуй системной инструкции и верни валидный JSON по указанному контракту!`;
+
+  const res = await fetch(`${WELLFLOW_API_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${WELLFLOW_TEXT_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: WELLFLOW_TEXT_MODEL,
+      messages: [
+        { role: 'system', content: WELLFLOW_STORY_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 1200,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Wellflow GPT-6-Astra error (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('No content returned from Wellflow GPT-6-Astra');
+
+  const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+  console.log(`[Wellflow] ✅ Сюжет успешно сгенерирован: «${parsed.title}» (сцен: ${parsed.scenes?.length || 0})`);
+  return parsed;
+}
+
+async function generateWellflowImageAI(prompt) {
+  console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${WELLFLOW_IMAGE_MODEL}...`);
+
+  const styleTemplate = `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of [SCENE]. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
+
+  const finalPrompt = (prompt || '').includes('watercolor and gouache')
+    ? prompt
+    : styleTemplate.replace('[SCENE]', prompt);
+
+  const res = await fetch(`${WELLFLOW_API_URL}/images/generations`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${WELLFLOW_IMAGE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: WELLFLOW_IMAGE_MODEL,
+      prompt: finalPrompt,
+      n: 1,
+      size: '1024x1024',
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Wellflow Nano-Banana-2 error (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  const url = data.imageUrl || data.data?.[0]?.url;
+  if (!url) throw new Error('No image URL in Wellflow Nano-Banana-2 response');
+
+  console.log(`[Wellflow] ✅ Иллюстрация готова: ${url.slice(0, 70)}...`);
+  return url;
+}
+
+// ========================================================
+// 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy)
+// ========================================================
+const server = http.createServer(async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (url.pathname === '/health' || url.pathname === '/') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', provider: 'wellflow', models: { text: WELLFLOW_TEXT_MODEL, image: WELLFLOW_IMAGE_MODEL } }));
+    return;
+  }
+
+  if (url.pathname === '/api/v1/ai/generate-story' && req.method === 'POST') {
+    let keepAliveTimer = null;
+    try {
+      let bodyStr = '';
+      for await (const chunk of req) bodyStr += chunk;
+      const params = JSON.parse(bodyStr || '{}');
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Transfer-Encoding': 'chunked',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      // Keepalive: каждые 3 секунды шлём пустой пробел, чтобы туннель не закрывал сокет
+      keepAliveTimer = setInterval(() => {
+        try {
+          res.write(' ');
+        } catch {}
+      }, 3000);
+
+      const story = await generateWellflowStoryAI(params);
+      clearInterval(keepAliveTimer);
+      res.end(JSON.stringify(story));
+    } catch (err) {
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
+      console.error('[API Bridge Error generate-story]:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      }
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/v1/ai/generate-image' && req.method === 'POST') {
+    let keepAliveTimer = null;
+    try {
+      let bodyStr = '';
+      for await (const chunk of req) bodyStr += chunk;
+      const { prompt } = JSON.parse(bodyStr || '{}');
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Transfer-Encoding': 'chunked',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      keepAliveTimer = setInterval(() => {
+        try {
+          res.write(' ');
+        } catch {}
+      }, 3000);
+
+      const imageUrl = await generateWellflowImageAI(prompt);
+      clearInterval(keepAliveTimer);
+      res.end(JSON.stringify({ imageUrl }));
+    } catch (err) {
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
+      console.error('[API Bridge Error generate-image]:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      }
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Endpoint not found' }));
+});
+
+server.listen(BRIDGE_PORT, '0.0.0.0', () => {
+  console.log(`[API Bridge] ⚡️ Локальный сервер запущен на порту ${BRIDGE_PORT}`);
+});
+
+// ========================================================
+// 4. ЗАПУСК БЕСПЛАТНОГО HTTPS ТУННЕЛЯ ДЛЯ MINI APP
+// ========================================================
+function startTunnel() {
+  console.log('[Tunnel] 🌐 Запуск защищённого HTTPS туннеля для внешнего доступа...');
+  const child = spawn('ssh', [
+    '-o', 'StrictHostKeyChecking=no',
+    '-o', 'ServerAliveInterval=30',
+    '-R', `80:localhost:${BRIDGE_PORT}`,
+    'nokey@localhost.run',
+  ]);
+
+  child.stdout.on('data', async (data) => {
+    const text = data.toString();
+    const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.lhr\.life/);
+    if (match && match[0] && match[0] !== publicTunnelUrl) {
+      publicTunnelUrl = match[0];
+      console.log(`[Tunnel] 🚀 Публичный HTTPS URL активен: ${publicTunnelUrl}`);
+      await updateChatMenuWithApi(publicTunnelUrl);
+    }
+  });
+
+  child.stderr.on('data', () => {});
+
+  child.on('close', () => {
+    console.log('[Tunnel] Туннель закрылся, переподключение через 5 секунд...');
+    setTimeout(startTunnel, 5000);
+  });
+}
+startTunnel();
+
+// ========================================================
+// 5. ВЗАИМОДЕЙСТВИЕ С TELEGRAM API
+// ========================================================
 async function callTelegram(method, params = {}) {
   try {
     const res = await fetch(`${TELEGRAM_API}/${method}`, {
@@ -49,7 +322,31 @@ async function callTelegram(method, params = {}) {
   }
 }
 
+function getAppUrlWithApi(apiUrl) {
+  const base = WEB_APP_BASE_URL;
+  const target = apiUrl || publicTunnelUrl;
+  if (!target) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}api_url=${encodeURIComponent(target)}`;
+}
+
+async function updateChatMenuWithApi(apiUrl) {
+  const targetUrl = getAppUrlWithApi(apiUrl);
+  console.log(`[Bot] 📱 Настройка кнопки Telegram Mini App: ${targetUrl}`);
+  const res = await callTelegram('setChatMenuButton', {
+    menu_button: {
+      type: 'web_app',
+      text: 'Моя сказка ✨',
+      web_app: { url: targetUrl },
+    },
+  });
+  if (res && res.ok) {
+    console.log('[Bot] ✅ Кнопка меню чата Telegram синхронизирована с ИИ-мостом');
+  }
+}
+
 async function sendWelcome(chatId, firstName, startParam) {
+  const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
   let message = `Привет, ${firstName || 'дорогой родитель'}! ✨\n\n` +
     `Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.\n\n`;
 
@@ -57,20 +354,19 @@ async function sendWelcome(chatId, firstName, startParam) {
     message += `🎁 **Вы перешли по приглашению друга!**\nВаша первая иллюстрированная история уже ждёт вас.\n\n`;
   }
 
-  message += `🌟 **Что внутри приложения:**\n` +
-    `• Первая персональная история — бесплатно!\n` +
-    `• Ребёнок в главной роли сказки\n` +
-    `• 4 сцены с красивыми иллюстрациями\n` +
-    `• Вопросы для тёплой беседы перед сном\n` +
-    `• Без подписки и скрытых платежей\n\n` +
-    `Нажмите кнопку ниже, чтобы начать волшебное приключение! 👇`;
+  message += `🌟 **Создание сказок через ИИ:**\n` +
+    `• Текст генерируется нейросетью **GPT-6-Astra** специально под характер ребёнка\n` +
+    `• Уютные акварельные иллюстрации рисует **Nano-Banana-2**\n` +
+    `• 4 сцены + вопросы для тёплой беседы перед сном\n` +
+    `• Первая персональная история — бесплатно!\n\n` +
+    `Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
 
   const keyboard = {
     inline_keyboard: [
       [
         {
           text: '✨ Открыть «Моя сказка»',
-          web_app: { url: WEB_APP_URL },
+          web_app: { url: currentAppUrl },
         },
       ],
       [
@@ -90,6 +386,9 @@ async function sendWelcome(chatId, firstName, startParam) {
   });
 }
 
+// ========================================================
+// 6. LONG-POLLING БОТА
+// ========================================================
 async function startPolling() {
   console.log(`[Bot] Инициализация подключения к Telegram...`);
 
@@ -100,21 +399,7 @@ async function startPolling() {
   }
 
   console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);
-  console.log(`[Bot] 🌐 Mini App URL: ${WEB_APP_URL}`);
-
-  // Настройка кнопки меню чата (Menu Button)
-  const menuRes = await callTelegram('setChatMenuButton', {
-    menu_button: {
-      type: 'web_app',
-      text: 'Моя сказка ✨',
-      web_app: { url: WEB_APP_URL },
-    },
-  });
-  if (menuRes && menuRes.ok) {
-    console.log('[Bot] ✅ Кнопка меню чата «Моя сказка ✨» настроена');
-  } else {
-    console.warn('[Bot Warning] setChatMenuButton:', menuRes?.description || menuRes);
-  }
+  await updateChatMenuWithApi(publicTunnelUrl);
 
   let offset = 0;
 
@@ -149,22 +434,22 @@ async function startPolling() {
               const res = await sendWelcome(chatId, firstName, startParam);
               console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
             } else if (text === '/app') {
+              const appUrl = getAppUrlWithApi(publicTunnelUrl);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
-                text: 'Нажмите кнопку ниже, чтобы открыть приложение:',
+                text: 'Нажмите кнопку ниже, чтобы открыть визард сказок:',
                 reply_markup: {
                   inline_keyboard: [
-                    [{ text: '✨ Открыть сказки', web_app: { url: WEB_APP_URL } }],
+                    [{ text: '✨ Открыть сказки', web_app: { url: appUrl } }],
                   ],
                 },
               });
             } else if (text === '/help') {
               await callTelegram('sendMessage', {
                 chat_id: chatId,
-                text: '«Моя сказка» помогает родителям создавать добрые персонализированные истории для детей 2–6 лет.\n\nПросто нажмите кнопку «Моя сказка ✨» внизу экрана!',
+                text: '«Моя сказка» создаёт персонализированные иллюстрированные сказки на ночь для детей 2–6 лет.\n\nНажмите кнопку «Моя сказка ✨» внизу экрана для запуска!',
               });
             } else {
-              // На любой текст предлагаем открыть Mini App
               await sendWelcome(chatId, firstName, null);
             }
           }
