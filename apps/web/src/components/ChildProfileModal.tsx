@@ -9,6 +9,7 @@ interface ChildProfileModalProps {
   onClose: () => void;
   onSelectChild: (childId: string) => void;
   onCreateChild: (data: { name: string; age: number; interests: string[]; appearance: any }) => Promise<void>;
+  onAddNewChild?: () => void;
 }
 
 export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
@@ -18,6 +19,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   onClose,
   onSelectChild,
   onCreateChild,
+  onAddNewChild,
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -126,7 +128,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             })}
 
             <button
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                if (onAddNewChild) {
+                  onClose();
+                  onAddNewChild();
+                } else {
+                  setIsCreating(true);
+                }
+              }}
               className="w-full flex items-center justify-center gap-2 py-3.5 mt-4 rounded-2xl border-2 border-dashed border-brand-500/40 text-brand-700 font-bold text-sm hover:bg-brand-50/50 transition-colors"
             >
               <UserPlus className="w-4 h-4" />

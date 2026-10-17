@@ -1,89 +1,709 @@
-import React from 'react';
-import { Sparkles, Gift, Palette, MessageSquareQuote, ShieldCheck, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Heart,
+  Smile,
+  Compass,
+  Moon,
+  BookOpen,
+  Baby,
+  Star,
+  Shield,
+  HelpCircle,
+} from 'lucide-react';
 
-interface Screen1OnboardingProps {
-  onStart: () => void;
+export interface ChildRegistrationData {
+  name: string;
+  age: number;
+  gender: 'boy' | 'girl';
+  hairColor: string; // 'светлые' | 'русые' | 'тёмные' | 'рыжие'
+  eyeColor: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
+  skinTone: string; // 'светлая' | 'персиковая' | 'смуглая'
+  personality: string;
+  storyPreference: string;
+  bedtimeRitual: string;
+  interests: string[];
+  toy: string;
 }
 
-export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({ onStart }) => {
-  return (
-    <div className="min-h-screen bg-cream-100 flex flex-col justify-between p-5 max-w-md mx-auto">
-      {/* Верхняя часть с карточкой и сказочной иллюстрацией */}
-      <div className="flex-1 flex flex-col items-center justify-center pt-4">
-        {/* Карточка с иллюстрацией из макета 1 */}
-        <div className="w-full relative rounded-3xl overflow-hidden shadow-card border border-cream-300 bg-white mb-6">
-          <div className="h-64 relative overflow-hidden bg-gradient-to-b from-brand-100 to-amber-50">
-            <img
-              src="./illustrations/scene_1.jpg"
-              alt="Сказочный герой и динозаврик"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-brand-700 flex items-center gap-1 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span>Волшебство для детей</span>
-            </div>
-          </div>
+interface Screen1OnboardingProps {
+  isSecondChild?: boolean;
+  onComplete: (data: ChildRegistrationData) => void;
+  onBack?: () => void;
+}
 
-          <div className="p-6 text-center">
-            <h1 className="font-serif font-bold text-2xl text-stone-900 mb-2">
-              Моя сказка
-            </h1>
-            <p className="text-sm text-stone-600 leading-relaxed font-sans">
-              Персональные сказки для вашего ребёнка с заботой и волшебством
-            </p>
+export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
+  isSecondChild = false,
+  onComplete,
+  onBack,
+}) => {
+  // Текущий шаг регистрации (1: Внешность и базовые данные, 2: Характер и увлечения)
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Состояние формы с умными предзаполненными значениями для супер-быстрой регистрации
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState<'boy' | 'girl'>('boy');
+  const [age, setAge] = useState<number>(4);
+
+  // Внешность: цвет волос, цвет глаз, цвет кожи
+  const [hairColor, setHairColor] = useState('русые');
+  const [eyeColor, setEyeColor] = useState('карие');
+  const [skinTone, setSkinTone] = useState('персиковая');
+
+  // Характер и психоэмоциональные предпочтения
+  const [personality, setPersonality] = useState('Добрый и заботливый');
+  const [storyPreference, setStoryPreference] = useState('Уютные и добрые истории');
+  const [bedtimeRitual, setBedtimeRitual] = useState('Чтение в тёплых объятиях');
+
+  // Игрушка-спутник
+  const [toy, setToy] = useState('плюшевый мишка');
+  const [customToy, setCustomToy] = useState('');
+  const [isCustomToy, setIsCustomToy] = useState(false);
+
+  // Интересы (множественный выбор)
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([
+    'Динозавры',
+    'Животные',
+    'Волшебство',
+  ]);
+
+  // Варианты внешности
+  const HAIR_COLORS = [
+    { id: 'светлые', label: 'Светлые', preview: '#F7DC6F', icon: '👱' },
+    { id: 'русые', label: 'Русые', preview: '#C49A45', icon: '🧑‍🦰' },
+    { id: 'тёмные', label: 'Тёмные', preview: '#3E2723', icon: '🧑‍🦱' },
+    { id: 'рыжие', label: 'Рыжие', preview: '#E65100', icon: '🦊' },
+  ];
+
+  const EYE_COLORS = [
+    { id: 'карие', label: 'Карие', preview: '#795548', icon: '🤎' },
+    { id: 'голубые', label: 'Голубые', preview: '#42A5F5', icon: '💙' },
+    { id: 'зелёные', label: 'Зелёные', preview: '#4CAF50', icon: '💚' },
+    { id: 'серые', label: 'Серые', preview: '#78909C', icon: '🩶' },
+  ];
+
+  const SKIN_TONES = [
+    { id: 'светлая', label: 'Светлая', preview: '#FFE0BD', icon: '🏻' },
+    { id: 'персиковая', label: 'Персиковая', preview: '#FCD0A1', icon: '🏼' },
+    { id: 'смуглая', label: 'Смуглая', preview: '#D19C74', icon: '🏽' },
+  ];
+
+  // Вопросы по характеру
+  const PERSONALITY_TRAITS = [
+    {
+      id: 'Добрый и заботливый',
+      label: 'Добрый и заботливый',
+      emoji: '💛',
+      desc: 'Ласковый, сопереживает и помогает друзьям',
+    },
+    {
+      id: 'Смелый первооткрыватель',
+      label: 'Смелый первооткрыватель',
+      emoji: '🚀',
+      desc: 'Любит подвиги и исследует новое',
+    },
+    {
+      id: 'Любознательный исследователь',
+      label: 'Любознательный',
+      emoji: '🔍',
+      desc: 'Задаёт 100 вопросов обо всём на свете',
+    },
+    {
+      id: 'Мечтатель и фантазёр',
+      label: 'Мечтатель',
+      emoji: '☁️',
+      desc: 'Видит сказку и чудеса в простых вещах',
+    },
+    {
+      id: 'Весёлый непоседа',
+      label: 'Весёлый непоседа',
+      emoji: '🎈',
+      desc: 'Обожает смех, шалости и задорные игры',
+    },
+    {
+      id: 'Спокойный и рассудительный',
+      label: 'Спокойный',
+      emoji: '🌿',
+      desc: 'Вдумчивый, внимательный и терпеливый',
+    },
+  ];
+
+  const STORY_PREFERENCES = [
+    { id: 'Уютные и добрые истории', label: 'Уютные и добрые', emoji: '☕' },
+    { id: 'Захватывающие приключения', label: 'Захватывающие приключения', emoji: '🗺️' },
+    { id: 'Тайны и волшебство', label: 'Тайны и волшебство', emoji: '🪄' },
+    { id: 'Смешные и озорные моменты', label: 'Смешные и озорные', emoji: '😄' },
+  ];
+
+  const BEDTIME_RITUALS = [
+    { id: 'Чтение в тёплых объятиях', label: 'Чтение в обнимку', emoji: '📖' },
+    { id: 'Сказка с любимой игрушкой', label: 'Сказка с игрушкой', emoji: '🧸' },
+    { id: 'Тихий разговор перед сном', label: 'Разговор по душам', emoji: '🌙' },
+  ];
+
+  const TOYS = [
+    { id: 'плюшевый мишка', label: 'Мишка 🧸' },
+    { id: 'пушистый зайка', label: 'Зайка 🐰' },
+    { id: 'плюшевый динозаврик', label: 'Динозаврик 🦕' },
+    { id: 'маленький котёнок', label: 'Котёнок 🐱' },
+    { id: 'волшебная звёздочка', label: 'Звёздочка ⭐' },
+    { id: 'быстрая машинка', label: 'Машинка 🏎️' },
+  ];
+
+  const INTERESTS_LIST = [
+    { id: 'Динозавры', label: 'Динозавры 🦖' },
+    { id: 'Космос', label: 'Космос 🚀' },
+    { id: 'Животные', label: 'Животные 🦊' },
+    { id: 'Волшебство', label: 'Волшебство 🪄' },
+    { id: 'Машинки', label: 'Машинки 🚗' },
+    { id: 'Принцессы и замки', label: 'Принцессы 👑' },
+    { id: 'Морской мир', label: 'Морской мир 🐬' },
+    { id: 'Природа и лес', label: 'Природа 🌿' },
+  ];
+
+  const toggleInterest = (interestId: string) => {
+    setSelectedInterests((prev) =>
+      prev.includes(interestId)
+        ? prev.filter((i) => i !== interestId)
+        : [...prev, interestId]
+    );
+  };
+
+  const handleNextStep = () => {
+    // Если родитель не ввёл имя, аккуратно подставим "Малыш"
+    if (!name.trim()) {
+      setName(gender === 'girl' ? 'Алиса' : 'Миша');
+    }
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalToy = isCustomToy && customToy.trim() ? customToy.trim() : toy;
+    const finalName = name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша');
+
+    onComplete({
+      name: finalName,
+      age,
+      gender,
+      hairColor,
+      eyeColor,
+      skinTone,
+      personality,
+      storyPreference,
+      bedtimeRitual,
+      interests: selectedInterests.length > 0 ? selectedInterests : ['Динозавры', 'Волшебство'],
+      toy: finalToy,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-cream-100 flex flex-col justify-between p-4 max-w-md mx-auto animate-in fade-in duration-300">
+      {/* Верхний бар с прогрессом и заголовком */}
+      <div className="pt-2 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          {isSecondChild && onBack ? (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 p-1.5 rounded-full hover:bg-cream-200 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Назад</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-[11px] font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-brand-600 fill-brand-500" />
+              <span>{isSecondChild ? 'Второй ребёнок' : 'Регистрация профиля'}</span>
+            </div>
+          )}
+
+          {/* Быстрый индикатор шага 1/2 */}
+          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-500">
+            <span className={step === 1 ? 'text-brand-700 font-extrabold' : 'text-stone-400'}>
+              1. Герой
+            </span>
+            <span className="text-stone-300">•</span>
+            <span className={step === 2 ? 'text-brand-700 font-extrabold' : 'text-stone-400'}>
+              2. Характер
+            </span>
           </div>
         </div>
 
-        {/* Список ключевых преимуществ с иконками как на макете */}
-        <div className="w-full space-y-3.5 px-2 mb-6">
-          <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0 shadow-sm">
-              <Gift className="w-4 h-4 text-brand-600" />
-            </div>
-            <span className="text-sm font-semibold text-stone-800">
-              Первая история бесплатно
-            </span>
-          </div>
+        {/* Прогресс-бар */}
+        <div className="w-full h-1.5 bg-cream-300/80 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-brand-500 to-amber-500 transition-all duration-300 rounded-full"
+            style={{ width: step === 1 ? '50%' : '100%' }}
+          />
+        </div>
 
-          <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-sm">
-              <Palette className="w-4 h-4 text-amber-600" />
-            </div>
-            <span className="text-sm font-semibold text-stone-800">
-              Красивые иллюстрации
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-sm">
-              <MessageSquareQuote className="w-4 h-4 text-purple-600" />
-            </div>
-            <span className="text-sm font-semibold text-stone-800">
-              Вопросы для обсуждения
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 shadow-sm">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-            </div>
-            <span className="text-sm font-semibold text-stone-800">
-              Без подписки и скрытых платежей
-            </span>
-          </div>
+        <div className="mt-4">
+          <h1 className="font-serif font-bold text-2xl text-stone-900 tracking-tight">
+            {step === 1
+              ? isSecondChild
+                ? 'Новый сказочный герой ✨'
+                : 'Кто наш главный герой? 🪄'
+              : 'Характер и увлечения 💛'}
+          </h1>
+          <p className="text-xs text-stone-600 mt-1">
+            {step === 1
+              ? 'Заполните за 15 секунд, чтобы сказки оживали именно для вашего ребёнка'
+              : 'Чтобы история была по-настоящему душевной и бережно поддерживала ребёнка'}
+          </p>
         </div>
       </div>
 
-      {/* Кнопка старта */}
-      <div className="pb-4">
-        <button
-          onClick={onStart}
-          className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          <span>Открыть приложение</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+      {/* ШАГ 1: Имя, Возраст, Пол, Внешность (Волосы, Глаза, Кожа) */}
+      {step === 1 && (
+        <div className="space-y-4 pb-20">
+          {/* Интерактивная живая карточка героя с визуализацией выбора */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center gap-4">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-cream-300 transition-all"
+              style={{
+                backgroundColor:
+                  skinTone === 'светлая'
+                    ? '#FFF2E0'
+                    : skinTone === 'смуглая'
+                    ? '#F3DEC9'
+                    : '#FFE7D1',
+              }}
+            >
+              {gender === 'girl' ? '👧' : '👦'}
+            </div>
+            <div className="flex-1">
+              <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+                Будущий герой сказки
+              </div>
+              <div className="font-serif font-bold text-lg text-stone-900 leading-tight">
+                {name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша')}
+              </div>
+              <div className="text-xs text-stone-600 flex items-center gap-2 mt-0.5">
+                <span>{age} года/лет</span>
+                <span>•</span>
+                <span>{hairColor} волосы</span>
+                <span>•</span>
+                <span>{eyeColor} глаза</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Поле ввода имени */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2">
+            <label className="block text-xs font-bold text-stone-800">
+              Имя ребёнка <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Например, Миша, София, Лев"
+              className="w-full px-4 py-3 rounded-2xl bg-cream-50 border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-base text-stone-900 placeholder:text-stone-400 placeholder:font-normal"
+            />
+            {/* Быстрые подсказки имён */}
+            <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+              <span className="text-[10px] text-stone-400 shrink-0">Популярные:</span>
+              {['Миша', 'Алиса', 'Тёма', 'Ева', 'Марк', 'Соня'].map((suggested) => (
+                <button
+                  key={suggested}
+                  type="button"
+                  onClick={() => setName(suggested)}
+                  className="px-2.5 py-0.5 rounded-full bg-cream-200/70 text-stone-700 text-[11px] font-medium hover:bg-cream-300 transition-colors shrink-0"
+                >
+                  {suggested}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Пол и Возраст */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Пол */}
+            <div className="bg-white rounded-3xl p-3.5 border border-cream-300 shadow-sm space-y-2">
+              <span className="block text-xs font-bold text-stone-800">Пол</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setGender('boy')}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                    gender === 'boy'
+                      ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
+                      : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                  }`}
+                >
+                  <span>👦</span>
+                  <span>Мальчик</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('girl')}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                    gender === 'girl'
+                      ? 'bg-rose-500 text-white shadow-sm ring-2 ring-rose-500/30'
+                      : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                  }`}
+                >
+                  <span>👧</span>
+                  <span>Девочка</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Возраст */}
+            <div className="bg-white rounded-3xl p-3.5 border border-cream-300 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-800">Возраст</span>
+                <span className="text-xs font-bold text-brand-700">{age} {age < 5 ? 'года' : 'лет'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-1">
+                {[2, 3, 4, 5, 6].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setAge(num)}
+                    className={`w-8 h-8 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                      age === num
+                        ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-500/30 scale-105'
+                        : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Внешность: Цвет волос */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <span>Цвет волос</span>
+              </label>
+              <span className="text-[11px] font-bold text-stone-500 capitalize">{hairColor}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {HAIR_COLORS.map((item) => {
+                const isSelected = hairColor === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setHairColor(item.id)}
+                    className={`p-2 rounded-2xl border transition-all flex flex-col items-center gap-1.5 ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full shadow-inner border border-black/10 flex items-center justify-center text-xs"
+                      style={{ backgroundColor: item.preview }}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
+                    </div>
+                    <span className="text-[11px] font-bold text-stone-700">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Внешность: Цвет глаз */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <span>Цвет глаз</span>
+              </label>
+              <span className="text-[11px] font-bold text-stone-500 capitalize">{eyeColor}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {EYE_COLORS.map((item) => {
+                const isSelected = eyeColor === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setEyeColor(item.id)}
+                    className={`p-2 rounded-2xl border transition-all flex flex-col items-center gap-1.5 ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full shadow-inner border border-black/10 flex items-center justify-center text-xs"
+                      style={{ backgroundColor: item.preview }}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
+                    </div>
+                    <span className="text-[11px] font-bold text-stone-700">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Внешность: Оттенок кожи */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <span>Оттенок кожи</span>
+              </label>
+              <span className="text-[11px] font-bold text-stone-500 capitalize">{skinTone}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {SKIN_TONES.map((item) => {
+                const isSelected = skinTone === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSkinTone(item.id)}
+                    className={`p-2.5 rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <div
+                      className="w-5 h-5 rounded-full shadow-inner border border-black/10 shrink-0"
+                      style={{ backgroundColor: item.preview }}
+                    />
+                    <span className="text-xs font-bold text-stone-700">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ШАГ 2: Вопросы о характере, Предпочтения, Любимая игрушка, Интересы */}
+      {step === 2 && (
+        <div className="space-y-4 pb-20">
+          {/* Вопрос 1: Характер (ключевой вопрос) */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                <span>Главная черта характера ребёнка</span>
+              </label>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-tight">
+              Сказка бережно подстроится под темперамент и поможет раскрыть лучшие качества
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {PERSONALITY_TRAITS.map((item) => {
+                const isSelected = personality === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setPersonality(item.id)}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/80 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <div className="text-xl mb-1">{item.emoji}</div>
+                    <div className="text-xs font-bold text-stone-800 leading-tight">
+                      {item.label}
+                    </div>
+                    <div className="text-[10px] text-stone-500 mt-0.5 leading-snug">
+                      {item.desc}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Вопрос 2: Что больше всего любит в историях */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-brand-600" />
+              <span>Что больше нравится в историях?</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {STORY_PREFERENCES.map((item) => {
+                const isSelected = storyPreference === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setStoryPreference(item.id)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all flex items-center gap-2 ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/80 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <span className="text-base">{item.emoji}</span>
+                    <span className="text-xs font-bold text-stone-800">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Вопрос 3: Ритуал перед сном */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+              <Moon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>Любимый ритуал перед сном</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {BEDTIME_RITUALS.map((item) => {
+                const isSelected = bedtimeRitual === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setBedtimeRitual(item.id)}
+                    className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/80 ring-2 ring-brand-500/20 shadow-sm'
+                        : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
+                    }`}
+                  >
+                    <span className="text-base">{item.emoji}</span>
+                    <span className="text-[11px] font-bold text-stone-800 leading-tight">
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Любимая игрушка или спутник героя */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>Любимая игрушка или друг</span>
+              </label>
+              <span className="text-[10px] text-stone-400">Появится в иллюстрациях!</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {TOYS.map((t) => {
+                const isSelected = !isCustomToy && toy === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setIsCustomToy(false);
+                      setToy(t.id);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setIsCustomToy(true)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  isCustomToy
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                }`}
+              >
+                ✏️ Своя игрушка...
+              </button>
+            </div>
+
+            {isCustomToy && (
+              <input
+                type="text"
+                value={customToy}
+                onChange={(e) => setCustomToy(e.target.value)}
+                placeholder="Например, синий трактор, белая собачка..."
+                className="w-full mt-2 px-3.5 py-2.5 rounded-2xl bg-cream-50 border border-cream-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-medium"
+              />
+            )}
+          </div>
+
+          {/* Интересы ребёнка */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
+            <label className="text-xs font-bold text-stone-900 flex items-center justify-between">
+              <span>Интересы и увлечения (выберите 2–3)</span>
+              <span className="text-[10px] font-normal text-stone-400">
+                Выбрано: {selectedInterests.length}
+              </span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {INTERESTS_LIST.map((item) => {
+                const isSelected = selectedInterests.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleInterest(item.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-brand-500 text-white shadow-sm'
+                        : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isSelected && <Check className="w-3 h-3 text-white ml-0.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Фиксированная нижняя панель с кнопками перехода */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-cream-100/90 backdrop-blur-md border-t border-cream-300/60 max-w-md mx-auto z-30">
+        {step === 1 ? (
+          <button
+            type="button"
+            onClick={handleNextStep}
+            className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          >
+            <span>Далее: Характер и увлечения</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="py-4 px-4 rounded-2xl bg-cream-200 hover:bg-cream-300 text-stone-700 font-bold text-sm transition-all flex items-center justify-center"
+              title="Вернуться к шагу 1"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-5 h-5 fill-white text-white" />
+              <span>{isSecondChild ? 'Сохранить героя ✨' : 'Готово! Открыть сказки ✨'}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { Header } from './components/Header';
 import { TabBar } from './components/TabBar';
 import { ChildProfileModal } from './components/ChildProfileModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import { Screen1_Onboarding } from './screens/Screen1_Onboarding';
+import { Screen1_Onboarding, ChildRegistrationData } from './screens/Screen1_Onboarding';
 import { Screen2_Home } from './screens/Screen2_Home';
 import { Screen3_WizardHero, WizardHeroData } from './screens/Screen3_WizardHero';
 import { Screen4_WizardDetails } from './screens/Screen4_WizardDetails';
@@ -25,8 +25,27 @@ export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
   const { settings, updateSetting } = useReaderSettings();
 
-  // Основные состояния приложения
-  const [currentScreen, setCurrentScreen] = useState<string>('home');
+  // Проверка завершения онбординга/регистрации первого ребёнка
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ms_onboarding_completed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // При первом входе вылазит окно регистрации (Слайд 1), иначе сразу главный экран (Слайд 2)
+  const [currentScreen, setCurrentScreen] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ms_onboarding_completed') === 'true' ? 'home' : 'onboarding';
+    } catch {
+      return 'onboarding';
+    }
+  });
+
+  // Режим добавления второго ребёнка родителем
+  const [isRegisteringSecondChild, setIsRegisteringSecondChild] = useState<boolean>(false);
+
   const [activeTab, setActiveTab] = useState<string>('home');
   const [balance, setBalance] = useState<number>(1);
   const [canClaimFree, setCanClaimFree] = useState<boolean>(true);
@@ -90,45 +109,159 @@ export const App: React.FC = () => {
       setCanClaimFree(me.can_claim_free_story);
 
       const childrenList = await api.getChildren();
-      if (childrenList.length > 0) {
-        setChildren(childrenList);
-        setActiveChildId(childrenList[0].id);
+      let effectiveChildren: ChildProfileDTO[] = [];
+
+      const savedChildrenStr = localStorage.getItem('ms_children');
+      if (savedChildrenStr) {
+        try {
+          const parsed = JSON.parse(savedChildrenStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            effectiveChildren = parsed;
+          }
+        } catch {}
+      }
+
+      if (childrenList && childrenList.length > 0) {
+        effectiveChildren = childrenList;
+      }
+
+      if (effectiveChildren.length > 0) {
+        setChildren(effectiveChildren);
+        const savedActiveId = localStorage.getItem('ms_active_child_id');
+        const active = effectiveChildren.find((c) => c.id === savedActiveId) || effectiveChildren[0];
+        setActiveChildId(active.id);
+        const app = (active.appearance as any) || {};
         setWizardData((prev) => ({
           ...prev,
-          childName: childrenList[0].name,
-          age: childrenList[0].age,
-          interests: (childrenList[0].interests as string[]) || prev.interests,
+          childName: active.name,
+          age: active.age,
+          gender: app.gender || (active.name.endsWith('а') || active.name.endsWith('я') ? 'girl' : 'boy'),
+          interests: (active.interests as string[]) || prev.interests,
+          appearance: {
+            ...prev.appearance,
+            hairColor: app.hairColor || prev.appearance.hairColor,
+            eyeColor: app.eyeColor || 'карие',
+            skinTone: app.skinTone || 'персиковая',
+            toy: app.toy || prev.appearance.toy,
+          },
         }));
-        loadDailyIdea(childrenList[0].id);
+        loadDailyIdea(active.id);
       } else {
-        // Создаем дефолтного героя при первом старте
-        const defaultChild = await api.createChild({
-          name: 'Миша',
-          age: 4,
-          interests: ['динозавры', 'космос'],
-          appearance: { avatar_id: 'boy_1' },
-        });
-        setChildren([defaultChild]);
-        setActiveChildId(defaultChild.id);
-        loadDailyIdea(defaultChild.id);
+        // Если детей ещё нет и регистрация не завершена — остаёмся на слайде 1 (онбординг)
+        if (!localStorage.getItem('ms_onboarding_completed')) {
+          setCurrentScreen('onboarding');
+        }
       }
 
       loadBooks();
       loadReferrals();
     } catch {
-      // Инициализируем локальные данные для демонстрации
-      const mockChild: ChildProfileDTO = {
-        id: 'child_1',
-        user_id: 'user_1',
-        name: 'Миша',
-        age: 4,
-        interests: ['Динозавры', 'Космос'],
-        appearance: { avatar_id: 'boy_1' },
-        is_active: true,
-      };
-      setChildren([mockChild]);
-      setActiveChildId(mockChild.id);
+      const savedChildrenStr = localStorage.getItem('ms_children');
+      if (savedChildrenStr) {
+        try {
+          const parsed: ChildProfileDTO[] = JSON.parse(savedChildrenStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setChildren(parsed);
+            const savedActiveId = localStorage.getItem('ms_active_child_id');
+            const active = parsed.find((c) => c.id === savedActiveId) || parsed[0];
+            setActiveChildId(active.id);
+            const app = (active.appearance as any) || {};
+            setWizardData((prev) => ({
+              ...prev,
+              childName: active.name,
+              age: active.age,
+              gender: app.gender || (active.name.endsWith('а') || active.name.endsWith('я') ? 'girl' : 'boy'),
+              interests: (active.interests as string[]) || prev.interests,
+              appearance: {
+                ...prev.appearance,
+                hairColor: app.hairColor || prev.appearance.hairColor,
+                eyeColor: app.eyeColor || 'карие',
+                skinTone: app.skinTone || 'персиковая',
+                toy: app.toy || prev.appearance.toy,
+              },
+            }));
+            return;
+          }
+        } catch {}
+      }
+
+      if (!localStorage.getItem('ms_onboarding_completed')) {
+        setCurrentScreen('onboarding');
+      }
     }
+  };
+
+  // Обработчик успешного завершения быстрой регистрации ребёнка (Слайд 1 -> Слайд 2)
+  const handleCompleteRegistration = async (data: ChildRegistrationData) => {
+    haptic.success();
+    const newChildId = `child_${Date.now()}`;
+    const newChild: ChildProfileDTO = {
+      id: newChildId,
+      user_id: 'user_1',
+      name: data.name.trim() || (data.gender === 'girl' ? 'Алиса' : 'Миша'),
+      age: data.age,
+      interests: data.interests.length > 0 ? data.interests : ['Динозавры', 'Волшебство'],
+      appearance: {
+        avatar_id: data.gender === 'girl' ? 'girl_custom' : 'boy_custom',
+        gender: data.gender,
+        hair: `${data.hairColor} волосы`,
+        clothing: data.gender === 'girl' ? 'платьице' : 'уютный свитер',
+        personality: data.personality,
+        hairColor: data.hairColor,
+        hairType: 'кудрявые',
+        clothingItem: data.gender === 'girl' ? 'платьице' : 'уютный свитер',
+        clothingColor: 'изумрудный',
+        toy: data.toy,
+        eyeColor: data.eyeColor,
+        skinTone: data.skinTone,
+        storyPreference: data.storyPreference,
+        bedtimeRitual: data.bedtimeRitual,
+      } as any,
+      is_active: true,
+    };
+
+    try {
+      await api.createChild({
+        name: newChild.name,
+        age: newChild.age,
+        interests: newChild.interests,
+        appearance: newChild.appearance,
+      });
+    } catch {}
+
+    const updatedChildren = isRegisteringSecondChild ? [...children, newChild] : [newChild];
+    setChildren(updatedChildren);
+    setActiveChildId(newChild.id);
+
+    try {
+      localStorage.setItem('ms_children', JSON.stringify(updatedChildren));
+      localStorage.setItem('ms_active_child_id', newChild.id);
+      localStorage.setItem('ms_onboarding_completed', 'true');
+    } catch {}
+
+    setWizardData((prev) => ({
+      ...prev,
+      childName: newChild.name,
+      age: newChild.age,
+      gender: data.gender,
+      interests: newChild.interests,
+      theme: data.storyPreference.includes('Уютные') ? 'Спокойный сон' : 'Дружба',
+      appearance: {
+        avatar_id: newChild.appearance.avatar_id,
+        hairColor: data.hairColor,
+        hairType: 'кудрявые',
+        clothingItem: data.gender === 'girl' ? 'платьице' : 'уютный свитер',
+        clothingColor: 'изумрудный',
+        toy: data.toy,
+        eyeColor: data.eyeColor,
+        skinTone: data.skinTone,
+      },
+    }));
+
+    setIsRegisteringSecondChild(false);
+    setIsOnboardingCompleted(true);
+    setCurrentScreen('home'); // Мгновенный переход на Слайд 2 (Экран Home)
+    setActiveTab('home');
   };
 
   const DAILY_IDEAS = [
@@ -500,7 +633,14 @@ export const App: React.FC = () => {
       {/* Роутинг экранов */}
       <main className="flex-1">
         {currentScreen === 'onboarding' && (
-          <Screen1_Onboarding onStart={() => setCurrentScreen('home')} />
+          <Screen1_Onboarding
+            isSecondChild={isRegisteringSecondChild}
+            onComplete={handleCompleteRegistration}
+            onBack={() => {
+              setIsRegisteringSecondChild(false);
+              setCurrentScreen('home');
+            }}
+          />
         )}
 
         {currentScreen === 'home' && (
@@ -850,6 +990,13 @@ export const App: React.FC = () => {
             onClose={() => setCurrentScreen('home')}
             onDeleteAccount={async () => {
               await api.deleteAccount();
+              try {
+                localStorage.removeItem('ms_onboarding_completed');
+                localStorage.removeItem('ms_children');
+                localStorage.removeItem('ms_active_child_id');
+              } catch {}
+              setIsOnboardingCompleted(false);
+              setCurrentScreen('onboarding');
               alert('Аккаунт и все связанные данные успешно удалены.');
               bootstrapApp();
             }}
@@ -868,15 +1015,32 @@ export const App: React.FC = () => {
         childrenList={children}
         activeChildId={activeChildId}
         onClose={() => setChildModalOpen(false)}
+        onAddNewChild={() => {
+          setChildModalOpen(false);
+          setIsRegisteringSecondChild(true);
+          setCurrentScreen('onboarding');
+        }}
         onSelectChild={(id) => {
           setActiveChildId(id);
+          try {
+            localStorage.setItem('ms_active_child_id', id);
+          } catch {}
           const c = children.find((item) => item.id === id);
           if (c) {
+            const app = (c.appearance as any) || {};
             setWizardData((prev) => ({
               ...prev,
               childName: c.name,
               age: c.age,
+              gender: app.gender || (c.name.endsWith('а') || c.name.endsWith('я') ? 'girl' : 'boy'),
               interests: (c.interests as string[]) || prev.interests,
+              appearance: {
+                ...prev.appearance,
+                hairColor: app.hairColor || prev.appearance.hairColor,
+                eyeColor: app.eyeColor || 'карие',
+                skinTone: app.skinTone || 'персиковая',
+                toy: app.toy || prev.appearance.toy,
+              },
             }));
             loadDailyIdea(c.id);
           }

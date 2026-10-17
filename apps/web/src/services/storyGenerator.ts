@@ -15,6 +15,8 @@ export interface GenerateStoryParams {
     clothingItem?: string;
     clothingColor?: string;
     toy?: string;
+    eyeColor?: string;
+    skinTone?: string;
   };
 }
 
@@ -686,7 +688,7 @@ export function buildCombinatorialStoryPrompt(
 - Возраст: ${params.age || 4} года/лет
 - Внешность: ${params.appearance?.hairColor || 'русые'} ${
     params.appearance?.hairType || 'мягкие'
-  } волосы, одет в ${clothingAnchor}
+  } волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, одет в ${clothingAnchor}
 - Игрушка-спутник: ${toyAnchor}
 - Главная тема: "${params.theme || 'Дружба'}"
 - Интересы: ${(params.interests || []).join(', ') || 'приключения'}
@@ -1334,9 +1336,23 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
       'a glowing friendly fairytale star creature with a warm smiling face and glittering stardust',
   };
 
+  const eyeColorMap: Record<string, string> = {
+    карие: 'warm sparkling hazel-brown eyes',
+    голубые: 'bright clear sky-blue eyes',
+    зелёные: 'gentle expressive emerald-green eyes',
+    серые: 'soft thoughtful slate-grey eyes',
+  };
+  const skinToneMap: Record<string, string> = {
+    светлая: 'fair rosy-cheeked skin',
+    персиковая: 'warm healthy peach complexion',
+    смуглая: 'warm golden sun-kissed skin tone',
+  };
+
   const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${
     hairTypeMap[params.appearance?.hairType?.toLowerCase() || 'короткие'] || 'neat short playful'
   } hair`;
+  const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling eyes';
+  const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
   const clothes = `${clothingColorMap[params.appearance?.clothingColor?.toLowerCase() || 'изумрудный'] || 'cozy emerald green'} ${
     clothingItemMap[params.appearance?.clothingItem?.toLowerCase() || 'уютный свитер'] || 'knitted sweater'
   }`;
@@ -1344,5 +1360,5 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
     'a small friendly companion creature';
 
-  return `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of a cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, wearing ${clothes}, and ${companion}, ${sceneAction}. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
+  return `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of a cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, and ${companion}, ${sceneAction}. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
 }
