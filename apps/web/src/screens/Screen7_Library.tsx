@@ -27,24 +27,24 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
   const textCount = books.filter((b) => b.format === 'TEXT').length;
 
   return (
-    <div className="p-4 space-y-5 pb-28 max-w-md mx-auto screen-transition">
+    <div className="p-4 space-y-5 pb-28 max-w-md mx-auto">
       <div className="flex items-center justify-between">
-        <h2 className="font-serif font-bold text-2xl text-white">
+        <h2 className="font-serif font-bold text-2xl text-stone-900">
           Мои книги
         </h2>
-        <span className="text-xs font-semibold text-glass-500">
+        <span className="text-xs font-semibold text-stone-500">
           Всего: {books.length}
         </span>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex glass-surface-light p-1 rounded-2xl">
+      {/* Фильтры-табы (Экран 7) */}
+      <div className="flex bg-cream-200/80 p-1 rounded-2xl border border-cream-300">
         <button
           onClick={() => setFilter('ALL')}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
             filter === 'ALL'
-              ? 'bg-white/10 text-white shadow-sm'
-              : 'text-glass-400 hover:text-glass-200'
+              ? 'bg-white text-brand-800 shadow-sm'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           Все ({books.length})
@@ -53,25 +53,25 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
           onClick={() => setFilter('ILLUSTRATED')}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
             filter === 'ILLUSTRATED'
-              ? 'bg-white/10 text-white shadow-sm'
-              : 'text-glass-400 hover:text-glass-200'
+              ? 'bg-white text-brand-800 shadow-sm'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          С картинками ({illustratedCount})
+          Иллюстрированные ({illustratedCount})
         </button>
         <button
           onClick={() => setFilter('TEXT')}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
             filter === 'TEXT'
-              ? 'bg-white/10 text-white shadow-sm'
-              : 'text-glass-400 hover:text-glass-200'
+              ? 'bg-white text-brand-800 shadow-sm'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           Текстовые ({textCount})
         </button>
       </div>
 
-      {/* Book grid */}
+      {/* Сетка карточек книг (2 колонки) */}
       <div className="grid grid-cols-2 gap-3.5">
         {filteredBooks.map((book) => {
           const isIllustrated = book.format === 'ILLUSTRATED';
@@ -80,17 +80,17 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
             <div
               key={book.id}
               onClick={() => onSelectBook(book.id)}
-              className="group glass-card overflow-hidden hover:bg-white/8 transition-all cursor-pointer flex flex-col justify-between"
+              className="group bg-white rounded-3xl overflow-hidden border border-cream-300 shadow-card hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
             >
-              <div className="relative aspect-[4/3] bg-glass-800 overflow-hidden rounded-t-[1.5rem]">
+              <div className="relative aspect-[4/3] bg-amber-50 overflow-hidden">
                 <img
                   src={book.cover_url || './illustrations/cover_dino.jpg'}
                   alt={book.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 {!isIllustrated && (
-                  <div className="absolute inset-0 bg-glass-900/40 backdrop-blur-[1px] flex items-center justify-center p-2 text-center">
-                    <span className="text-[10px] glass-surface-light text-white font-bold px-2 py-1 rounded-full">
+                  <div className="absolute inset-0 bg-stone-900/30 backdrop-blur-[1px] flex items-center justify-center p-2 text-center">
+                    <span className="text-[10px] bg-white/90 text-stone-800 font-bold px-2 py-1 rounded-full shadow-sm">
                       Текстовая версия
                     </span>
                   </div>
@@ -99,10 +99,10 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
 
               <div className="p-3 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-serif font-bold text-xs text-white line-clamp-2 leading-snug mb-1">
+                  <h3 className="font-serif font-bold text-xs text-stone-900 line-clamp-2 leading-snug mb-1">
                     {book.title}
                   </h3>
-                  <div className="text-[10px] text-glass-500 mb-2">
+                  <div className="text-[10px] text-stone-500 mb-2">
                     Для: {book.child_name}
                   </div>
                 </div>
@@ -111,11 +111,11 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
                   <span
                     className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isIllustrated
-                        ? 'bg-accent-500/15 text-accent-400 border border-accent-500/20'
-                        : 'bg-white/5 text-glass-400 border border-white/10'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-stone-100 text-stone-600 border border-stone-200'
                     }`}
                   >
-                    {isIllustrated ? 'Иллюстрированная' : 'Текстовая'} — 4 стр.
+                    {isIllustrated ? 'Иллюстрированная' : 'Текстовая'} • 4 стр.
                   </span>
 
                   {!isIllustrated && (
@@ -124,9 +124,9 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
                         e.stopPropagation();
                         onUpgradeBook(book.id);
                       }}
-                      className="w-full mt-1 py-1 px-2 rounded-lg bg-accent-500/10 hover:bg-accent-500/20 border border-accent-500/20 text-accent-400 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                      className="w-full mt-1 py-1 px-2 rounded-lg bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
                     >
-                      <ImageIcon className="w-3 h-3" />
+                      <ImageIcon className="w-3 h-3 text-brand-600" />
                       <span>Добавить картинки</span>
                     </button>
                   )}
@@ -136,30 +136,30 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
           );
         })}
 
-        {/* Create new story card */}
+        {/* Карточка «+ Создать новую сказку» */}
         <button
           onClick={onCreateNewStory}
-          className="rounded-3xl border-2 border-dashed border-glass-700 hover:border-accent-500/50 hover:bg-accent-500/5 p-4 flex flex-col items-center justify-center text-center gap-2 aspect-[4/3] btn-press transition-all"
+          className="rounded-3xl border-2 border-dashed border-cream-400/80 hover:border-brand-500 hover:bg-brand-50/30 p-4 flex flex-col items-center justify-center text-center gap-2 aspect-[4/3] active:scale-95 transition-all"
         >
-          <div className="w-10 h-10 rounded-full bg-accent-500/15 text-accent-400 flex items-center justify-center border border-accent-500/20">
-            <Plus className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center shadow-inner">
+            <Plus className="w-5 h-5 text-brand-600" />
           </div>
-          <span className="text-xs font-bold text-glass-300">
+          <span className="text-xs font-bold text-stone-700">
             Создать новую сказку
           </span>
         </button>
       </div>
 
       {filteredBooks.length === 0 && (
-        <div className="text-center py-12 px-4 glass-card">
-          <BookOpen className="w-10 h-10 text-glass-600 mx-auto mb-3" />
-          <p className="text-sm font-bold text-glass-300 mb-1">Книг пока нет</p>
-          <p className="text-xs text-glass-500 mb-4">
+        <div className="text-center py-12 px-4 rounded-3xl bg-white border border-cream-300">
+          <BookOpen className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+          <p className="text-sm font-bold text-stone-700 mb-1">Книг пока нет</p>
+          <p className="text-xs text-stone-500 mb-4">
             Создайте первую бесплатную сказку для вашего ребёнка прямо сейчас!
           </p>
           <button
             onClick={onCreateNewStory}
-            className="py-2.5 px-4 rounded-xl bg-accent-500 text-white font-bold text-xs btn-press"
+            className="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs"
           >
             Создать бесплатно
           </button>

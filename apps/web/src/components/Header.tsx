@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Plus, Settings, Sparkles, Bell } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Sparkles, ShieldAlert, Bell } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface HeaderProps {
@@ -24,14 +24,14 @@ export const Header: React.FC<HeaderProps> = ({
   const showBackButton = onBack && currentScreen !== 'home' && currentScreen !== 'onboarding';
 
   return (
-    <header className="sticky top-0 z-40 glass-surface px-4 pt-3 pb-2">
+    <header className="sticky top-0 z-40 bg-cream-100/90 backdrop-blur-md px-4 pt-3 pb-2 border-b border-cream-300/60">
       <div className="flex items-center justify-between">
-        {/* Left: Back or Child profile */}
+        {/* Левая часть: кнопка Назад или Профиль ребёнка */}
         <div className="flex items-center gap-2">
           {showBackButton ? (
             <button
               onClick={onBack}
-              className="p-2 -ml-1 text-glass-400 hover:text-white active:scale-95 transition-all rounded-full hover:bg-white/5"
+              className="p-2 -ml-1 text-stone-700 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
               aria-label="Назад"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -39,65 +39,65 @@ export const Header: React.FC<HeaderProps> = ({
           ) : activeChild ? (
             <button
               onClick={onOpenChildModal}
-              className="flex items-center gap-2 glass-surface-light hover:bg-white/12 active:scale-95 transition-all px-2.5 py-1.5 rounded-full"
+              className="flex items-center gap-2 bg-cream-200/90 hover:bg-cream-300/80 active:scale-95 transition-all px-2.5 py-1.5 rounded-full border border-cream-300 shadow-sm"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-accent-500/40 to-accent-400/20 text-white text-xs font-bold flex items-center justify-center overflow-hidden border border-accent-500/30">
-                {activeChild.name.charAt(0).toUpperCase()}
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-200 to-amber-100 text-stone-800 text-xs flex items-center justify-center overflow-hidden border border-amber-300 shadow-inner">
+                {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? '👧' : '👦'}
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-white leading-tight">
+                <div className="text-xs font-bold text-stone-800 leading-tight">
                   {activeChild.name}
                 </div>
-                <div className="text-[10px] text-glass-400 leading-tight">
+                <div className="text-[10px] text-stone-500 leading-tight">
                   {activeChild.age} года
                 </div>
               </div>
-              <Plus className="w-3.5 h-3.5 text-glass-500 ml-0.5" />
+              <Plus className="w-3.5 h-3.5 text-stone-400 ml-0.5" />
             </button>
           ) : (
-            <div className="font-serif font-bold text-white text-lg tracking-tight">
+            <div className="font-serif font-bold text-brand-700 text-lg">
               Моя сказка
             </div>
           )}
         </div>
 
-        {/* Center: App title */}
+        {/* Центр: Название или мини-приложение */}
         <div className="text-center">
-          <div className="text-[13px] font-bold text-white/90 tracking-tight">
+          <div className="text-[13px] font-bold text-stone-800 tracking-tight">
             Моя сказка
           </div>
-          <div className="text-[10px] text-glass-500 tracking-wide uppercase">
+          <div className="text-[10px] text-stone-500 tracking-wide uppercase">
             мини-приложение
           </div>
         </div>
 
-        {/* Right: Credits, bell, settings */}
+        {/* Правая часть: Баланс кредитов, колокольчик и настройки */}
         <div className="flex items-center gap-1.5">
           <div
-            className="flex items-center gap-1 glass-surface-light text-accent-400 px-2 py-1 rounded-full text-xs font-bold"
+            className="flex items-center gap-1 bg-amber-100/90 text-amber-900 border border-amber-200/80 px-2 py-1 rounded-full text-xs font-bold shadow-sm"
             title="Доступные книжные кредиты"
           >
-            <Sparkles className="w-3.5 h-3.5 text-accent-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
             <span>{balance}</span>
           </div>
 
           <button
             onClick={() =>
               alert(
-                'Добро пожаловать в «Моя сказка»!\n\nПервая история для вашего малыша доступна совершенно бесплатно. Приятного чтения!'
+                '✨ Добро пожаловать в «Моя сказка»!\n\nПервая история для вашего малыша доступна совершенно бесплатно. Приятного чтения!'
               )
             }
-            className="relative p-1.5 text-glass-400 hover:text-white active:scale-95 transition-all rounded-full hover:bg-white/5"
+            className="relative p-1.5 text-stone-600 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
             aria-label="Уведомления"
             title="Уведомления"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-accent-500 rounded-full animate-pulse" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
           </button>
 
           <button
             onClick={onOpenSettings}
-            className="p-1.5 text-glass-400 hover:text-white active:scale-95 transition-all rounded-full hover:bg-white/5"
+            className="p-1.5 text-stone-600 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
             aria-label="Настройки"
           >
             <Settings className="w-4 h-4" />
