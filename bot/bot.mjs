@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 
-// Автоматическая безопасная загрузка переменных из .env
+// Автоматическая загрузка переменных из .env (всегда берёт актуальные значения из файла)
 function loadEnv() {
   const envPaths = [
     path.resolve(process.cwd(), '.env'),
@@ -17,11 +17,10 @@ function loadEnv() {
         if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
           const [key, ...vals] = trimmed.split('=');
           const val = vals.join('=').trim().replace(/^['"]|['"]$/g, '');
-          if (!process.env[key.trim()]) {
-            process.env[key.trim()] = val;
-          }
+          process.env[key.trim()] = val;
         }
       }
+      break;
     }
   }
 }
@@ -83,7 +82,7 @@ async function sendWelcome(chatId, firstName, startParam) {
     ],
   };
 
-  await callTelegram('sendMessage', {
+  return await callTelegram('sendMessage', {
     chat_id: chatId,
     text: message,
     parse_mode: 'Markdown',
@@ -92,17 +91,30 @@ async function sendWelcome(chatId, firstName, startParam) {
 }
 
 async function startPolling() {
-  console.log(`[Bot] Бот «Моя сказка» успешно запущен!`);
-  console.log(`[Bot] Mini App URL: ${WEB_APP_URL}`);
+  console.log(`[Bot] Инициализация подключения к Telegram...`);
 
-  // Настройка кнопки меню чата
-  await callTelegram('setChatMenuButton', {
+  const me = await callTelegram('getMe');
+  if (!me || !me.ok) {
+    console.error('[Bot Error] Не удалось авторизоваться в Telegram API:', me);
+    return;
+  }
+
+  console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);
+  console.log(`[Bot] 🌐 Mini App URL: ${WEB_APP_URL}`);
+
+  // Настройка кнопки меню чата (Menu Button)
+  const menuRes = await callTelegram('setChatMenuButton', {
     menu_button: {
       type: 'web_app',
       text: 'Моя сказка ✨',
       web_app: { url: WEB_APP_URL },
     },
   });
+  if (menuRes && menuRes.ok) {
+    console.log('[Bot] ✅ Кнопка меню чата «Моя сказка ✨» настроена');
+  } else {
+    console.warn('[Bot Warning] setChatMenuButton:', menuRes?.description || menuRes);
+  }
 
   let offset = 0;
 
@@ -110,11 +122,17 @@ async function startPolling() {
     try {
       const updates = await callTelegram('getUpdates', {
         offset,
-        timeout: 30,
+        timeout: 25,
         allowed_updates: ['message', 'callback_query'],
       });
 
-      if (updates && updates.ok && Array.isArray(updates.result)) {
+      if (!updates || !updates.ok) {
+        console.error('[Bot Error getUpdates]:', updates?.description || updates);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        continue;
+      }
+
+      if (Array.isArray(updates.result)) {
         for (const update of updates.result) {
           offset = update.update_id + 1;
 
@@ -123,12 +141,13 @@ async function startPolling() {
             const text = update.message.text;
             const firstName = update.message.from?.first_name || '';
 
-            console.log(`[Bot] Получено сообщение от ${firstName} (${chatId}): ${text}`);
+            console.log(`[Bot] 📩 Новое сообщение от ${firstName} (${chatId}): "${text}"`);
 
             if (text.startsWith('/start')) {
               const parts = text.split(' ');
               const startParam = parts.length > 1 ? parts[1] : null;
-              await sendWelcome(chatId, firstName, startParam);
+              const res = await sendWelcome(chatId, firstName, startParam);
+              console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
             } else if (text === '/app') {
               await callTelegram('sendMessage', {
                 chat_id: chatId,
