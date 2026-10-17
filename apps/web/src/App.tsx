@@ -54,6 +54,9 @@ export const App: React.FC = () => {
   const [isCreatingStory, setIsCreatingStory] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);
+  const [creationStage, setCreationStage] = useState<'writing' | 'drawing' | 'finishing'>('writing');
+  const [creationMessage, setCreationMessage] = useState<string>('Создаём волшебную сказку...');
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(35);
 
   // Читалка
   const [currentReadingBook, setCurrentReadingBook] = useState<BookDetailsDTO | null>(null);
@@ -286,28 +289,43 @@ export const App: React.FC = () => {
   }) => {
     setIsCreatingStory(true);
     setJobProgress(15);
+    setCreationStage('writing');
+    setCreationMessage('Сочиняем уникальный сюжет в GPT-6-Astra...');
+    setRemainingSeconds(35);
     haptic.medium();
 
-    // Плавный визуальный прогресс ожидания ответа ИИ (~30 сек: текст + 4 иллюстрации)
-    const progressInterval = setInterval(() => {
-      setJobProgress((prev) => (prev < 92 ? prev + 2.5 : prev));
-    }, 900);
+    // Плавный локальный таймер обратного отсчёта (~35 секунд)
+    const countdownInterval = setInterval(() => {
+      setRemainingSeconds((prev) => (prev > 1 ? prev - 1 : 1));
+      setJobProgress((prev) => (prev < 90 ? prev + 1.5 : prev));
+    }, 1000);
 
     try {
-      // 1. Прямая генерация через Gemini 3.8 Flash с умным процедурным fallback
-      const generatedBook = await generateDynamicStory({
-        childName: wizardData.childName,
-        age: wizardData.age,
-        gender: wizardData.gender,
-        theme: wizardData.theme || 'Дружба',
-        interests: wizardData.interests,
-        personality: details.personality,
-        customWishes: details.customWishes,
-        includeQuestions: details.includeQuestions,
-        appearance: wizardData.appearance,
-      });
+      // 1. Генерация через Wellflow GPT-6-Astra и параллельные иллюстрации Nano-Banana-2
+      const generatedBook = await generateDynamicStory(
+        {
+          childName: wizardData.childName,
+          age: wizardData.age,
+          gender: wizardData.gender,
+          theme: wizardData.theme || 'Дружба',
+          interests: wizardData.interests,
+          personality: details.personality,
+          customWishes: details.customWishes,
+          includeQuestions: details.includeQuestions,
+          appearance: wizardData.appearance,
+        },
+        (update) => {
+          setCreationStage(update.stage);
+          setCreationMessage(update.message);
+          setJobProgress((prev) => Math.max(prev, update.progress));
+          if (typeof update.remainingSec === 'number') {
+            setRemainingSeconds(update.remainingSec);
+          }
+        }
+      );
 
-      clearInterval(progressInterval);
+      clearInterval(countdownInterval);
+      setRemainingSeconds(0);
       setJobProgress(100);
 
       // 2. Сохраняем новую книгу в состояние и локальное хранилище
@@ -341,14 +359,14 @@ export const App: React.FC = () => {
         setBalance((prev) => Math.max(0, prev - 1));
       }
 
-      // 4. Открываем читалку со свежей уникальной сказкой
+      // 4. Открываем читалку только после ПОЛНОЙ загрузки всех иллюстраций в память браузера
       setTimeout(() => {
         setIsCreatingStory(false);
         haptic.success();
         openReader(generatedBook);
       }, 350);
     } catch (err) {
-      clearInterval(progressInterval);
+      clearInterval(countdownInterval);
       setIsCreatingStory(false);
       alert('Произошла ошибка при генерации сказки. Пожалуйста, попробуйте еще раз.');
     }
@@ -384,25 +402,89 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Оверлей прогресса генерации книги */}
+      {/* Оверлей прогресса генерации книги с таймером и этапами */}
       {isCreatingStory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-          <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center mx-auto animate-pulse">
-              ✨
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-5 transition-all">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-amber-100">
+            {/* Иконка */}
+            <div className="relative mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-brand-500 text-white flex items-center justify-center text-3xl shadow-lg shadow-brand-500/20">
+              <span className="animate-spin" style={{ animationDuration: '4s' }}>✨</span>
             </div>
-            <h3 className="font-serif font-bold text-lg text-stone-900">
-              Создаём волшебную сказку...
-            </h3>
-            <p className="text-xs text-stone-500">
-              Пишем 4 добрые сцены и вопросы для {wizardData.childName}
+
+            <div className="space-y-1">
+              <h3 className="font-serif font-bold text-lg text-stone-900">
+                Создаём сказку для {wizardData.childName || 'малыша'}
+              </h3>
+              <p className="text-xs text-stone-600 font-medium min-h-[32px] flex items-center justify-center">
+                {creationMessage}
+              </p>
+            </div>
+
+            {/* Таймер с примерным временем ожидания */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+              <span>⏳</span>
+              <span>
+                {remainingSeconds > 0
+                  ? `Примерное ожидание: ~${remainingSeconds} сек`
+                  : 'Завершаем оформление книги...'}
+              </span>
+            </div>
+
+            {/* Индикаторы этапов */}
+            <div className="bg-stone-50 rounded-2xl p-3 text-left space-y-2 border border-stone-100 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-stone-700 flex items-center gap-2">
+                  {creationStage === 'writing' ? (
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+                  ) : (
+                    <span className="text-emerald-500 font-bold">✓</span>
+                  )}
+                  <span>1. Сюжет (GPT-6-Astra)</span>
+                </span>
+                <span className="text-[11px] text-stone-500">
+                  {creationStage === 'writing' ? 'сочиняем...' : 'готов'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-700 flex items-center gap-2">
+                  {creationStage === 'writing' ? (
+                    <span className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[9px] text-stone-600">
+                      2
+                    </span>
+                  ) : creationStage === 'drawing' ? (
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+                  ) : (
+                    <span className="text-emerald-500 font-bold">✓</span>
+                  )}
+                  <span>2. 4 акварели (Nano-Banana-2)</span>
+                </span>
+                <span className="text-[11px] text-stone-500">
+                  {creationStage === 'writing'
+                    ? 'в очереди'
+                    : creationStage === 'drawing'
+                    ? 'рисуем...'
+                    : 'готовы'}
+                </span>
+              </div>
+            </div>
+
+            {/* Полоса прогресса */}
+            <div className="space-y-1">
+              <div className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="bg-gradient-to-r from-amber-400 via-brand-500 to-brand-600 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(10, jobProgress))}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-stone-500 font-medium px-1">
+                <span>Прогресс</span>
+                <span>{Math.round(jobProgress)}%</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-stone-500 leading-tight">
+              Каждая сказка и все 4 иллюстрации создаются нейросетью с нуля специально для вашего ребёнка. Никаких шаблонов!
             </p>
-            <div className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden">
-              <div
-                className="bg-brand-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${jobProgress}%` }}
-              />
-            </div>
           </div>
         </div>
       )}
@@ -446,6 +528,8 @@ export const App: React.FC = () => {
             heroData={wizardData}
             canClaimFreeStory={canClaimFree}
             isSubmitting={isCreatingStory}
+            remainingSeconds={remainingSeconds}
+            creationMessage={creationMessage}
             onSubmit={handleCreateStorySubmit}
             onBack={() => setCurrentScreen('wizard_hero')}
           />

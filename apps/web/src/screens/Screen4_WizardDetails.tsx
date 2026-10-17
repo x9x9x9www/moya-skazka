@@ -6,6 +6,8 @@ interface Screen4WizardDetailsProps {
   heroData: WizardHeroData;
   canClaimFreeStory: boolean;
   isSubmitting: boolean;
+  remainingSeconds?: number;
+  creationMessage?: string;
   onSubmit: (details: { personality: string; customWishes: string; includeQuestions: boolean }) => void;
   onBack: () => void;
 }
@@ -14,6 +16,8 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   heroData,
   canClaimFreeStory,
   isSubmitting,
+  remainingSeconds,
+  creationMessage,
   onSubmit,
   onBack,
 }) => {
@@ -153,7 +157,11 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
           {isSubmitting ? (
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Создаём волшебство...</span>
+              <span>
+                {remainingSeconds && remainingSeconds > 0
+                  ? `Создаём сказку... (~${remainingSeconds} с)`
+                  : 'Завершаем оформление...'}
+              </span>
             </div>
           ) : (
             <>
