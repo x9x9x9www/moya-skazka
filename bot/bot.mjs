@@ -267,40 +267,124 @@ async function generateWellflowStoryAI(params) {
   return parsed;
 }
 
-async function generateWellflowImageAI(prompt) {
-  console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${WELLFLOW_IMAGE_MODEL}...`);
+function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0) {
+  const sIdx = Number(sceneIndex);
+  if (sIdx === 1) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_1.jpg';
+  if (sIdx === 2) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_2.jpg';
+  if (sIdx === 3) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_3.jpg';
+  if (sIdx === 4) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_4.jpg';
 
+  const t = (themeOrInterest || '').toLowerCase();
+  if (t.includes('дино')) {
+    return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_dino.jpg';
+  }
+  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
+    return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_star.jpg';
+  }
+  return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_forest.jpg';
+}
+
+async function generateWellflowImageAI(prompt, retries = 2) {
+  const models = ['nano-banana-2', 'nano-banana-pro', 'nano-banana'];
   const styleTemplate = `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of [SCENE]. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
 
   const finalPrompt = (prompt || '').includes('watercolor and gouache')
     ? prompt
     : styleTemplate.replace('[SCENE]', prompt);
 
-  const res = await fetch(`${WELLFLOW_API_URL}/images/generations`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${WELLFLOW_IMAGE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: WELLFLOW_IMAGE_MODEL,
-      prompt: finalPrompt,
-      n: 1,
-      size: '1024x1024',
-    }),
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const currentModel = models[attempt] || models[0];
+    try {
+      console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${currentModel} (попытка ${attempt + 1})...`);
+      const res = await fetch(`${WELLFLOW_API_URL}/images/generations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${WELLFLOW_IMAGE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: currentModel,
+          prompt: finalPrompt,
+          n: 1,
+          size: '1024x1024',
+        }),
+        signal: AbortSignal.timeout(35000),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`API error ${res.status}: ${errText}`);
+      }
+
+      const data = await res.json();
+      const url = data.imageUrl || data.data?.[0]?.url;
+      if (!url) throw new Error('No image URL in response');
+
+      console.log(`[Wellflow] ✅ Иллюстрация готова (${currentModel}): ${url.slice(0, 70)}...`);
+      return url;
+    } catch (err) {
+      console.warn(`[Wellflow] ⚠️ Попытка ${attempt + 1} (${currentModel}) не удалась: ${err.message}`);
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+  }
+}
+
+/**
+ * Единый серверный конвейер: генерирует текст сказки и сразу же параллельно
+ * создаёт все 4 акварельные иллюстрации для каждой сцены!
+ */
+async function generateFullStoryWithImagesAI(params, onProgress) {
+  onProgress?.({
+    stage: 'writing',
+    progress: 25,
+    message: 'Автор GPT-6-Astra сочиняет сюжет...',
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Wellflow Nano-Banana-2 error (${res.status}): ${errText}`);
+  const story = await generateWellflowStoryAI(params);
+
+  if (!story.scenes || !Array.isArray(story.scenes)) {
+    throw new Error('Invalid story scenes structure');
   }
 
-  const data = await res.json();
-  const url = data.imageUrl || data.data?.[0]?.url;
-  if (!url) throw new Error('No image URL in Wellflow Nano-Banana-2 response');
+  onProgress?.({
+    stage: 'drawing',
+    progress: 50,
+    message: 'Художник Nano-Banana 2 создаёт 4 иллюстрации...',
+  });
 
-  console.log(`[Wellflow] ✅ Иллюстрация готова: ${url.slice(0, 70)}...`);
-  return url;
+  console.log(`[Wellflow] 🎨 Запуск параллельной генерации 4 иллюстраций на сервере для «${story.title}»...`);
+
+  let completedImages = 0;
+  await Promise.all(
+    story.scenes.map(async (scene, idx) => {
+      const sceneIndex = idx + 1;
+      const prompt = scene.image_prompt || `A magical cozy children book watercolor illustration for: ${scene.text}`;
+      try {
+        const url = await generateWellflowImageAI(prompt);
+        scene.image_url = url;
+      } catch (err) {
+        console.error(`[Wellflow] ⚠️ Не удалось сгенерировать иллюстрацию для сцены ${sceneIndex}, используем акварельный фолбек:`, err.message);
+        scene.image_url = getThemedFallbackIllustration(params.interests?.[0] || params.theme, sceneIndex);
+      } finally {
+        completedImages++;
+        const pct = 50 + Math.round((completedImages / story.scenes.length) * 45);
+        onProgress?.({
+          stage: 'drawing',
+          progress: pct,
+          message: `Создаём иллюстрации (${completedImages} из ${story.scenes.length} готовы)...`,
+        });
+      }
+    })
+  );
+
+  onProgress?.({
+    stage: 'finishing',
+    progress: 100,
+    message: 'Сказка готова!',
+  });
+
+  return story;
 }
 
 // Хранилище фоновых задач генерации
@@ -333,7 +417,10 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === '/health' || url.pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    });
     res.end(JSON.stringify({ status: 'ok', provider: 'wellflow', models: { text: WELLFLOW_TEXT_MODEL, image: WELLFLOW_IMAGE_MODEL } }));
     return;
   }
@@ -362,7 +449,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Генерация сюжета через GPT-6-Astra (мгновенный 202 ответ + опрос)
+  // Полная генерация сказки + всех 4 иллюстраций на сервере (мгновенный 202 ответ + опрос)
   if (url.pathname === '/api/v1/ai/generate-story' && req.method === 'POST') {
     try {
       let bodyStr = '';
@@ -370,14 +457,32 @@ const server = http.createServer(async (req, res) => {
       const params = JSON.parse(bodyStr || '{}');
 
       const jobId = 'story_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      jobs.set(jobId, { status: 'pending', createdAt: Date.now(), progress: 'Генерация сюжета в GPT-6-Astra...' });
+      jobs.set(jobId, {
+        status: 'pending',
+        stage: 'writing',
+        progress: 15,
+        message: 'Автор GPT-6-Astra сочиняет сюжет...',
+        createdAt: Date.now(),
+      });
 
-      // Запуск в фоне
-      generateWellflowStoryAI(params)
-        .then(story => {
-          jobs.set(jobId, { status: 'ready', story, createdAt: Date.now() });
+      // Запуск полного цикла генерации текста + 4 картинок в фоне
+      generateFullStoryWithImagesAI(params, (update) => {
+        const current = jobs.get(jobId);
+        if (current && current.status === 'pending') {
+          jobs.set(jobId, { ...current, ...update });
+        }
+      })
+        .then((story) => {
+          jobs.set(jobId, {
+            status: 'ready',
+            story,
+            stage: 'finishing',
+            progress: 100,
+            message: 'Сказка готова!',
+            createdAt: Date.now(),
+          });
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('[API Bridge Error generate-story]:', err.message);
           jobs.set(jobId, { status: 'error', error: err.message, createdAt: Date.now() });
         });
@@ -403,7 +508,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Генерация иллюстрации через Nano-Banana-2 (мгновенный 202 ответ + опрос)
+  // Генерация одиночной иллюстрации через Nano-Banana-2
   if (url.pathname === '/api/v1/ai/generate-image' && req.method === 'POST') {
     try {
       let bodyStr = '';
@@ -411,13 +516,19 @@ const server = http.createServer(async (req, res) => {
       const { prompt } = JSON.parse(bodyStr || '{}');
 
       const jobId = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      jobs.set(jobId, { status: 'pending', createdAt: Date.now(), progress: 'Создание иллюстрации в Nano-Banana-2...' });
+      jobs.set(jobId, {
+        status: 'pending',
+        stage: 'drawing',
+        progress: 50,
+        message: 'Создание иллюстрации в Nano-Banana-2...',
+        createdAt: Date.now(),
+      });
 
       generateWellflowImageAI(prompt)
-        .then(imageUrl => {
-          jobs.set(jobId, { status: 'ready', imageUrl, createdAt: Date.now() });
+        .then((imageUrl) => {
+          jobs.set(jobId, { status: 'ready', imageUrl, progress: 100, createdAt: Date.now() });
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('[API Bridge Error generate-image]:', err.message);
           jobs.set(jobId, { status: 'error', error: err.message, createdAt: Date.now() });
         });
@@ -484,7 +595,40 @@ function startTunnel() {
     setTimeout(startTunnel, 3000);
   });
 }
+
+function startLocalTunnel() {
+  console.log('[LocalTunnel] 🌐 Запуск постоянного туннеля через LocalTunnel...');
+  const lt = spawn('npx', ['localtunnel', '--port', `${BRIDGE_PORT}`, '--subdomain', 'moya-skazka-bot-bridge']);
+
+  lt.stdout.on('data', async (d) => {
+    const text = d.toString();
+    console.log('[LocalTunnel]', text.trim());
+    if (text.includes('url is:')) {
+      const match = text.match(/https:\/\/[^\s]+/);
+      if (match) {
+        publicTunnelUrl = match[0];
+        console.log(`[LocalTunnel] 🚀 Постоянный домен активен: ${publicTunnelUrl}`);
+        try {
+          fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
+        } catch {}
+        await updateChatMenuWithApi(publicTunnelUrl);
+      }
+    }
+  });
+
+  lt.stderr.on('data', (d) => {
+    const msg = d.toString().trim();
+    if (!msg.includes('node')) console.warn('[LocalTunnel Warning]', msg);
+  });
+
+  lt.on('close', (c) => {
+    console.log(`[LocalTunnel] Завершился (код: ${c}), перезапуск через 5 сек...`);
+    setTimeout(startLocalTunnel, 5000);
+  });
+}
+
 startTunnel();
+startLocalTunnel();
 
 // ========================================================
 // 5. ВЗАИМОДЕЙСТВИЕ С TELEGRAM API

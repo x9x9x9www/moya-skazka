@@ -171,7 +171,12 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('ms_books');
     if (saved && !saved.includes('unsplash')) {
       try {
-        setBooks(JSON.parse(saved));
+        const parsed: BookSummaryDTO[] = JSON.parse(saved);
+        const repaired = parsed.map((b) => ({
+          ...b,
+          cover_url: b.cover_url || './illustrations/cover_dino.jpg',
+        }));
+        setBooks(repaired);
         return;
       } catch {}
     }
@@ -291,14 +296,18 @@ export const App: React.FC = () => {
     setJobProgress(15);
     setCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет в GPT-6-Astra...');
-    setRemainingSeconds(35);
+    const TOTAL_ESTIMATED_SEC = 32;
+    setRemainingSeconds(TOTAL_ESTIMATED_SEC);
     haptic.medium();
 
-    // Плавный локальный таймер обратного отсчёта (~35 секунд)
+    // Плавный монотонный таймер обратного отсчёта
+    const startTime = Date.now();
     const countdownInterval = setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 1 ? prev - 1 : 1));
-      setJobProgress((prev) => (prev < 90 ? prev + 1.5 : prev));
-    }, 1000);
+      const elapsed = (Date.now() - startTime) / 1000;
+      const left = Math.max(0, Math.ceil(TOTAL_ESTIMATED_SEC - elapsed));
+      setRemainingSeconds(left);
+      setJobProgress((prev) => (prev < 90 ? Math.min(88, prev + 1.2) : prev));
+    }, 500);
 
     try {
       // 1. Генерация через Wellflow GPT-6-Astra и параллельные иллюстрации Nano-Banana-2
@@ -318,17 +327,16 @@ export const App: React.FC = () => {
           setCreationStage(update.stage);
           setCreationMessage(update.message);
           setJobProgress((prev) => Math.max(prev, update.progress));
-          if (typeof update.remainingSec === 'number') {
-            setRemainingSeconds(update.remainingSec);
-          }
         }
       );
 
       clearInterval(countdownInterval);
       setRemainingSeconds(0);
+      setCreationStage('finishing');
+      setCreationMessage('Сказка готова!');
       setJobProgress(100);
 
-      // 2. Сохраняем новую книгу в состояние и локальное хранилище
+      // 2. Сохраняем новую книгу в состояние и локальное хранилище с гарантированной обложкой
       const newSummary: BookSummaryDTO = {
         id: generatedBook.id,
         child_id: activeChildId || 'default',
@@ -336,7 +344,7 @@ export const App: React.FC = () => {
         title: generatedBook.title,
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: generatedBook.scenes[0]?.image_url || null,
+        cover_url: generatedBook.scenes[0]?.image_url || './illustrations/cover_dino.jpg',
         created_at: new Date().toISOString(),
       };
 
@@ -424,7 +432,7 @@ export const App: React.FC = () => {
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
               <span>⏳</span>
               <span>
-                {remainingSeconds > 0
+                {remainingSeconds > 0 && creationStage !== 'finishing'
                   ? `Примерное ожидание: ~${remainingSeconds} сек`
                   : 'Завершаем оформление книги...'}
               </span>
@@ -586,13 +594,23 @@ export const App: React.FC = () => {
               if (localStory) {
                 try {
                   const parsed = JSON.parse(localStory);
-                  const hasBadContent =
-                    JSON.stringify(parsed).includes('unsplash') ||
-                    JSON.stringify(parsed).includes('построилл');
-                  if (!hasBadContent) {
-                    openReader(parsed);
-                    return;
+                  // Самовосстановление: если в ранее сгенерированной истории у сцен не было картинок
+                  if (parsed.scenes && Array.isArray(parsed.scenes)) {
+                    let updated = false;
+                    parsed.scenes.forEach((sc: any, idx: number) => {
+                      if (!sc.image_url) {
+                        sc.image_url = `./illustrations/scene_${idx + 1}.jpg`;
+                        updated = true;
+                      }
+                    });
+                    if (updated) {
+                      try {
+                        localStorage.setItem(`ms_story_${id}`, JSON.stringify(parsed));
+                      } catch {}
+                    }
                   }
+                  openReader(parsed);
+                  return;
                 } catch {}
               }
 

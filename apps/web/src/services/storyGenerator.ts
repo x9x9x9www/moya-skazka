@@ -22,7 +22,7 @@ export const WELLFLOW_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WELLFLOW_API_URL) ||
   'https://api.wellflow.dev/v1';
 
-export const DEFAULT_API_BRIDGE_URL = 'https://192a1eaba3c1ee78-193-178-226-59.serveousercontent.com';
+export const DEFAULT_API_BRIDGE_URL = 'https://b4e24b393c4c2c70-94-249-175-134.serveousercontent.com';
 
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -36,7 +36,7 @@ export function getActiveApiUrl(): string {
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
-      if (cached) {
+      if (cached && !cached.includes('192a1eaba3c1ee78')) {
         return cached.replace(/\/$/, '');
       }
     } catch {}
@@ -47,14 +47,30 @@ export function getActiveApiUrl(): string {
 /**
  * Опрос фоновой задачи генерации на сервере/мосте
  */
-async function pollJob<T>(activeApi: string, jobId: string, maxWaitMs = 60000): Promise<T> {
+async function pollJob<T>(
+  activeApi: string,
+  jobId: string,
+  maxWaitMs = 60000,
+  onProgress?: (update: StoryProgressUpdate) => void
+): Promise<T> {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     await new Promise((r) => setTimeout(r, 1200));
     try {
-      const res = await fetch(`${activeApi}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`);
+      const res = await fetch(`${activeApi}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`, {
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true',
+        },
+      });
       if (res.ok) {
         const data = await res.json();
+        if (data.stage && data.message && onProgress) {
+          onProgress({
+            stage: data.stage,
+            progress: data.progress || 50,
+            message: data.message,
+          });
+        }
         if (data.status === 'ready') {
           return (data.story || data.imageUrl || data) as T;
         }
@@ -487,7 +503,10 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 25000): 
   if (activeApi) {
     candidates.push({
       url: `${activeApi}/api/v1/ai/generate-image`,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
+      },
       body: { prompt: finalPrompt, type: 'scene' },
     });
   }
@@ -695,7 +714,11 @@ ${
 /**
  * Вызов Wellflow GPT-6-Astra с таймаутом
  */
-export async function callWellflowStory(params: GenerateStoryParams, timeoutMs = 30000): Promise<any> {
+export async function callWellflowStory(
+  params: GenerateStoryParams,
+  timeoutMs = 60000,
+  onProgress?: (update: StoryProgressUpdate) => void
+): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -708,7 +731,10 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
   if (activeApi) {
     endpoints.push({
       url: `${activeApi}/api/v1/ai/generate-story`,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
+      },
       body: {
         childName: params.childName,
         age: params.age,
@@ -793,7 +819,7 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
           const data = await response.json();
           if (data.jobId) {
             console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост (jobId: ${data.jobId})...`);
-            const polled = await pollJob<any>(activeApi, data.jobId, timeoutMs);
+            const polled = await pollJob<any>(activeApi, data.jobId, timeoutMs, onProgress);
             if (polled && polled.scenes) {
               clearTimeout(timer);
               console.log('[StoryGenerator] ✅ Сказка получена через мост GPT-6-Astra:', polled.title);
@@ -825,6 +851,21 @@ export async function callWellflowStory(params: GenerateStoryParams, timeoutMs =
   throw new Error('All Wellflow endpoints unreachable or timed out');
 }
 
+export function getFairytaleFallbackIllustration(themeOrInterest?: string, sceneIndex = 1): string {
+  const sIdx = Number(sceneIndex);
+  if (sIdx === 1) return './illustrations/scene_1.jpg';
+  if (sIdx === 2) return './illustrations/scene_2.jpg';
+  if (sIdx === 3) return './illustrations/scene_3.jpg';
+  if (sIdx === 4) return './illustrations/scene_4.jpg';
+
+  const t = (themeOrInterest || '').toLowerCase();
+  if (t.includes('дино')) return './illustrations/cover_dino.jpg';
+  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
+    return './illustrations/cover_star.jpg';
+  }
+  return './illustrations/cover_forest.jpg';
+}
+
 export interface StoryProgressUpdate {
   stage: 'writing' | 'drawing' | 'finishing';
   progress: number;
@@ -834,10 +875,11 @@ export interface StoryProgressUpdate {
 
 /**
  * Основная функция генерации сказки:
- * 1. Запрашивает Wellflow GPT-6-Astra с таймаутом 60с.
+ * 1. Запрашивает Wellflow GPT-6-Astra с таймаутом 60с (через мост или напрямую).
  * 2. Генерирует уникальную сказку на лету под ребёнка через Story DNA Engine.
- * 3. Параллельно создаёт все 4 акварельные иллюстрации через Nano Banana 2.
- * 4. ДЕРЖИТ ЗАГРУЗКУ и предзагружает все изображения в кэш браузера до единого перед открытием читалки.
+ * 3. Мост на сервере генерирует параллельно все 4 иллюстрации через Nano Banana 2.
+ * 4. Если какие-то иллюстрации не готовы, догенерирует или гарантированно применяет акварельный фолбек.
+ * 5. ДЕРЖИТ ЗАГРУЗКУ и предзагружает ВСЕ 4 страницы в память браузера перед открытием читалки.
  */
 export async function generateDynamicStory(
   params: GenerateStoryParams,
@@ -847,13 +889,12 @@ export async function generateDynamicStory(
     stage: 'writing',
     progress: 15,
     message: 'Сочиняем уникальный сюжет в GPT-6-Astra...',
-    remainingSec: 35,
   });
 
   let storyData: any = null;
 
   try {
-    storyData = await callWellflowStory(params, 60000);
+    storyData = await callWellflowStory(params, 60000, onProgress);
   } catch (err) {
     console.warn('[StoryGenerator] Wellflow text API timed out or failed, using procedural story:', err);
   }
@@ -867,7 +908,7 @@ export async function generateDynamicStory(
         id: `scene_${sceneIndex}`,
         scene_index: sceneIndex,
         text: s.text,
-        image_url: null, // Ожидаем прямую акварель от Nano-Banana-2
+        image_url: s.image_url || null, // Сохраняем готовую иллюстрацию с моста!
         image_prompt: prompt,
       };
     });
@@ -891,46 +932,53 @@ export async function generateDynamicStory(
           : [],
     };
 
-    onProgress?.({
-      stage: 'drawing',
-      progress: 50,
-      message: 'Создаём 4 акварельные иллюстрации в Nano-Banana-2...',
-      remainingSec: 15,
-    });
+    // Если какие-то сцены ещё не имеют image_url (например, при запросе в обход моста)
+    const missingScenes = scenes.filter((s: any) => !s.image_url);
+    if (missingScenes.length > 0) {
+      onProgress?.({
+        stage: 'drawing',
+        progress: 55,
+        message: 'Создаём акварельные иллюстрации в Nano-Banana-2...',
+      });
 
-    // Параллельная генерация всех 4 уникальных иллюстраций через Nano Banana 2
-    console.log('[StoryGenerator] 🎨 Запуск параллельной генерации 4 иллюстраций через Nano-Banana-2...');
-    let completedCount = 0;
-
-    await Promise.all(
-      scenes.map(async (scene: any, idx: number) => {
-        try {
-          const url = await generateWellflowImage(scene.image_prompt, 45000);
-          if (url) {
-            scene.image_url = url;
-            console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${idx + 1} готова:`, url.slice(0, 60));
+      let completedCount = scenes.length - missingScenes.length;
+      await Promise.all(
+        missingScenes.map(async (scene: any) => {
+          try {
+            const url = await generateWellflowImage(scene.image_prompt, 35000);
+            if (url) {
+              scene.image_url = url;
+              console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
+            }
+          } catch (e) {
+            console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${scene.scene_index} задержана:`, e);
           }
-        } catch (e) {
-          console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${idx + 1} задержана:`, e);
-        } finally {
+          if (!scene.image_url) {
+            scene.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], scene.scene_index);
+          }
           completedCount++;
-          const progressVal = 50 + Math.round((completedCount / scenes.length) * 40);
+          const progressVal = 55 + Math.round((completedCount / scenes.length) * 35);
           onProgress?.({
             stage: 'drawing',
             progress: progressVal,
             message: `Создаём иллюстрации (${completedCount} из ${scenes.length} готовы)...`,
-            remainingSec: Math.max(3, 15 - Math.round(completedCount * 3)),
           });
-        }
-      })
-    );
+        })
+      );
+    }
+
+    // Железная гарантия: ни одна сцена не останется с пустым image_url!
+    scenes.forEach((s: any, idx: number) => {
+      if (!s.image_url) {
+        s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
+      }
+    });
 
     // ПРЕДЗАГРУЗКА ИЗОБРАЖЕНИЙ: держим кнопку/оверлей до тех пор, пока картинки не окажутся в памяти браузера
     onProgress?.({
       stage: 'finishing',
       progress: 95,
       message: 'Прогружаем страницы книги и настраиваем читалку...',
-      remainingSec: 2,
     });
 
     await Promise.all(
@@ -942,8 +990,15 @@ export async function generateDynamicStory(
               return;
             }
             const img = new Image();
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
+            const timer = setTimeout(resolve, 5000);
+            img.onload = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+            img.onerror = () => {
+              clearTimeout(timer);
+              resolve();
+            };
             img.src = scene.image_url;
           })
       )
@@ -953,7 +1008,6 @@ export async function generateDynamicStory(
       stage: 'finishing',
       progress: 100,
       message: 'Сказка готова!',
-      remainingSec: 0,
     });
 
     return book;
@@ -963,33 +1017,55 @@ export async function generateDynamicStory(
   onProgress?.({
     stage: 'drawing',
     progress: 75,
-    message: 'Создаём акварельную обложку книги...',
-    remainingSec: 5,
+    message: 'Создаём акварельные иллюстрации книги...',
   });
 
   const proceduralBook = generateProceduralStory(params);
 
-  // Ожидаем и предзагружаем обложку, чтобы не отпускать кнопку раньше времени
+  // Ожидаем и предзагружаем обложку
   if (proceduralBook.scenes[0]?.image_prompt) {
     try {
-      const url = await generateWellflowImage(proceduralBook.scenes[0].image_prompt, 25000);
+      const url = await generateWellflowImage(proceduralBook.scenes[0].image_prompt, 20000);
       if (url) {
         proceduralBook.scenes[0].image_url = url;
-        await new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = url;
-        });
       }
     } catch {}
   }
+
+  // Финальная проверка: каждая сцена гарантированно имеет иллюстрацию
+  proceduralBook.scenes.forEach((s: any, idx: number) => {
+    if (!s.image_url) {
+      s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
+    }
+  });
+
+  await Promise.all(
+    proceduralBook.scenes.map(
+      (scene: any) =>
+        new Promise<void>((resolve) => {
+          if (!scene.image_url) {
+            resolve();
+            return;
+          }
+          const img = new Image();
+          const timer = setTimeout(resolve, 4000);
+          img.onload = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          img.onerror = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          img.src = scene.image_url;
+        })
+    )
+  );
 
   onProgress?.({
     stage: 'finishing',
     progress: 100,
     message: 'Сказка готова!',
-    remainingSec: 0,
   });
 
   return proceduralBook;
@@ -1159,12 +1235,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
     },
   ];
 
-  // Иллюстрации из макета привязаны ТОЛЬКО к канонической сказке про Мишу и Дино.
-  // Для любых других сказок и персонажей отображается динамическая персонализированная сцена
-  // с персональным 3D Pixar промптом для генерации.
-  // Все иллюстрации генерируются уникально через ИИ (Nano Banana 2) на лету под ребёнка.
-  // Никаких статичных заготовленных шаблонов!
-  const getSceneImageUrl = (_idx: number): string | undefined => undefined;
+  const getSceneImageUrl = (idx: number): string => getFairytaleFallbackIllustration(params.theme || interest, idx);
 
   return {
     id: `book_${Date.now()}`,

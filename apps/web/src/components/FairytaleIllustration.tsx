@@ -26,16 +26,28 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   appearance,
   imageUrl,
 }) => {
+  const fallbackSrc = `./illustrations/scene_${sceneIndex}.jpg`;
+  const [currentSrc, setCurrentSrc] = useState<string>(imageUrl || fallbackSrc);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
   React.useEffect(() => {
+    setCurrentSrc(imageUrl || fallbackSrc);
     setImageLoaded(false);
     setImageFailed(false);
   }, [imageUrl, sceneIndex]);
 
+  const handleImageError = () => {
+    if (currentSrc !== fallbackSrc) {
+      console.warn(`[FairytaleIllustration] Primary image failed, switching to local fallback: ${fallbackSrc}`);
+      setCurrentSrc(fallbackSrc);
+    } else {
+      setImageFailed(true);
+    }
+  };
+
   // Проверяем, является ли ссылка настоящей картинкой
-  const hasValidImage = Boolean(imageUrl) && !imageFailed;
+  const hasValidImage = Boolean(currentSrc) && !imageFailed;
 
   // Фон под тему истории
   const getThemeGradient = () => {
@@ -61,10 +73,10 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
       {hasValidImage ? (
         <div className="relative w-full h-full">
           <img
-            src={imageUrl!}
+            src={currentSrc}
             alt={`Сцена ${sceneIndex} для ${childName}`}
             onLoad={() => setImageLoaded(true)}
-            onError={() => setImageFailed(true)}
+            onError={handleImageError}
             className={`w-full h-full object-cover transition-all duration-500 ${
               imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
             }`}
