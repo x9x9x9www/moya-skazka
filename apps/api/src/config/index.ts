@@ -26,9 +26,14 @@ const ConfigSchema = z.object({
   RUB_REF_SINGLE_BOOK: z.coerce.number().default(199.0),
   RUB_REF_PACK_5: z.coerce.number().default(799.0),
 
-  AI_TEXT_PROVIDER: z.enum(['mock', 'gemini', 'openai']).default('gemini'),
-  AI_IMAGE_PROVIDER: z.enum(['mock', 'gemini', 'dalle3']).default('mock'),
+  AI_TEXT_PROVIDER: z.enum(['mock', 'gemini', 'openai', 'wellflow']).default('wellflow'),
+  AI_IMAGE_PROVIDER: z.enum(['mock', 'gemini', 'dalle3', 'wellflow']).default('wellflow'),
   GEMINI_API_KEY: z.string().default(''),
+  WELLFLOW_API_URL: z.string().default('https://api.wellflow.dev/v1'),
+  WELLFLOW_TEXT_KEY: z.string().default(''),
+  WELLFLOW_TEXT_MODEL: z.string().default('gpt-6-astra'),
+  WELLFLOW_IMAGE_KEY: z.string().default(''),
+  WELLFLOW_IMAGE_MODEL: z.string().default('nano-banana-2'),
   AI_MAX_RETRIES: z.coerce.number().default(3),
   AI_TIMEOUT_MS: z.coerce.number().default(60000),
 

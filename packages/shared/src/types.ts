@@ -110,8 +110,10 @@ export interface AIStoryQuestion {
 export interface AIGeneratedStoryResponse {
   title: string;
   age: number;
+  theme?: string;
   characters: AIStoryCharacter[];
   story_outline: string;
+  cover_prompt?: string;
   scenes: AIStoryScene[];
   questions: AIStoryQuestion[];
 }

@@ -8,6 +8,8 @@ export interface GenerateStoryInput {
     hair?: string;
     clothing?: string;
     personality?: string;
+    toy?: string;
+    gender?: 'boy' | 'girl';
   };
   customWishes?: string | null;
   includeQuestions: boolean;
@@ -35,8 +37,10 @@ export interface AIStoryQuestion {
 export interface AIGeneratedStory {
   title: string;
   age: number;
+  theme?: string;
   characters: AIStoryCharacter[];
   story_outline: string;
+  cover_prompt?: string;
   scenes: AIStoryScene[];
   questions: AIStoryQuestion[];
   estimatedCost: number;

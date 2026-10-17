@@ -67,8 +67,11 @@ export const AdminAdjustCreditsSchema = z.object({
 
 // 6. Валидация ответа AI
 export const AIStoryResponseSchema = z.object({
-  title: z.string().min(3).max(200),
+  title: z.string().min(2).max(200),
   age: z.number().int().min(2).max(6),
+  theme: z.string().optional(),
+  story_outline: z.string(),
+  cover_prompt: z.string().optional(),
   characters: z.array(
     z.object({
       id: z.string(),
@@ -76,20 +79,26 @@ export const AIStoryResponseSchema = z.object({
       visual_description: z.string(),
     })
   ),
-  story_outline: z.string(),
   scenes: z.array(
     z.object({
       index: z.number().int().min(1).max(4),
-      text: z.string().min(20),
+      text: z.string().min(10),
       image_prompt: z.string().min(10),
     })
   ).length(4, 'Сказка должна состоять строго из 4 сцен'),
   questions: z.array(
     z.object({
-      after_scene: z.number().int().refine((v) => [2, 4, 5].includes(v), 'Вопросы допустимы после 2, 4 сцены или в финале (5)'),
-      question: z.string().min(5),
+      after_scene: z.number().int().refine((v) => [2, 3, 4, 5].includes(v), 'Вопросы допустимы после сцен'),
+      question: z.string().min(3),
       parent_hint: z.string().optional().nullable(),
-      skill_tag: z.string(),
-    })
-  ).min(2).max(3),
+      skill: z.string().optional(),
+      skill_tag: z.string().optional(),
+    }).transform((q) => ({
+      after_scene: q.after_scene,
+      question: q.question,
+      parent_hint: q.parent_hint || null,
+      skill_tag: q.skill || q.skill_tag || 'emotions',
+    }))
+  ).min(1).max(5),
 });
+

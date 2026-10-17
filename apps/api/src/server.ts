@@ -19,6 +19,7 @@ import { CreditsService } from './modules/credits/credits.service';
 import { JobsService } from './modules/jobs/jobs.service';
 import { OrdersService } from './modules/orders/orders.service';
 import { jobWorker } from './modules/jobs/worker';
+import { WellflowAIProvider } from './services/ai/wellflow.ai.provider';
 
 export const app = fastify({
   logger: config.NODE_ENV === 'development',
@@ -775,6 +776,37 @@ app.register(
         total_books: totalBooks,
         jobs_stats: jobsStats,
       };
+    });
+
+    // ----------------------------------------------------
+    // AI генерация текста и иллюстраций через Wellflow API
+    // ----------------------------------------------------
+    api.post('/ai/generate-story', async (req: FastifyRequest, reply: FastifyReply) => {
+      const wellflow = new WellflowAIProvider();
+      const input = req.body as any;
+      try {
+        const story = await wellflow.generateStory(input);
+        return story;
+      } catch (err: any) {
+        return reply.status(500).send({
+          code: 'AI_ERROR',
+          message: err.message,
+        });
+      }
+    });
+
+    api.post('/ai/generate-image', async (req: FastifyRequest, reply: FastifyReply) => {
+      const wellflow = new WellflowAIProvider();
+      const input = req.body as any;
+      try {
+        const img = await wellflow.generateImage(input);
+        return img;
+      } catch (err: any) {
+        return reply.status(500).send({
+          code: 'IMAGE_AI_ERROR',
+          message: err.message,
+        });
+      }
     });
   },
   { prefix: '/api/v1' }

@@ -105,7 +105,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
               >
                 <span className="text-sm">✨</span>
                 <span className="underline decoration-dotted underline-offset-2">
-                  {showPromptDetails ? 'Скрыть 3D-промпт' : '3D Pixar-промпт этой сцены'}
+                  {showPromptDetails ? 'Скрыть промпт' : 'Промпт иллюстрации (Nano Banana 2)'}
                 </span>
               </button>
 

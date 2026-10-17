@@ -1,11 +1,24 @@
 import { prisma } from '@moya-skazka/database';
 import { GeminiAIProvider } from '../../services/ai/gemini.ai.provider';
 import { MockAIProvider } from '../../services/ai/mock.ai.provider';
+import { WellflowAIProvider } from '../../services/ai/wellflow.ai.provider';
 import { config } from '../../config/index';
 import { CreditsService } from '../credits/credits.service';
 
-const textProvider = config.AI_TEXT_PROVIDER === 'gemini' ? new GeminiAIProvider() : new MockAIProvider();
-const imageProvider = config.AI_IMAGE_PROVIDER === 'gemini' ? new GeminiAIProvider() : new MockAIProvider();
+const textProvider =
+  config.AI_TEXT_PROVIDER === 'wellflow'
+    ? new WellflowAIProvider()
+    : config.AI_TEXT_PROVIDER === 'gemini'
+    ? new GeminiAIProvider()
+    : new MockAIProvider();
+
+const imageProvider =
+  config.AI_IMAGE_PROVIDER === 'wellflow'
+    ? new WellflowAIProvider()
+    : config.AI_IMAGE_PROVIDER === 'gemini'
+    ? new GeminiAIProvider()
+    : new MockAIProvider();
+
 const workerId = `worker_${process.pid}_${Math.random().toString(36).substring(2, 7)}`;
 
 export class JobWorker {

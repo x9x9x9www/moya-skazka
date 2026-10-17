@@ -12,6 +12,11 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+      '/wellflow-api': {
+        target: 'https://api.wellflow.dev/v1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/wellflow-api/, ''),
+      },
     },
   },
 });

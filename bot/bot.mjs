@@ -1,7 +1,37 @@
 // Telegram Bot Runner for «Моя сказка»
-// Token: 8896052559:AAEBk3qa4vDty9q58NflSuAodEkgQlmqH6k
+import fs from 'fs';
+import path from 'path';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8896052559:AAEBk3qa4vDty9q58NflSuAodEkgQlmqH6k';
+// Автоматическая безопасная загрузка переменных из .env
+function loadEnv() {
+  const envPaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '../.env'),
+    path.resolve(process.cwd(), '../../.env'),
+  ];
+  for (const p of envPaths) {
+    if (fs.existsSync(p)) {
+      const content = fs.readFileSync(p, 'utf-8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+          const [key, ...vals] = trimmed.split('=');
+          const val = vals.join('=').trim().replace(/^['"]|['"]$/g, '');
+          if (!process.env[key.trim()]) {
+            process.env[key.trim()] = val;
+          }
+        }
+      }
+    }
+  }
+}
+loadEnv();
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+if (!BOT_TOKEN) {
+  console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
+  process.exit(1);
+}
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.2';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
