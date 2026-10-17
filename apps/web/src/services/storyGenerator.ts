@@ -22,7 +22,7 @@ export const WELLFLOW_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WELLFLOW_API_URL) ||
   'https://api.wellflow.dev/v1';
 
-export const DEFAULT_API_BRIDGE_URL = 'https://4358d69d27782dcc-193-178-226-18.serveousercontent.com';
+export const DEFAULT_API_BRIDGE_URL = 'https://e2070d05311d701a-212-46-33-37.serveousercontent.com';
 
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -710,58 +710,21 @@ export async function generateDynamicStory(params: GenerateStoryParams): Promise
           : [],
     };
 
-    // Сначала генерируем реальную обложку сцены 1 от Nano Banana 2
-    try {
-      const coverUrl = await generateWellflowImage(scenes[0].image_prompt, 45000);
-      if (coverUrl) {
-        scenes[0].image_url = coverUrl;
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('ms_scene_image_updated', {
-            detail: { bookId, sceneIndex: 1, url: coverUrl },
-          }));
-        }
-      }
-    } catch (e) {
-      console.warn('[StoryGenerator] Cover image generation delayed:', e);
-    }
-
-    // Фоновая генерация остальных сцен через Nano Banana 2 по очереди
-    (async () => {
-      for (let i = 1; i < scenes.length; i++) {
+    // Параллельная генерация всех 4 уникальных иллюстраций через Nano Banana 2
+    console.log('[StoryGenerator] 🎨 Запуск параллельной генерации 4 иллюстраций через Nano-Banana-2...');
+    await Promise.all(
+      scenes.map(async (scene: any, idx: number) => {
         try {
-          const url = await generateWellflowImage(scenes[i].image_prompt, 45000);
+          const url = await generateWellflowImage(scene.image_prompt, 45000);
           if (url) {
-            scenes[i].image_url = url;
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('ms_scene_image_updated', {
-                detail: { bookId, sceneIndex: i + 1, url },
-              }));
-            }
-            try {
-              const raw = localStorage.getItem('ms_books');
-              if (raw) {
-                const list = JSON.parse(raw);
-                const found = list.find((b: any) => b.id === bookId);
-                if (found) {
-                  found.scenes = scenes;
-                  localStorage.setItem('ms_books', JSON.stringify(list));
-                }
-              }
-              const rawStory = localStorage.getItem(`ms_story_${bookId}`);
-              if (rawStory) {
-                const st = JSON.parse(rawStory);
-                if (st && st.scenes && st.scenes[i]) {
-                  st.scenes[i].image_url = url;
-                  localStorage.setItem(`ms_story_${bookId}`, JSON.stringify(st));
-                }
-              }
-            } catch {}
+            scene.image_url = url;
+            console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${idx + 1} готова:`, url.slice(0, 60));
           }
-        } catch (err) {
-          console.warn(`[StoryGenerator] Scene ${i + 1} image delayed:`, err);
+        } catch (e) {
+          console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${idx + 1} задержана:`, e);
         }
-      }
-    })();
+      })
+    );
 
     return book;
   }

@@ -288,10 +288,10 @@ export const App: React.FC = () => {
     setJobProgress(15);
     haptic.medium();
 
-    // Плавный визуальный прогресс ожидания ответа ИИ
+    // Плавный визуальный прогресс ожидания ответа ИИ (~30 сек: текст + 4 иллюстрации)
     const progressInterval = setInterval(() => {
-      setJobProgress((prev) => (prev < 88 ? prev + 12 : prev));
-    }, 600);
+      setJobProgress((prev) => (prev < 92 ? prev + 2.5 : prev));
+    }, 900);
 
     try {
       // 1. Прямая генерация через Gemini 3.8 Flash с умным процедурным fallback

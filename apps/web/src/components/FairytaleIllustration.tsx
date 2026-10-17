@@ -29,6 +29,11 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
+  React.useEffect(() => {
+    setImageLoaded(false);
+    setImageFailed(false);
+  }, [imageUrl, sceneIndex]);
+
   // Проверяем, является ли ссылка настоящей картинкой
   const hasValidImage = Boolean(imageUrl) && !imageFailed;
 
