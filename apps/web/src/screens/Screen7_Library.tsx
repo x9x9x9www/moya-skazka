@@ -4,6 +4,7 @@ import { BookSummaryDTO } from '@moya-skazka/shared';
 
 interface Screen7LibraryProps {
   books: BookSummaryDTO[];
+  canClaimFreeStory?: boolean;
   onSelectBook: (bookId: string) => void;
   onCreateNewStory: () => void;
   onUpgradeBook: (bookId: string) => void;
@@ -11,6 +12,7 @@ interface Screen7LibraryProps {
 
 export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
   books,
+  canClaimFreeStory = false,
   onSelectBook,
   onCreateNewStory,
   onUpgradeBook,
@@ -155,13 +157,15 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
           <BookOpen className="w-10 h-10 text-stone-300 mx-auto mb-3" />
           <p className="text-sm font-bold text-stone-700 mb-1">Книг пока нет</p>
           <p className="text-xs text-stone-500 mb-4">
-            Создайте первую бесплатную сказку для вашего ребёнка прямо сейчас!
+            {canClaimFreeStory
+              ? 'Создайте первую бесплатную сказку для вашего ребёнка прямо сейчас!'
+              : 'Создайте новую волшебную сказку для вашего ребёнка прямо сейчас!'}
           </p>
           <button
             onClick={onCreateNewStory}
             className="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs"
           >
-            Создать бесплатно
+            {canClaimFreeStory ? 'Создать бесплатно' : 'Создать сказку'}
           </button>
         </div>
       )}

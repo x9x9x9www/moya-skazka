@@ -16,6 +16,7 @@ interface Screen2HomeProps {
 export const Screen2_Home: React.FC<Screen2HomeProps> = ({
   activeChild,
   canClaimFreeStory,
+  balance,
   dailyIdea,
   onStartCreateStory,
   onNavigateTab,
@@ -30,6 +31,14 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
     onSaveIdea();
   };
 
+  const handleStart = () => {
+    if (!canClaimFreeStory && balance <= 0) {
+      onNavigateTab('shop');
+      return;
+    }
+    onStartCreateStory();
+  };
+
   return (
     <div className="p-4 space-y-5 pb-24 max-w-md mx-auto">
       {/* Главный уютный баннер (Экран 2) */}
@@ -41,10 +50,17 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
         </div>
 
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-3">
-            <span>✨</span>
-            <span>Для {childName}</span>
-          </div>
+          {canClaimFreeStory ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-stone-900 text-xs font-bold mb-3 shadow-sm">
+              <span>🎁</span>
+              <span>Первая сказка бесплатно</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-3">
+              <span>✨</span>
+              <span>Для {childName}</span>
+            </div>
+          )}
 
           <h2 className="font-serif font-bold text-2xl leading-snug mb-2">
             Добрый вечер! Готовы к новому приключению?
@@ -55,12 +71,16 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           </p>
 
           <button
-            onClick={onStartCreateStory}
+            onClick={handleStart}
             className="w-full py-3.5 px-5 rounded-2xl bg-white hover:bg-cream-100 active:scale-[0.98] transition-all text-brand-800 font-bold text-sm shadow-md flex items-center justify-center gap-2"
           >
             <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
             <span>
-              {canClaimFreeStory ? 'Создать новую сказку (бесплатно)' : 'Создать новую сказку (1 кредит)'}
+              {canClaimFreeStory
+                ? 'Создать первую сказку бесплатно'
+                : balance > 0
+                ? 'Создать новую сказку (1 кредит)'
+                : 'Пополнить баланс и создать сказку'}
             </span>
           </button>
         </div>

@@ -48,7 +48,14 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<string>('home');
   const [balance, setBalance] = useState<number>(1);
-  const [canClaimFree, setCanClaimFree] = useState<boolean>(true);
+  // Единоразовая бесплатная первая сказка: сохраняется в localStorage
+  const [canClaimFree, setCanClaimFree] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ms_free_claimed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [children, setChildren] = useState<ChildProfileDTO[]>([]);
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [books, setBooks] = useState<BookSummaryDTO[]>([]);
@@ -105,8 +112,12 @@ export const App: React.FC = () => {
     try {
       await api.loginWithTelegram(initData, startParam);
       const me = await api.getMe();
-      setBalance(me.balance.available);
-      setCanClaimFree(me.can_claim_free_story);
+      const isClaimedLocally = localStorage.getItem('ms_free_claimed') === 'true';
+      if (isClaimedLocally) {
+        setCanClaimFree(false);
+      } else {
+        setCanClaimFree(me?.can_claim_free_story ?? true);
+      }
 
       const childrenList = await api.getChildren();
       let effectiveChildren: ChildProfileDTO[] = [];
@@ -425,6 +436,13 @@ export const App: React.FC = () => {
     customWishes: string;
     includeQuestions: boolean;
   }) => {
+    if (!canClaimFree && balance <= 0) {
+      alert('У вас закончились книжные кредиты. Перейдите в магазин, чтобы пополнить баланс.');
+      setCurrentScreen('shop');
+      setActiveTab('shop');
+      return;
+    }
+
     setIsCreatingStory(true);
     setJobProgress(15);
     setCreationStage('writing');
@@ -493,9 +511,12 @@ export const App: React.FC = () => {
         localStorage.setItem(`ms_story_${generatedBook.id}`, JSON.stringify(generatedBook));
       } catch {}
 
-      // 3. Списываем кредит / бесплатную попытку
+      // 3. Единоразовое списание бесплатной первой сказки или кредита
       if (canClaimFree) {
         setCanClaimFree(false);
+        try {
+          localStorage.setItem('ms_free_claimed', 'true');
+        } catch {}
       } else {
         setBalance((prev) => Math.max(0, prev - 1));
       }
@@ -729,6 +750,7 @@ export const App: React.FC = () => {
         {currentScreen === 'library' && (
           <Screen7_Library
             books={books}
+            canClaimFreeStory={canClaimFree}
             onSelectBook={async (id) => {
               const localStory = localStorage.getItem(`ms_story_${id}`);
               if (localStory) {
@@ -994,8 +1016,10 @@ export const App: React.FC = () => {
                 localStorage.removeItem('ms_onboarding_completed');
                 localStorage.removeItem('ms_children');
                 localStorage.removeItem('ms_active_child_id');
+                localStorage.removeItem('ms_free_claimed');
               } catch {}
               setIsOnboardingCompleted(false);
+              setCanClaimFree(true);
               setCurrentScreen('onboarding');
               alert('Аккаунт и все связанные данные успешно удалены.');
               bootstrapApp();

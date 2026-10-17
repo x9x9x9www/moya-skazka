@@ -55,19 +55,16 @@ export const Header: React.FC<HeaderProps> = ({
               <Plus className="w-3.5 h-3.5 text-stone-400 ml-0.5" />
             </button>
           ) : (
-            <div className="font-serif font-bold text-brand-700 text-lg">
-              Моя сказка
+            <div className="w-8 h-8 rounded-full bg-cream-200/80 flex items-center justify-center text-sm shadow-inner">
+              ✨
             </div>
           )}
         </div>
 
-        {/* Центр: Название или мини-приложение */}
+        {/* Центр: строго одна надпись «Моя Сказка» */}
         <div className="text-center">
-          <div className="text-[13px] font-bold text-stone-800 tracking-tight">
-            Моя сказка
-          </div>
-          <div className="text-[10px] text-stone-500 tracking-wide uppercase">
-            мини-приложение
+          <div className="font-serif font-bold text-base text-stone-900 tracking-tight">
+            Моя Сказка
           </div>
         </div>
 
