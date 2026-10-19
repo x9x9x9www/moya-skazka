@@ -34,7 +34,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.2';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.4';
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
 const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || '';
 const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || 'gpt-6-astra';
