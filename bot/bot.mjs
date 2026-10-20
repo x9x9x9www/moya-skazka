@@ -16,6 +16,7 @@ import {
   buildScenePrompt,
   fallbackQuestions,
 } from '../packages/story-engine/src/index.mjs';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 
 // Автоматическая загрузка переменных из .env
 function loadEnv() {
@@ -40,6 +41,17 @@ function loadEnv() {
   }
 }
 loadEnv();
+
+// Настройка прокси для стабильного доступа к Telegram API и AI провайдерам
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY || 'http://127.0.0.1:10809';
+if (proxyUrl) {
+  try {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl));
+    console.log(`[Proxy] 🛡 Настроен системный прокси: ${proxyUrl}`);
+  } catch (err) {
+    console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
+  }
+}
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
@@ -669,7 +681,11 @@ function startTunnel() {
 
 function startLocalTunnel() {
   console.log('[LocalTunnel] 🌐 Запуск постоянного туннеля через LocalTunnel...');
-  const lt = spawn('npx', ['localtunnel', '--port', `${BRIDGE_PORT}`, '--subdomain', 'moya-skazka-bot-bridge']);
+  const ltArgs = ['localtunnel', '--port', `${BRIDGE_PORT}`];
+  if (process.env.LOCALTUNNEL_SUBDOMAIN) {
+    ltArgs.push('--subdomain', process.env.LOCALTUNNEL_SUBDOMAIN);
+  }
+  const lt = spawn('npx', ltArgs);
 
   lt.stdout.on('data', async (d) => {
     const text = d.toString();

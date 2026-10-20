@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, BookOpen, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { BookSummaryDTO } from '@moya-skazka/shared';
+import { getFairytaleFallbackIllustration } from '../services/storyGenerator';
 
 interface Screen7LibraryProps {
   books: BookSummaryDTO[];
@@ -86,7 +87,7 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
             >
               <div className="relative aspect-[4/3] bg-amber-50 overflow-hidden">
                 <img
-                  src={book.cover_url || './illustrations/cover_dino.jpg'}
+                  src={book.cover_url || getFairytaleFallbackIllustration(book.title)}
                   alt={book.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />

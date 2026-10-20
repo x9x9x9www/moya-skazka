@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
+import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -338,7 +338,7 @@ export const App: React.FC = () => {
         const parsed: BookSummaryDTO[] = JSON.parse(saved);
         const repaired = parsed.map((b) => ({
           ...b,
-          cover_url: resolveMediaUrl(b.cover_url) || './illustrations/cover_dino.jpg',
+          cover_url: resolveMediaUrl(b.cover_url) || getFairytaleFallbackIllustration(b.title),
         }));
         setBooks(repaired);
         return;
@@ -480,7 +480,7 @@ export const App: React.FC = () => {
         title: generatedBook.title,
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: resolveMediaUrl(generatedBook.cover_url || generatedBook.scenes[0]?.image_url) || './illustrations/cover_dino.jpg',
+        cover_url: resolveMediaUrl(generatedBook.cover_url || generatedBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || generatedBook.title),
         created_at: new Date().toISOString(),
       };
 
@@ -747,7 +747,7 @@ export const App: React.FC = () => {
                     let updated = false;
                     parsed.scenes.forEach((sc: any, idx: number) => {
                       if (!sc.image_url) {
-                        sc.image_url = `./illustrations/scene_${idx + 1}.jpg`;
+                        sc.image_url = getFairytaleFallbackIllustration(parsed.title || wizardData.theme, idx + 1);
                         updated = true;
                       }
                     });
@@ -775,25 +775,25 @@ export const App: React.FC = () => {
                       id: 's1',
                       scene_index: 1,
                       text: 'Миша и его верный друг, маленький динозаврик Дино, уютно сидели на мягкой лесной полянке. Дино бережно прижимался к Мише, а на вечернем небе мягко светили сказочные звёздочки и золотистый полумесяц. Начиналось самое тёплое вечернее приключение!',
-                      image_url: './illustrations/scene_1.jpg',
+                      image_url: './illustrations/cover_dino.jpg',
                     },
                     {
                       id: 's2',
                       scene_index: 2,
                       text: 'Миша и Дино подошли к большой луже. Дино остановился и испуганно посмотрел на воду. — Я боюсь переходить, — прошептал он. Миша ободряюще улыбнулся, взял друга за лапку и предложил сделать надёжный мостик из крепких веточек.',
-                      image_url: './illustrations/scene_2.jpg',
+                      image_url: './illustrations/cover_dino.jpg',
                     },
                     {
                       id: 's3',
                       scene_index: 3,
                       text: 'Они дружно положили веточки через ручеёк. Дино сделал первый смелый шаг и радостно захлопал в ладоши! Малыши забрались в уютный шалаш из тёплых пледов и открыли светящуюся сказочную книгу, полную добрых историй.',
-                      image_url: './illustrations/scene_3.jpg',
+                      image_url: './illustrations/cover_dino.jpg',
                     },
                     {
                       id: 's4',
                       scene_index: 4,
                       text: 'Вскоре Дино увидел свою семью. Он радостно обнял маму, а потом повернулся к Мише. — Спасибо! Теперь мы друзья навсегда! — сказал он. Вечером Миша сладко засыпал в своей кроватке, зная, что доброта помогает совершать настоящие чудеса.',
-                      image_url: './illustrations/scene_4.jpg',
+                      image_url: './illustrations/cover_dino.jpg',
                     },
                   ],
                   questions: [
@@ -1067,7 +1067,7 @@ export const App: React.FC = () => {
       <Screen8_UpgradeModal
         isOpen={upgradeModalOpen}
         bookTitle={books.find((b) => b.id === selectedBookForUpgrade)?.title || 'Сказка'}
-        coverUrl={selectedBookForUpgrade === 'b2' ? './illustrations/cover_star.jpg' : './illustrations/cover_dino.jpg'}
+        coverUrl={selectedBookForUpgrade === 'b2' ? './illustrations/cover_star.jpg' : getFairytaleFallbackIllustration(books.find((b) => b.id === selectedBookForUpgrade)?.title)}
         userBalance={balance}
         onUpgrade={async () => {
           if (selectedBookForUpgrade) {
@@ -1084,7 +1084,7 @@ export const App: React.FC = () => {
                       cover_url:
                         b.id === 'b2'
                           ? './illustrations/cover_star.jpg'
-                          : b.cover_url || './illustrations/cover_dino.jpg',
+                          : b.cover_url || getFairytaleFallbackIllustration(b.title),
                     }
                   : b
               );
