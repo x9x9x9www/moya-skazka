@@ -33,6 +33,12 @@ jobs:
       - name: Build Shared Types
         run: npm run build --workspace=@moya-skazka/shared
 
+      - name: Test Story Engine
+        run: npm run test --workspace=@moya-skazka/story-engine
+
+      - name: Test API
+        run: npm run test --workspace=@moya-skazka/api
+
       - name: Build Web App
         run: npm run build --workspace=@moya-skazka/web
 

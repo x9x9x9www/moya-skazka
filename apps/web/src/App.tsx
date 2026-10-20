@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory } from './services/storyGenerator';
+import { generateDynamicStory, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -327,7 +327,7 @@ export const App: React.FC = () => {
     try {
       const list = await api.getBooks();
       if (list && list.length > 0) {
-        setBooks(list);
+        setBooks(list.map((book) => ({ ...book, cover_url: resolveMediaUrl(book.cover_url) })));
         return;
       }
     } catch {}
@@ -338,7 +338,7 @@ export const App: React.FC = () => {
         const parsed: BookSummaryDTO[] = JSON.parse(saved);
         const repaired = parsed.map((b) => ({
           ...b,
-          cover_url: b.cover_url || './illustrations/cover_dino.jpg',
+          cover_url: resolveMediaUrl(b.cover_url) || './illustrations/cover_dino.jpg',
         }));
         setBooks(repaired);
         return;
@@ -410,7 +410,7 @@ export const App: React.FC = () => {
   }, [activeJobId]);
 
   const openReader = (book: BookDetailsDTO) => {
-    setCurrentReadingBook(book);
+    setCurrentReadingBook(resolveBookMedia(book));
     setCurrentSceneIndex(1);
     setCurrentScreen('reader');
   };
@@ -480,7 +480,7 @@ export const App: React.FC = () => {
         title: generatedBook.title,
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: generatedBook.cover_url || generatedBook.scenes[0]?.image_url || './illustrations/cover_dino.jpg',
+        cover_url: resolveMediaUrl(generatedBook.cover_url || generatedBook.scenes[0]?.image_url) || './illustrations/cover_dino.jpg',
         created_at: new Date().toISOString(),
       };
 

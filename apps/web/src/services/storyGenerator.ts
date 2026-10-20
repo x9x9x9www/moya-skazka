@@ -22,6 +22,29 @@ export interface GenerateStoryParams {
 
 export const DEFAULT_API_BRIDGE_URL = 'https://b4e24b393c4c2c70-94-249-175-134.serveousercontent.com';
 
+/**
+ * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
+ * Если туннель перезапустился, абсолютный origin устарел — подменяем его
+ * на текущий API-адрес, а путь /media/... сохраняем.
+ */
+export function resolveMediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  const mediaIndex = url.indexOf('/media/');
+  if (mediaIndex === -1) return url;
+  return `${getActiveApiUrl()}${url.slice(mediaIndex)}`;
+}
+
+export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
+  return {
+    ...book,
+    cover_url: resolveMediaUrl(book.cover_url),
+    scenes: book.scenes.map((scene) => ({
+      ...scene,
+      image_url: resolveMediaUrl(scene.image_url),
+    })),
+  };
+}
+
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
