@@ -231,9 +231,10 @@ const HAIR_COLOR_EN = {
   рыжие: 'vibrant ginger reddish-brown',
 };
 const HAIR_TYPE_EN = {
-  кудрявые: 'soft curly wavy',
   короткие: 'neat short playful',
   длинные: 'long with a small ribbon',
+  кудрявые: 'soft bouncy curly wavy',
+  прямые: 'neat smooth straight silky',
 };
 const EYE_COLOR_EN = {
   карие: 'warm sparkling hazel-brown eyes',
@@ -270,7 +271,34 @@ const TOY_EN = {
 
 export function appearanceHints(appearance = {}) {
   const hairColor = HAIR_COLOR_EN[appearance.hairColor] || 'soft light-brown';
-  const hairType = HAIR_TYPE_EN[appearance.hairType] || 'neat short playful';
+
+  let hairType = 'neat short playful';
+  const rawType = String(appearance.hairType || '').toLowerCase();
+  const isCurly = rawType.includes('кудр');
+  const isStraight = rawType.includes('прям');
+  const isLong = rawType.includes('длинн');
+  const isShort = rawType.includes('коротк');
+
+  if (isLong && isCurly) {
+    hairType = 'long bouncy curly wavy with a small ribbon';
+  } else if (isLong && isStraight) {
+    hairType = 'long smooth straight silky with a small ribbon';
+  } else if (isShort && isCurly) {
+    hairType = 'short playful bouncy curly';
+  } else if (isShort && isStraight) {
+    hairType = 'neat short straight';
+  } else if (isCurly) {
+    hairType = 'soft bouncy curly wavy';
+  } else if (isStraight) {
+    hairType = 'neat smooth straight silky';
+  } else if (isLong) {
+    hairType = 'long with a small ribbon';
+  } else if (isShort) {
+    hairType = 'neat short playful';
+  } else if (HAIR_TYPE_EN[appearance.hairType]) {
+    hairType = HAIR_TYPE_EN[appearance.hairType];
+  }
+
   const eyes = EYE_COLOR_EN[appearance.eyeColor] || 'warm sparkling hazel-brown eyes';
   const skin = SKIN_TONE_EN[appearance.skinTone] || 'warm healthy peach complexion';
   const clothes = `${CLOTHING_COLOR_EN[appearance.clothingColor] || 'cozy emerald green'} ${

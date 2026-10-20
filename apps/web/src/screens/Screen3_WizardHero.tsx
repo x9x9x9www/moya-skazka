@@ -59,9 +59,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   ];
 
   const hairTypes = [
-    { id: 'кудрявые', label: 'Кудрявые 🌀' },
     { id: 'короткие', label: 'Короткие ✂️' },
-    { id: 'длинные', label: 'Длинные / Косички 🎀' },
+    { id: 'длинные', label: 'Длинные 🎀' },
+    { id: 'кудрявые', label: 'Кудрявые 🌀' },
+    { id: 'прямые', label: 'Прямые ✨' },
   ];
 
   const clothingItems = [
@@ -281,7 +282,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
 
         {/* Тип волос */}
-        <div className="grid grid-cols-3 gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1">
           {hairTypes.map((t) => {
             const isSelected = appearance.hairType === t.id;
             return (

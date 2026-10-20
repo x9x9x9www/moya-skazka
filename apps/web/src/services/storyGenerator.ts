@@ -506,10 +506,21 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     тёмные: 'warm chestnut dark brown',
     рыжие: 'vibrant ginger reddish-brown',
   };
-  const hairTypeMap: Record<string, string> = {
-    кудрявые: 'soft curly wavy',
-    короткие: 'neat short playful',
-    длинные: 'long braided with a cute ribbon',
+  const resolveHairPrompt = (typeRaw?: string): string => {
+    const t = String(typeRaw || 'короткие').toLowerCase();
+    const isCurly = t.includes('кудр');
+    const isStraight = t.includes('прям');
+    const isLong = t.includes('длинн');
+    const isShort = t.includes('коротк');
+
+    if (isLong && isCurly) return 'long bouncy curly wavy with a cute ribbon';
+    if (isLong && isStraight) return 'long smooth straight silky with a cute ribbon';
+    if (isShort && isCurly) return 'short playful bouncy curly';
+    if (isShort && isStraight) return 'neat short straight';
+    if (isCurly) return 'soft bouncy curly wavy';
+    if (isStraight) return 'neat smooth straight silky';
+    if (isLong) return 'long braided with a cute ribbon';
+    return 'neat short playful';
   };
   const clothingColorMap: Record<string, string> = {
     изумрудный: 'cozy emerald green',
@@ -549,9 +560,9 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     смуглая: 'warm golden sun-kissed skin tone',
   };
 
-  const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${
-    hairTypeMap[params.appearance?.hairType?.toLowerCase() || 'короткие'] || 'neat short playful'
-  } hair`;
+  const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${resolveHairPrompt(
+    params.appearance?.hairType
+  )} hair`;
   const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling eyes';
   const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
   const clothes = `${clothingColorMap[params.appearance?.clothingColor?.toLowerCase() || 'изумрудный'] || 'cozy emerald green'} ${

@@ -108,6 +108,13 @@ test('appearanceHints переводит русские параметры в а
   assert.match(hints.skin, /peach/);
   assert.match(hints.clothes, /emerald green/);
   assert.match(hints.toy, /dinosaur/);
+
+  // Проверка новых типов волос
+  assert.match(appearanceHints({ hairType: 'прямые' }).hairType, /straight/);
+  assert.match(appearanceHints({ hairType: 'длинные прямые' }).hairType, /straight/);
+  assert.match(appearanceHints({ hairType: 'длинные прямые' }).hairType, /ribbon/);
+  assert.match(appearanceHints({ hairType: 'короткие кудрявые' }).hairType, /curly/);
+  assert.match(appearanceHints({ hairType: 'короткие кудрявые' }).hairType, /short/);
 });
 
 test('chooseStoryDna детерминирован при одном seed', () => {

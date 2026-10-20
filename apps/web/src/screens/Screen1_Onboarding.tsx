@@ -20,6 +20,9 @@ export interface ChildRegistrationData {
   age: number;
   gender: 'boy' | 'girl';
   hairColor: string; // 'светлые' | 'русые' | 'тёмные' | 'рыжие'
+  hairType?: string; // 'короткие' | 'длинные' | 'кудрявые' | 'прямые' | 'короткие прямые' etc.
+  hairLength?: string; // 'короткие' | 'длинные'
+  hairStructure?: string; // 'прямые' | 'кудрявые'
   eyeColor: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
   skinTone: string; // 'светлая' | 'персиковая' | 'смуглая'
   personality: string;
@@ -48,8 +51,10 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
   const [age, setAge] = useState<number>(4);
 
-  // Внешность: цвет волос, цвет глаз, цвет кожи
+  // Внешность: цвет волос, тип и длина волос, цвет глаз, цвет кожи
   const [hairColor, setHairColor] = useState('русые');
+  const [hairLength, setHairLength] = useState<'короткие' | 'длинные'>('короткие');
+  const [hairStructure, setHairStructure] = useState<'прямые' | 'кудрявые'>('прямые');
   const [eyeColor, setEyeColor] = useState('карие');
   const [skinTone, setSkinTone] = useState('персиковая');
 
@@ -83,6 +88,16 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     { id: 'голубые', label: 'Голубые', preview: '#42A5F5', icon: '💙' },
     { id: 'зелёные', label: 'Зелёные', preview: '#4CAF50', icon: '💚' },
     { id: 'серые', label: 'Серые', preview: '#78909C', icon: '🩶' },
+  ];
+
+  const HAIR_LENGTHS = [
+    { id: 'короткие' as const, label: 'Короткие', icon: '✂️' },
+    { id: 'длинные' as const, label: 'Длинные', icon: '🎀' },
+  ];
+
+  const HAIR_STRUCTURES = [
+    { id: 'прямые' as const, label: 'Прямые', icon: '✨' },
+    { id: 'кудрявые' as const, label: 'Кудрявые', icon: '🌀' },
   ];
 
   const SKIN_TONES = [
@@ -191,6 +206,9 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       age,
       gender,
       hairColor,
+      hairType: `${hairLength} ${hairStructure}`,
+      hairLength,
+      hairStructure,
       eyeColor,
       skinTone,
       personality,
@@ -328,7 +346,10 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setGender('boy')}
+                  onClick={() => {
+                    setGender('boy');
+                    setHairLength('короткие');
+                  }}
                   className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     gender === 'boy'
                       ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
@@ -340,7 +361,10 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGender('girl')}
+                  onClick={() => {
+                    setGender('girl');
+                    setHairLength('длинные');
+                  }}
                   className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     gender === 'girl'
                       ? 'bg-rose-500 text-white shadow-sm ring-2 ring-rose-500/30'
@@ -410,6 +434,70 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Внешность: Тип и длина волос */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <span>Тип волос</span>
+              </label>
+              <span className="text-[11px] font-bold text-stone-500 capitalize">
+                {hairLength}, {hairStructure}
+              </span>
+            </div>
+
+            {/* Длина волос: короткие / длинные */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Длина</div>
+              <div className="grid grid-cols-2 gap-2">
+                {HAIR_LENGTHS.map((item) => {
+                  const isSelected = hairLength === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setHairLength(item.id)}
+                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 text-brand-800 shadow-sm'
+                          : 'border-cream-300 bg-cream-50 hover:bg-cream-100 text-stone-700'
+                      }`}
+                    >
+                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-xs font-bold">{item.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Структура волос: прямые / кудрявые */}
+            <div className="space-y-1.5 pt-1 border-t border-cream-200">
+              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Структура</div>
+              <div className="grid grid-cols-2 gap-2">
+                {HAIR_STRUCTURES.map((item) => {
+                  const isSelected = hairStructure === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setHairStructure(item.id)}
+                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 text-brand-800 shadow-sm'
+                          : 'border-cream-300 bg-cream-50 hover:bg-cream-100 text-stone-700'
+                      }`}
+                    >
+                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-xs font-bold">{item.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

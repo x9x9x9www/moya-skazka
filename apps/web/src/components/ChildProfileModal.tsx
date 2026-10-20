@@ -26,6 +26,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [age, setAge] = useState(4);
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
   const [hairColor, setHairColor] = useState('светлые');
+  const [hairType, setHairType] = useState('короткие');
   const [clothingColor, setClothingColor] = useState('изумрудный');
   const [toy, setToy] = useState('плюшевый динозаврик');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(['Динозавры', 'Волшебство']);
@@ -56,7 +57,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
           avatar_id: 'hero_custom',
           gender,
           hairColor,
-          hairType: 'кудрявые',
+          hairType,
           clothingItem: gender === 'girl' ? 'платьице' : 'уютный свитер',
           clothingColor,
           toy,
@@ -235,6 +236,34 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     }`}
                   >
                     {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Тип волос */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                Тип волос
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: 'короткие', label: 'Короткие ✂️' },
+                  { id: 'длинные', label: 'Длинные 🎀' },
+                  { id: 'кудрявые', label: 'Кудрявые 🌀' },
+                  { id: 'прямые', label: 'Прямые ✨' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setHairType(t.id)}
+                    className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all text-center ${
+                      hairType === t.id
+                        ? 'bg-brand-50 border-brand-500 text-brand-800'
+                        : 'bg-white border-cream-300 text-stone-600'
+                    }`}
+                  >
+                    {t.label}
                   </button>
                 ))}
               </div>
