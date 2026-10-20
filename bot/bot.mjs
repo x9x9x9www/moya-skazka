@@ -295,7 +295,10 @@ async function generateWellflowImageAI(prompt, retries = 2) {
 async function saveGeneratedImage(remoteUrl, jobId, name) {
   if (!jobId || !remoteUrl) return remoteUrl;
   try {
-    const res = await fetch(remoteUrl, { signal: AbortSignal.timeout(60000) });
+    const res = await fetch(remoteUrl, {
+      headers: WELLFLOW_IMAGE_KEY ? { Authorization: `Bearer ${WELLFLOW_IMAGE_KEY}` } : {},
+      signal: AbortSignal.timeout(60000),
+    });
     if (!res.ok) throw new Error(`download HTTP ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
     const contentType = res.headers.get('content-type') || 'image/jpeg';
