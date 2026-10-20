@@ -593,6 +593,28 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     return 'cozy';
   };
 
+  const resolveToyPrompt = (toy?: string): string => {
+    if (!toy) return 'a small friendly companion creature';
+    const clean = toy.trim().toLowerCase();
+    if (companionMap[clean]) return companionMap[clean];
+    if (clean.includes('дино')) return 'a small chubby friendly green plush dinosaur with soft spots and button eyes';
+    if (clean.includes('мишк') || clean.includes('медвеж')) return 'a soft fluffy plush teddy bear with hand-stitched details and shiny button eyes';
+    if (clean.includes('зай') || clean.includes('кролик')) return 'a cute fluffy little bunny rabbit with long velvety ears and a pink twitching nose';
+    if (clean.includes('кот') || clean.includes('кош')) return 'an adorable tiny kitten with big luminous curious eyes and soft whiskers';
+    if (clean.includes('звезд') || clean.includes('звёзд')) return 'a glowing friendly fairytale star creature with a warm smiling face and glittering stardust';
+    if (clean.includes('машин') || clean.includes('кар') || clean.includes('поезд') || clean.includes('паровоз')) return 'a small cheerful colorful toy vehicle with rounded edges and friendly headlights';
+    if (clean.includes('робот')) return 'a cute friendly retro toy robot with rounded corners and glowing eyes';
+    if (clean.includes('жираф')) return 'a cute plush giraffe with funny little horns and soft spots';
+    if (clean.includes('слон')) return 'a gentle plush elephant with big soft velvety ears and a curved trunk';
+    if (clean.includes('щен') || clean.includes('собак') || clean.includes('пёс')) return 'a friendly fluffy plush puppy dog with floppy ears and a kind embroidered smile';
+    if (clean.includes('кукл')) return 'a sweet charming cloth ragdoll with yarn hair and an embroidered smile';
+    if (clean.includes('утк')) return 'a cheerful cute yellow toy duckling with an orange beak';
+    if (clean.includes('лис')) return 'a clever sweet plush red fox with a fluffy white-tipped tail';
+    if (clean.includes('дракон')) return 'a tiny friendly cute baby dragon with small soft wings';
+    if (clean.includes('единорог')) return 'a magical cute plush unicorn with a soft spiral horn and rainbow mane';
+    return `a beloved charming toy companion (${clean}) with hand-crafted details and friendly button eyes`;
+  };
+
   const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${resolveHairPrompt(
     params.appearance?.hairType
   )} hair`;
@@ -600,9 +622,7 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
   const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
   const rawItem = params.appearance?.clothingItem || 'уютный свитер';
   const clothes = `${resolveClothingColorPrompt(params.appearance?.clothingColor, rawItem)} ${resolveClothingItemPrompt(rawItem)}`;
-  const companion =
-    companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
-    'a small friendly companion creature';
+  const companion = resolveToyPrompt(params.appearance?.toy);
 
   return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
 }

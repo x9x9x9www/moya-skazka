@@ -120,6 +120,11 @@ test('appearanceHints переводит русские параметры в а
   assert.match(appearanceHints({ clothingItem: 'жёлтый дождевик и резиновые сапожки' }).clothes, /raincoat/i);
   assert.match(appearanceHints({ clothingItem: 'уютная пижамка со звёздочками' }).clothes, /pajama/i);
   assert.match(appearanceHints({ clothingItem: 'костюм космонавта' }).clothes, /astronaut/i);
+
+  // Проверка свободного ввода игрушки-спутника
+  assert.match(appearanceHints({ toy: 'плюшевый жирафик с рожками' }).toy, /giraffe/i);
+  assert.match(appearanceHints({ toy: 'заводной робот Боб' }).toy, /robot/i);
+  assert.match(appearanceHints({ toy: 'пушистый щенок Дружок' }).toy, /puppy|dog/i);
 });
 
 test('chooseStoryDna детерминирован при одном seed', () => {

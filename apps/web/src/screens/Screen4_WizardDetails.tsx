@@ -32,6 +32,26 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
     onSubmit({ personality, customWishes, includeQuestions });
   };
 
+  const detectToyEmoji = (toyText: string = ''): string => {
+    const t = toyText.toLowerCase();
+    if (t.includes('дино')) return '🦖';
+    if (t.includes('миш') || t.includes('медв')) return '🧸';
+    if (t.includes('зай') || t.includes('крол')) return '🐰';
+    if (t.includes('кот') || t.includes('кош')) return '🐱';
+    if (t.includes('звезд') || t.includes('звёзд')) return '⭐';
+    if (t.includes('машин') || t.includes('кар') || t.includes('поезд') || t.includes('паровоз')) return '🚗';
+    if (t.includes('жираф')) return '🦒';
+    if (t.includes('робот')) return '🤖';
+    if (t.includes('собак') || t.includes('щен') || t.includes('пёс')) return '🐶';
+    if (t.includes('кукл')) return '🪆';
+    if (t.includes('утк')) return '🦆';
+    if (t.includes('лис')) return '🦊';
+    if (t.includes('слон')) return '🐘';
+    if (t.includes('дракон')) return '🐲';
+    if (t.includes('единорог')) return '🦄';
+    return '🧸';
+  };
+
   return (
     <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
       {/* Индикатор прогресса */}
@@ -120,17 +140,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
       <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-4 flex items-center gap-3.5 shadow-sm">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center">
           <span className="text-2xl">
-            {heroData.appearance?.toy?.includes('дино')
-              ? '🦖'
-              : heroData.appearance?.toy?.includes('миш')
-              ? '🧸'
-              : heroData.appearance?.toy?.includes('зай')
-              ? '🐰'
-              : heroData.appearance?.toy?.includes('кот')
-              ? '🐱'
-              : heroData.appearance?.toy?.includes('маш')
-              ? '🚗'
-              : '⭐'}
+            {detectToyEmoji(heroData.appearance?.toy)}
           </span>
           <span className="text-[10px] font-bold text-amber-900 mt-0.5">
             {heroData.gender === 'girl' ? '👧' : '👦'} Герой

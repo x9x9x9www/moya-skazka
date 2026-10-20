@@ -269,6 +269,28 @@ const TOY_EN = {
   'быстрая машинка': 'a small well-loved toy car with rounded edges, chipped paint and bright friendly headlights',
 };
 
+export function translateToyItem(toy) {
+  if (!toy) return 'a small soft plush toy with kind button eyes';
+  const clean = String(toy).trim().toLowerCase();
+  if (TOY_EN[clean]) return TOY_EN[clean];
+  if (clean.includes('дино')) return 'a small chubby friendly plush dinosaur with kind button eyes';
+  if (clean.includes('мишк') || clean.includes('медвеж')) return 'a soft fluffy plush teddy bear with hand-stitched details and shiny button eyes';
+  if (clean.includes('зай') || clean.includes('кролик')) return 'a cute fluffy plush bunny with long velvety ears and a pink stitched nose';
+  if (clean.includes('кот') || clean.includes('кош')) return 'an adorable tiny plush kitten with big curious embroidered eyes and soft whiskers';
+  if (clean.includes('звезд') || clean.includes('звёзд')) return 'a glowing plush star creature with a warm embroidered smile and glittering stardust seams';
+  if (clean.includes('машин') || clean.includes('кар') || clean.includes('поезд') || clean.includes('паровоз')) return 'a small cheerful colorful toy vehicle with rounded edges and friendly headlights';
+  if (clean.includes('робот')) return 'a cute friendly retro toy robot with rounded corners and gentle glowing eyes';
+  if (clean.includes('жираф')) return 'a cute plush giraffe with funny little horns and soft spots';
+  if (clean.includes('слон')) return 'a gentle plush elephant with big soft velvety ears and a curved trunk';
+  if (clean.includes('щенок') || clean.includes('собак') || clean.includes('пёс')) return 'a friendly fluffy plush puppy dog with floppy ears and a kind embroidered smile';
+  if (clean.includes('кукл')) return 'a sweet charming cloth ragdoll with yarn hair and an embroidered smile';
+  if (clean.includes('утк')) return 'a cheerful cute yellow toy duckling with an orange beak';
+  if (clean.includes('лис')) return 'a clever sweet plush red fox with a fluffy white-tipped tail';
+  if (clean.includes('дракон')) return 'a tiny friendly cute baby dragon with small soft wings';
+  if (clean.includes('единорог')) return 'a magical cute plush unicorn with a soft spiral horn and rainbow mane';
+  return `a beloved charming toy companion (${clean}) with hand-crafted details and friendly button eyes`;
+}
+
 export function translateClothingItem(item) {
   if (!item) return 'knitted sweater';
   const clean = String(item).trim().toLowerCase();
@@ -342,7 +364,7 @@ export function appearanceHints(appearance = {}) {
   const itemEn = CLOTHING_ITEM_EN[itemClean] || translateClothingItem(itemClean);
   const colorEn = CLOTHING_COLOR_EN[appearance.clothingColor] || translateClothingColor(appearance.clothingColor, itemClean);
   const clothes = `${colorEn} ${itemEn}`;
-  const toy = TOY_EN[appearance.toy] || 'a small soft plush toy with kind button eyes';
+  const toy = TOY_EN[appearance.toy] || translateToyItem(appearance.toy);
   return { hairColor, hairType, eyes, skin, clothes, toy };
 }
 
@@ -516,6 +538,30 @@ function getThemedCompanionQuirk(params, random) {
       'ночная звёздочка: оставляет за собой тонкий мерцающий хвостик из сонной пыльцы',
     ];
     return pick(starQuirks, random);
+  }
+
+  if (toy.includes('робот')) {
+    const robotQuirks = [
+      'маленький добрый робот: тихонько щёлкает шестерёнками, весело мигает дружелюбными лампочками и помогает наводить порядок',
+      'заводной механический помощник: носит в кармашке крошечный ключик и умеет тихо проигрывать колыбельную мелодию',
+    ];
+    return pick(robotQuirks, random);
+  }
+
+  if (toy.includes('жираф')) {
+    const giraffeQuirks = [
+      'высокий добрый жирафик: заглядывает за высокие ветки, смешно шевелит мягкими рожками и находит потерянные вещи',
+      'уютный пятнистый друг: ласково наклоняет мягкую шейку и согревает пушистыми лапками',
+    ];
+    return pick(giraffeQuirks, random);
+  }
+
+  if (toy.includes('щен') || toy.includes('собак') || toy.includes('пёс')) {
+    const dogQuirks = [
+      'преданный пушистый щенок: радостно виляет мягким хвостиком, смешно чихает от пыльцы и всегда бежит рядом',
+      'чуткий плюшевый сторож: бережёт сладкие сны и ласково греет пушистым бочком',
+    ];
+    return pick(dogQuirks, random);
   }
 
   return pick(COMPANION_QUIRKS, random);

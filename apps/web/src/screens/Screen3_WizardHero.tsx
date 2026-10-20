@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Check, Plus } from 'lucide-react';
 
 export interface WizardHeroData {
   childName: string;
@@ -13,7 +13,7 @@ export interface WizardHeroData {
     hairType: string; // 'кудрявые' | 'короткие' | 'длинные' | 'прямые'
     clothingItem: string; // Свободный ввод: 'жёлтый дождевик и резиновые сапожки', 'уютная пижамка...'
     clothingColor: string; // акцентный цвет или автоопределённый
-    toy: string; // 'плюшевый мишка' | 'зайка' | 'динозаврик' | 'котёнок' | 'звёздочка' | 'быстрая машинка'
+    toy: string; // Свободный ввод: 'плюшевый жирафик Тоша', 'робот Боб', 'зайка'...
     eyeColor?: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
     skinTone?: string; // 'светлая' | 'персиковая' | 'смуглая'
     hairLength?: string;
@@ -33,6 +33,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   onChange,
   onNext,
 }) => {
+  const [customInterest, setCustomInterest] = useState('');
+
+  // Популярные интересы для быстрого выбора
   const interestsList = [
     { id: 'Динозавры', icon: '🦖', label: 'Динозавры' },
     { id: 'Космос', icon: '🚀', label: 'Космос' },
@@ -40,6 +43,12 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'Волшебство', icon: '🪄', label: 'Волшебство' },
     { id: 'Машинки', icon: '🚗', label: 'Машинки' },
     { id: 'Природа', icon: '🌿', label: 'Природа' },
+    { id: 'Лего и конструктор', icon: '🧱', label: 'Лего' },
+    { id: 'Рисование', icon: '🎨', label: 'Рисование' },
+    { id: 'Поезда', icon: '🚂', label: 'Поезда' },
+    { id: 'Море и дельфины', icon: '🐬', label: 'Море' },
+    { id: 'Музыка', icon: '🎵', label: 'Музыка' },
+    { id: 'Спорт и мяч', icon: '⚽', label: 'Спорт' },
   ];
 
   // Расширенный список популярных и терапевтических тем
@@ -81,6 +90,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { icon: '🦸', text: 'Костюм доброго супергероя' },
   ];
 
+  // Быстрые подсказки-идеи для игрушки-спутника
   const companionToys = [
     { id: 'плюшевый динозаврик', icon: '🦖', label: 'Динозаврик' },
     { id: 'плюшевый мишка', icon: '🧸', label: 'Мишка' },
@@ -88,6 +98,12 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'маленький котёнок', icon: '🐱', label: 'Котёнок' },
     { id: 'волшебная звёздочка', icon: '⭐', label: 'Звёздочка' },
     { id: 'быстрая машинка', icon: '🚗', label: 'Машинка' },
+    { id: 'плюшевый жирафик', icon: '🦒', label: 'Жирафик' },
+    { id: 'заводной робот', icon: '🤖', label: 'Робот' },
+    { id: 'верный щенок', icon: '🐶', label: 'Щенок' },
+    { id: 'тряпичная куколка', icon: '🪆', label: 'Куколка' },
+    { id: 'жёлтая уточка', icon: '🦆', label: 'Уточка' },
+    { id: 'сказочный единорожек', icon: '🦄', label: 'Единорог' },
   ];
 
   const appearance = data.appearance || {
@@ -114,6 +130,15 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       ? data.interests.filter((i) => i !== id)
       : [...data.interests, id];
     onChange({ ...data, interests: updated });
+  };
+
+  const handleAddCustomInterest = () => {
+    const trimmed = customInterest.trim();
+    if (!trimmed) return;
+    if (!data.interests.includes(trimmed)) {
+      onChange({ ...data, interests: [...data.interests, trimmed] });
+    }
+    setCustomInterest('');
   };
 
   // Цвет волос для превью
@@ -143,6 +168,32 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   };
   const activeClothingHex = detectClothingHex(appearance.clothingItem, appearance.clothingColor);
 
+  // Динамическое определение эмодзи для игрушки героя
+  const detectToyEmoji = (toyText: string = ''): string => {
+    const t = toyText.toLowerCase();
+    if (t.includes('дино')) return '🦖';
+    if (t.includes('миш') || t.includes('медв')) return '🧸';
+    if (t.includes('зай') || t.includes('крол')) return '🐰';
+    if (t.includes('кот') || t.includes('кош')) return '🐱';
+    if (t.includes('звезд') || t.includes('звёзд')) return '⭐';
+    if (t.includes('машин') || t.includes('кар') || t.includes('поезд') || t.includes('паровоз')) return '🚗';
+    if (t.includes('жираф')) return '🦒';
+    if (t.includes('робот')) return '🤖';
+    if (t.includes('собак') || t.includes('щен') || t.includes('пёс')) return '🐶';
+    if (t.includes('кукл')) return '🪆';
+    if (t.includes('утк')) return '🦆';
+    if (t.includes('лис')) return '🦊';
+    if (t.includes('слон')) return '🐘';
+    if (t.includes('дракон')) return '🐲';
+    if (t.includes('единорог')) return '🦄';
+    if (t.includes('плед') || t.includes('одеял')) return '🧣';
+    return '🧸';
+  };
+
+  // Список кастомных интересов (которые не входят в базовый список)
+  const standardInterestIds = interestsList.map((i) => i.id);
+  const customInterestsList = data.interests.filter((i) => !standardInterestIds.includes(i));
+
   return (
     <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
       {/* Индикатор прогресса */}
@@ -154,7 +205,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           Кто станет главным героем?
         </h2>
         <p className="text-xs text-stone-500 mt-1">
-          Настройте одежду, спутника и тему — малыш оживёт на иллюстрациях сказки
+          Настройте одежду, спутника и увлечения — малыш оживёт на иллюстрациях сказки
         </p>
       </div>
 
@@ -192,7 +243,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             >
               {/* Игрушка в ручках */}
               <div className="absolute -right-2 bottom-0 text-sm">
-                {companionToys.find((t) => t.id === appearance.toy)?.icon || '🦖'}
+                {detectToyEmoji(appearance.toy)}
               </div>
             </div>
           </div>
@@ -267,37 +318,77 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
-      {/* Любимая игрушка-спутник */}
-      <div className="space-y-2 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
-        <label className="text-xs font-bold text-stone-700 block">
-          Игрушка-спутник (будет помогать герою в сказке)
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {companionToys.map((toy) => {
-            const isSelected = appearance.toy === toy.id;
-            return (
-              <button
-                key={toy.id}
-                type="button"
-                onClick={() => updateAppearance({ toy: toy.id })}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition-all ${
-                  isSelected
-                    ? 'bg-brand-50 border-brand-500 text-brand-800 ring-1 ring-brand-500'
-                    : 'bg-cream-50 border-cream-300 text-stone-700'
-                }`}
-              >
-                <span className="text-xl mb-0.5">{toy.icon}</span>
-                <span className="text-[10px] font-bold">{toy.label}</span>
-              </button>
-            );
-          })}
+      {/* Любимая игрушка-спутник (Свободный ввод + быстрые подсказки) */}
+      <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+            <span>{detectToyEmoji(appearance.toy)}</span>
+            <span>Любимая игрушка-спутник</span>
+          </label>
+          <span className="text-[11px] font-medium text-brand-700">впишите любую</span>
+        </div>
+
+        {/* Текстовое поле свободного ввода игрушки */}
+        <div className="relative">
+          <input
+            type="text"
+            value={appearance.toy || ''}
+            onChange={(e) => updateAppearance({ toy: e.target.value })}
+            placeholder="Например: плюшевый жирафик Тоша, робот Боб, любимый зайка, синий паровозик..."
+            className="w-full px-4 py-3.5 pr-9 rounded-2xl bg-cream-50/70 border border-cream-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-stone-800 text-sm shadow-inner transition-all placeholder:text-stone-400 placeholder:font-normal"
+          />
+          {appearance.toy && (
+            <button
+              type="button"
+              onClick={() => updateAppearance({ toy: '' })}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-stone-200 text-stone-500 hover:bg-stone-300 flex items-center justify-center text-xs transition-colors"
+              title="Очистить"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Быстрые подсказки-идеи для игрушки */}
+        <div className="space-y-1.5 pt-1">
+          <div className="text-[11px] font-semibold text-stone-500">
+            Или выберите из популярных:
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {companionToys.map((toy) => {
+              const isSelected = appearance.toy === toy.id || appearance.toy === toy.label;
+              return (
+                <button
+                  key={toy.id}
+                  type="button"
+                  onClick={() => updateAppearance({ toy: toy.id })}
+                  className={`py-1.5 px-3 rounded-full text-xs font-medium border transition-all ${
+                    isSelected
+                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
+                      : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 hover:border-brand-300 active:scale-95'
+                  }`}
+                >
+                  <span className="mr-1">{toy.icon}</span>
+                  <span>{toy.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Сетка карточек «Что любит?» */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-stone-700">Что любит ребёнок?</label>
-        <div className="grid grid-cols-3 gap-2.5">
+      {/* Что любит ребёнок? (Популярные карточки + свободный ввод увлечений) */}
+      <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+            <span>❤️</span>
+            <span>Что любит ребёнок?</span>
+          </label>
+          <span className="text-[11px] font-medium text-brand-700">можно добавить своё</span>
+        </div>
+
+        {/* Сетка популярных увлечений */}
+        <div className="grid grid-cols-3 gap-2">
           {interestsList.map((item) => {
             const isSelected = data.interests.includes(item.id);
             return (
@@ -305,22 +396,72 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => toggleInterest(item.id)}
-                className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all ${
+                className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center text-center transition-all ${
                   isSelected
                     ? 'bg-brand-50 border-brand-500 shadow-sm ring-1 ring-brand-500'
-                    : 'bg-white border-cream-300 hover:bg-cream-50 active:scale-95'
+                    : 'bg-cream-50/60 border-cream-300 hover:bg-cream-100 active:scale-95'
                 }`}
               >
-                <span className="text-2xl mb-1">{item.icon}</span>
+                <span className="text-xl mb-0.5">{item.icon}</span>
                 <span className={`text-[11px] font-bold ${isSelected ? 'text-brand-800' : 'text-stone-700'}`}>
                   {item.label}
                 </span>
                 {isSelected && (
-                  <Check className="w-3.5 h-3.5 text-brand-600 mt-1" />
+                  <Check className="w-3.5 h-3.5 text-brand-600 mt-0.5" />
                 )}
               </button>
             );
           })}
+        </div>
+
+        {/* Поле добавления собственного увлечения */}
+        <div className="space-y-2 pt-2 border-t border-cream-200">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customInterest}
+              onChange={(e) => setCustomInterest(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomInterest();
+                }
+              }}
+              placeholder="Добавьте своё увлечение (например: Мыльные пузыри, Пазлы...)"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-cream-50/70 border border-cream-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-inner placeholder:text-stone-400 placeholder:font-normal"
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomInterest}
+              disabled={!customInterest.trim()}
+              className="px-3.5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 active:scale-95 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Добавить</span>
+            </button>
+          </div>
+
+          {/* Добавленные родительские интересы */}
+          {customInterestsList.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {customInterestsList.map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-300 text-brand-900 text-xs font-semibold shadow-xs"
+                >
+                  <span>✨ {item}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleInterest(item)}
+                    className="w-4 h-4 rounded-full bg-brand-200/70 hover:bg-brand-300 text-brand-800 flex items-center justify-center text-[10px] ml-0.5"
+                    title="Удалить"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
