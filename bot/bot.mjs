@@ -862,6 +862,19 @@ async function startPolling() {
                   ],
                 },
               });
+            } else if (text === '/reset' || text.startsWith('/start reset') || text === 'сброс' || text === '/clear') {
+              const resetAppUrl = `${getAppUrlWithApi(publicTunnelUrl)}&reset=1`;
+              console.log(`[Bot] 🔄 Запрос сброса аккаунта от ${firstName} (${chatId})`);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: `🔄 **Профиль сброшен!**\n\nВсе сохранённые данные (профиль ребёнка, созданные сказки и настройки) будут очищены.\n\nНажмите кнопку ниже, чтобы открыть приложение **с чистого листа как новый пользователь**:\n• Приветственный онбординг\n• Быстрая регистрация малыша\n• Чистая библиотека\n• Бесплатная первая сказка! 🎁`,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '✨ Начать как новый пользователь', web_app: { url: resetAppUrl } }],
+                  ],
+                },
+              });
             } else if (text === '/help') {
               await callTelegram('sendMessage', {
                 chat_id: chatId,

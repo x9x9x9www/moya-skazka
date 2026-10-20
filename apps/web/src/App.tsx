@@ -25,6 +25,29 @@ export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
   const { settings, updateSetting } = useReaderSettings();
 
+  // 0. Обработка флага полного сброса для проверки опыта нового пользователя (?reset=1)
+  const isResetRequested = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get('reset') === '1' || sp.get('reset') === 'true' || sp.get('action') === 'reset';
+    } catch {
+      return false;
+    }
+  })();
+
+  if (isResetRequested && typeof window !== 'undefined') {
+    try {
+      const savedApi = localStorage.getItem('ms_api_url');
+      localStorage.clear();
+      if (savedApi) localStorage.setItem('ms_api_url', savedApi);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('reset');
+      url.searchParams.delete('action');
+      window.history.replaceState({}, '', url.toString());
+    } catch {}
+  }
+
   // Проверка завершения онбординга/регистрации первого ребёнка
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
     try {
@@ -125,6 +148,12 @@ export const App: React.FC = () => {
   }, [initData]);
 
   const bootstrapApp = async () => {
+    if (isResetRequested) {
+      try {
+        await api.deleteAccount();
+      } catch {}
+      return;
+    }
     try {
       await api.loginWithTelegram(initData, startParam);
       const me = await api.getMe();
@@ -997,19 +1026,24 @@ export const App: React.FC = () => {
             onUpdateSetting={updateSetting}
             onClose={() => setCurrentScreen('home')}
             onDeleteAccount={async () => {
-              await api.deleteAccount();
               try {
-                localStorage.removeItem('ms_onboarding_completed');
-                localStorage.removeItem('ms_children');
-                localStorage.removeItem('ms_active_child_id');
-                localStorage.removeItem('ms_free_claimed');
-                localStorage.removeItem('ms_balance');
+                await api.deleteAccount();
+              } catch {}
+              try {
+                const savedApi = localStorage.getItem('ms_api_url');
+                localStorage.clear();
+                if (savedApi) localStorage.setItem('ms_api_url', savedApi);
               } catch {}
               setIsOnboardingCompleted(false);
               setCanClaimFree(true);
+              setBalance(1);
+              setChildren([]);
+              setActiveChildId(null);
+              setBooks([]);
+              setDailyIdea(null);
               setCurrentScreen('onboarding');
+              setActiveTab('home');
               alert('Аккаунт и все связанные данные успешно удалены.');
-              bootstrapApp();
             }}
           />
         )}
