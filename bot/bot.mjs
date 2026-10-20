@@ -60,6 +60,8 @@ const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
 let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || '';
 let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : '';
+let lastServeoUrl = '';
+let lastLocalTunnelUrl = '';
 
 const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = path.join(BOT_DIR, 'generated');
@@ -649,18 +651,20 @@ function startTunnel() {
     const text = data.toString();
     const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.serveousercontent\.com/);
     if (match && match[0]) {
-      await activateTunnel(match[0], 'serveo');
+      lastServeoUrl = match[0];
+      await activateTunnel(lastServeoUrl, 'serveo');
     }
   };
 
   child.stdout.on('data', handleData);
   child.stderr.on('data', handleData);
 
-  child.on('close', (code) => {
+  child.on('close', async (code) => {
     console.log(`[Tunnel] Serveo завершился (код: ${code}), перезапуск через 3 сек...`);
     if (activeTunnelSource === 'serveo') {
       publicTunnelUrl = '';
       activeTunnelSource = '';
+      if (lastLocalTunnelUrl) await activateTunnel(lastLocalTunnelUrl, 'localtunnel');
     }
     setTimeout(startTunnel, 3000);
   });
@@ -677,6 +681,7 @@ function startLocalTunnel() {
       const match = text.match(/https:\/\/[^\s]+/);
       if (match) {
         const url = match[0].replace(/[),.;]+$/, '');
+        lastLocalTunnelUrl = url;
         await activateTunnel(url, 'localtunnel');
       }
     }
@@ -687,11 +692,12 @@ function startLocalTunnel() {
     if (!msg.includes('node')) console.warn('[LocalTunnel Warning]', msg);
   });
 
-  lt.on('close', (c) => {
+  lt.on('close', async (c) => {
     console.log(`[LocalTunnel] Завершился (код: ${c}), перезапуск через 5 сек...`);
     if (activeTunnelSource === 'localtunnel') {
       publicTunnelUrl = '';
       activeTunnelSource = '';
+      if (lastServeoUrl) await activateTunnel(lastServeoUrl, 'serveo');
     }
     setTimeout(startLocalTunnel, 5000);
   });
