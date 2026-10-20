@@ -47,7 +47,16 @@ export const App: React.FC = () => {
   const [isRegisteringSecondChild, setIsRegisteringSecondChild] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [balance, setBalance] = useState<number>(1);
+  // Для демо баланс храним локально, чтобы он не сбрасывался при перезагрузке.
+  // Когда backend станет источником истины, значение придёт из /me.
+  const [balance, setBalance] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('ms_balance');
+      return raw === null ? 1 : Math.max(0, parseInt(raw, 10) || 0);
+    } catch {
+      return 1;
+    }
+  });
   // Единоразовая бесплатная первая сказка: сохраняется в localStorage
   const [canClaimFree, setCanClaimFree] = useState<boolean>(() => {
     try {
@@ -99,9 +108,16 @@ export const App: React.FC = () => {
   // Рефералы
   const [referralStats, setReferralStats] = useState({
     link: 'https://t.me/MoyaSkazkaBot?startapp=ref_demo',
-    qualifiedFriends: 2,
-    giftCredits: 2,
+    qualifiedFriends: 0,
+    giftCredits: 0,
   });
+
+  // Баланс демо-кредитов переживает перезагрузку страницы.
+  useEffect(() => {
+    try {
+      localStorage.setItem('ms_balance', String(balance));
+    } catch {}
+  }, [balance]);
 
   // Авторизация и начальная загрузка
   useEffect(() => {
@@ -112,6 +128,10 @@ export const App: React.FC = () => {
     try {
       await api.loginWithTelegram(initData, startParam);
       const me = await api.getMe();
+      if (me?.balance) {
+        const available = me.balance.available ?? me.balance.total;
+        if (typeof available === 'number') setBalance(available);
+      }
       const isClaimedLocally = localStorage.getItem('ms_free_claimed') === 'true';
       if (isClaimedLocally) {
         setCanClaimFree(false);
@@ -983,6 +1003,7 @@ export const App: React.FC = () => {
                 localStorage.removeItem('ms_children');
                 localStorage.removeItem('ms_active_child_id');
                 localStorage.removeItem('ms_free_claimed');
+                localStorage.removeItem('ms_balance');
               } catch {}
               setIsOnboardingCompleted(false);
               setCanClaimFree(true);
