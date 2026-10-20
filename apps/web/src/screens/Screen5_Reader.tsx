@@ -16,6 +16,7 @@ interface Screen5ReaderProps {
   onPrevScene: () => void;
   onNextScene: () => void;
   onClose: () => void;
+  onToggleQuestions?: () => void;
 }
 
 export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
@@ -29,6 +30,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   onPrevScene,
   onNextScene,
   onClose,
+  onToggleQuestions,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showPromptDetails, setShowPromptDetails] = useState(false);
@@ -47,9 +49,12 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
     return () => window.removeEventListener('ms_scene_image_updated', handler);
   }, [currentSceneIndex, currentScene?.image_url]);
 
-  const questionForThisScene = settings.showQuestions
-    ? book.questions.find((q) => q.after_scene === currentSceneIndex)
-    : null;
+  // Вопросы после 2-й сцены показываем в читалке, а вопрос после 4-й —
+  // на финальном экране, как в макете (экраны 5 и 6). Иначе он дублируется.
+  const questionForThisScene =
+    settings.showQuestions && currentSceneIndex !== 4
+      ? book.questions.find((q) => q.after_scene === currentSceneIndex)
+      : null;
 
   // Применяем классы темы читалки (Экран 12)
   const themeClass =
@@ -84,17 +89,31 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           {currentSceneIndex} / 4
         </div>
 
-        <button
-          onClick={toggleMute}
-          className={`p-1.5 px-2.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
-            isPlaying
-              ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs'
-              : 'bg-black/5 text-stone-500 hover:text-stone-700'
-          }`}
-          title={isPlaying ? 'Музыка играет (нажмите для выключения)' : 'Включить фоновую колыбельную'}
-        >
-          <span>{isPlaying ? '🎵' : '🔇'}</span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onToggleQuestions}
+            className={`p-1.5 px-2.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
+              settings.showQuestions
+                ? 'bg-brand-50 text-brand-700 border border-brand-200'
+                : 'bg-black/5 text-stone-400 hover:text-stone-600'
+            }`}
+            title={settings.showQuestions ? 'Скрыть вопросы для обсуждения' : 'Показать вопросы для обсуждения'}
+          >
+            <span>{settings.showQuestions ? '💬' : '🚫'}</span>
+          </button>
+
+          <button
+            onClick={toggleMute}
+            className={`p-1.5 px-2.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
+              isPlaying
+                ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs'
+                : 'bg-black/5 text-stone-500 hover:text-stone-700'
+            }`}
+            title={isPlaying ? 'Музыка играет (нажмите для выключения)' : 'Включить фоновую колыбельную'}
+          >
+            <span>{isPlaying ? '🎵' : '🔇'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Основной контент: Иллюстрация + Текст + Вопрос */}

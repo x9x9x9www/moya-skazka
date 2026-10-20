@@ -17,10 +17,11 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
   onGoToLibrary,
 }) => {
   const finalScene = book.scenes.find((s) => s.scene_index === 4) || book.scenes[book.scenes.length - 1];
-  const finalQuestion = book.questions.find((q) => q.after_scene === 5) || {
-    question: 'Что тебе больше всего понравилось в этой истории?',
-    parent_hint: 'Предложите рассказать, что запомнилось и почему. Можно спросить, как бы ребёнок поступил на месте героя.',
-  };
+  // После 4-й сцены вопрос показываем здесь, а не в читалке — так он не дублируется.
+  const finalQuestion =
+    book.questions.find((q) => q.after_scene === 5) ||
+    book.questions.find((q) => q.after_scene === 4) ||
+    null;
 
   const themeClass =
     settings.theme === 'light'
@@ -60,7 +61,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
         </p>
 
         {/* Карточка «Последний вопрос» (Экран 6) */}
-        {settings.showQuestions && (
+        {settings.showQuestions && finalQuestion && (
           <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-100/90 to-amber-50/90 dark:from-stone-800 dark:to-stone-800/60 border border-amber-300/70 dark:border-stone-700 shadow-sm space-y-2.5">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-300">
               <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />

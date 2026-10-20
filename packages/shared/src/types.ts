@@ -180,6 +180,7 @@ export interface BookDetailsDTO {
   title: string;
   status: BookStatus;
   format: BookFormat;
+  cover_url?: string | null;
   scenes: BookSceneDTO[];
   questions: BookQuestionDTO[];
   can_upgrade: boolean;

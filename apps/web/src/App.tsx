@@ -325,42 +325,7 @@ export const App: React.FC = () => {
       } catch {}
     }
 
-    const defaultBooks: BookSummaryDTO[] = [
-      {
-        id: 'b1',
-        child_id: 'child_1',
-        child_name: 'Миша',
-        title: 'Миша и маленький динозавр Дино',
-        status: 'ILLUSTRATED',
-        format: 'ILLUSTRATED',
-        cover_url: './illustrations/cover_dino.jpg',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'b2',
-        child_id: 'child_1',
-        child_name: 'Миша',
-        title: 'Миша и звёздочка',
-        status: 'TEXT_READY',
-        format: 'TEXT',
-        cover_url: './illustrations/cover_star.jpg',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'b3',
-        child_id: 'child_1',
-        child_name: 'Миша',
-        title: 'Миша и волшебный лес',
-        status: 'ILLUSTRATED',
-        format: 'ILLUSTRATED',
-        cover_url: './illustrations/cover_forest.jpg',
-        created_at: new Date().toISOString(),
-      },
-    ];
-    setBooks(defaultBooks);
-    try {
-      localStorage.setItem('ms_books', JSON.stringify(defaultBooks));
-    } catch {}
+    setBooks([]);
   };
 
   const loadDailyIdea = async (childId: string) => {
@@ -446,8 +411,8 @@ export const App: React.FC = () => {
     setIsCreatingStory(true);
     setJobProgress(15);
     setCreationStage('writing');
-    setCreationMessage('Сочиняем уникальный сюжет в GPT-6-Astra...');
-    const TOTAL_ESTIMATED_SEC = 32;
+    setCreationMessage('Сочиняем уникальный сюжет и character bible...');
+    const TOTAL_ESTIMATED_SEC = 120;
     setRemainingSeconds(TOTAL_ESTIMATED_SEC);
     haptic.medium();
 
@@ -461,7 +426,7 @@ export const App: React.FC = () => {
     }, 500);
 
     try {
-      // 1. Генерация через Wellflow GPT-6-Astra и параллельные иллюстрации Nano-Banana-2
+      // 1. Story Engine: текст, character bible, обложка и 4 иллюстрации
       const generatedBook = await generateDynamicStory(
         {
           childName: wizardData.childName,
@@ -495,7 +460,7 @@ export const App: React.FC = () => {
         title: generatedBook.title,
         status: 'ILLUSTRATED',
         format: 'ILLUSTRATED',
-        cover_url: generatedBook.scenes[0]?.image_url || './illustrations/cover_dino.jpg',
+        cover_url: generatedBook.cover_url || generatedBook.scenes[0]?.image_url || './illustrations/cover_dino.jpg',
         created_at: new Date().toISOString(),
       };
 
@@ -601,7 +566,7 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>1. Сюжет (GPT-6-Astra)</span>
+                  <span>1. Сюжет и character bible</span>
                 </span>
                 <span className="text-[11px] text-stone-500">
                   {creationStage === 'writing' ? 'сочиняем...' : 'готов'}
@@ -618,7 +583,7 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>2. 4 акварели (Nano-Banana-2)</span>
+                  <span>2. Обложка + 4 иллюстрации (Nano-Banana-2)</span>
                 </span>
                 <span className="text-[11px] text-stone-500">
                   {creationStage === 'writing'
@@ -713,6 +678,7 @@ export const App: React.FC = () => {
             theme={wizardData.theme}
             interest={wizardData.interests[0] || 'Волшебство'}
             appearance={wizardData.appearance}
+            onToggleQuestions={() => updateSetting('showQuestions', !settings.showQuestions)}
             onPrevScene={() => {
               haptic.light();
               setCurrentSceneIndex((prev) => Math.max(1, prev - 1));

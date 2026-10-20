@@ -78,7 +78,7 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
   public async generateStory(input: GenerateStoryInput): Promise<AIGeneratedStory> {
     const apiUrl = config.WELLFLOW_API_URL;
     const apiKey = config.WELLFLOW_TEXT_KEY;
-    const model = config.WELLFLOW_TEXT_MODEL || 'gpt-6-astra';
+    const model = config.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash';
 
     if (!apiKey) {
       console.warn('[WellflowAIProvider] WELLFLOW_TEXT_KEY is missing, falling back to mock provider');
@@ -141,7 +141,7 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
 
       const rawContent = data.choices?.[0]?.message?.content;
       if (!rawContent) {
-        throw new Error('Пустой ответ от модели gpt-6-astra');
+        throw new Error(`Пустой ответ от модели ${model}`);
       }
 
       const cleanedJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();

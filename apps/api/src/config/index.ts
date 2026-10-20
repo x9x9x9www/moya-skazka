@@ -31,7 +31,7 @@ const ConfigSchema = z.object({
   GEMINI_API_KEY: z.string().default(''),
   WELLFLOW_API_URL: z.string().default('https://api.wellflow.dev/v1'),
   WELLFLOW_TEXT_KEY: z.string().default(''),
-  WELLFLOW_TEXT_MODEL: z.string().default('gpt-6-astra'),
+  WELLFLOW_TEXT_MODEL: z.string().default('gemini-3.8-flash'),
   WELLFLOW_IMAGE_KEY: z.string().default(''),
   WELLFLOW_IMAGE_MODEL: z.string().default('nano-banana-2'),
   AI_MAX_RETRIES: z.coerce.number().default(3),

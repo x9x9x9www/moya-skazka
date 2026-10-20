@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { WellflowAIProvider, WELLFLOW_SYSTEM_PROMPT, NANO_BANANA_STYLE_TEMPLATE } from '../src/services/ai/wellflow.ai.provider';
 import { AIStoryResponseSchema } from '@moya-skazka/shared';
 
+const LIVE_AI_TESTS = process.env.RUN_LIVE_AI_TESTS === 'true';
+
 describe('Wellflow AI Provider (GPT-6-Astra & Nano-Banana-2)', () => {
   const provider = new WellflowAIProvider();
 
@@ -49,7 +51,7 @@ describe('Wellflow AI Provider (GPT-6-Astra & Nano-Banana-2)', () => {
     expect(parsed.questions[0].skill_tag).toBe('emotions');
   });
 
-  it('generateStory возвращает 4 сцены и педагогические вопросы', async () => {
+  it.skipIf(!LIVE_AI_TESTS)('generateStory возвращает 4 сцены и педагогические вопросы (live)', async () => {
     const story = await provider.generateStory({
       childName: 'Миша',
       age: 4,
@@ -66,5 +68,5 @@ describe('Wellflow AI Provider (GPT-6-Astra & Nano-Banana-2)', () => {
     expect(story.title).toBeDefined();
     expect(story.scenes).toHaveLength(4);
     expect(story.questions.length).toBeGreaterThanOrEqual(1);
-  }, 60000);
+  }, 120000);
 });
