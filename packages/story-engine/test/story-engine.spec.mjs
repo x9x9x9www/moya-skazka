@@ -127,6 +127,25 @@ test('buildStoryPrompt содержит возрастной объём и ге�
   assert.match(user, /НЕ ПОВТОРЯЙ/);
 });
 
+test('buildStoryPrompt поднимает customWishes на высший приоритет', () => {
+  const customParams = { ...params, customWishes: 'Пусть Миша встретит дельфина в тёплом море' };
+  const { user, dna } = buildStoryPrompt(customParams, { random: createSeededRandom('seed-custom') });
+  assert.match(user, /ВЫСШИЙ ПРИОРИТЕТ/);
+  assert.match(user, /встретит дельфина в тёплом море/);
+  assert.match(dna.world_scale, /Seaside Wonder/);
+});
+
+test('chooseStoryDna адаптирует мир и спутника под машинки и динозавров', () => {
+  const carParams = {
+    ...params,
+    interests: ['Машинки'],
+    appearance: { ...params.appearance, toy: 'быстрая машинка' },
+  };
+  const dna = chooseStoryDna(carParams, createSeededRandom('seed-car'));
+  assert.match(dna.world_scale, /Motors/);
+  assert.match(dna.companion_quirk, /моторчик|колёсик|фара/i);
+});
+
 test('normalizeStory принимает валидный ответ и считает слова', () => {
   const story = normalizeStory(fixture(), params);
   assert.equal(story.title, 'Миша и звёздный мостик');

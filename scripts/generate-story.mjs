@@ -32,18 +32,23 @@ function arg(name, fallback = null) {
 
 const hasFlag = (name) => process.argv.includes(`--${name}`);
 
-async function loadEnv() {
-  const envPath = path.join(ROOT, '.env');
-  const text = await fs.readFile(envPath, 'utf8');
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-    const [key, ...rest] = trimmed.split('=');
-    process.env[key.trim()] = rest.join('=').trim().replace(/^['"]|['"]$/g, '');
-  }
-}
+import nodeFs from 'node:fs';
 
-const TEXT_MODEL = arg('model', process.env.WELLFLOW_TEXT_MODEL || 'gpt-5.6-luna');
+function loadEnvSync() {
+  const envPath = path.join(ROOT, '.env');
+  try {
+    const text = nodeFs.readFileSync(envPath, 'utf8');
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+      const [key, ...rest] = trimmed.split('=');
+      process.env[key.trim()] = rest.join('=').trim().replace(/^['"]|['"]$/g, '');
+    }
+  } catch {}
+}
+loadEnvSync();
+
+const TEXT_MODEL = arg('model', process.env.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash');
 const FALLBACK_TEXT_MODEL = arg('fallback-model', 'gemini-3.8-flash');
 const IMAGE_MODEL = arg('image-model', process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2');
 const FALLBACK_IMAGE_MODEL = arg('fallback-image-model', 'nano-banana-pro');
@@ -207,7 +212,6 @@ async function generateImage(prompt, fileBase) {
 }
 
 async function main() {
-  await loadEnv();
   if (!process.env.WELLFLOW_TEXT_KEY) throw new Error('В .env нет WELLFLOW_TEXT_KEY');
   if (!SKIP_IMAGES && !process.env.WELLFLOW_IMAGE_KEY) throw new Error('В .env нет WELLFLOW_IMAGE_KEY');
 

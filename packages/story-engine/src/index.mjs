@@ -43,19 +43,19 @@ The user message contains a chosen \`world_scale\`, \`narrative_engine\`, \`lite
 - Required: exactly one \`role: "hero"\` (the child). Add one or two companions/secondary characters with \`role: "companion"\` or \`role: "friend"\`.
 - \`visual_description\` must be immutable and highly specific: age, gender presentation, hair color and style, eye color, skin tone, exact clothing items and colors, footwear if visible; for the companion — exact species/object, material, size, colors, accessories, and the chosen quirk.
 - The hero MUST match the child's input: age, gender, hair, eyes, skin, clothing, and the favorite toy. Do not age the child up or change their clothes.
-- The favorite toy is the companion. Bring the toy to life, but keep its toy nature visible (plush texture, stitching, button eyes, chipped paint, wheels, worn ear, etc.). Apply the chosen \`companion_quirk\` as a SECRET PROFESSION, ACCESSORY, or FUNNY FLAW — never as a new species. A toy car stays a toy car; a plush bunny stays a plush bunny. Do not turn the toy into a hedgehog, dragon, kitten, moth, or any other creature.
+- The favorite toy is the companion. Bring the toy to life, but keep its toy nature visible (plush texture, stitching, button eyes, chipped paint, wheels, worn ear, etc.). Apply the chosen \`companion_quirk\` naturally to the toy — never turn the toy into a different species (a toy car stays a car, a bunny stays a bunny).
 - Keep every character's appearance identical in every scene. Do not invent new outfits mid-story.
 
-### 5. FOUR SCENES, AGE CALIBRATION
+### 5. FOUR SCENES, AGE CALIBRATION (РАЗДЕЛ 6 ТЗ)
 Write EXACTLY four scenes. Total reading time 3–5 minutes. Word targets (Russian words, all four scenes together):
-- Age 2–3: 240–360 words; short musical sentences (5–8 words), repetitions, onomatopoeia, tactile words. Gentle, no real danger.
-- Age 4–5: 380–540 words; lively dialogue, sensory details, a small but real problem solved by kindness and ingenuity.
+- Age 2–3: 240–360 words; short musical sentences (5–8 words), repetitions, onomatopoeia, tactile words. Gentle, no real danger, recognition of simple feelings.
+- Age 4–5: 380–540 words; lively dialogue, sensory details, empathy, a small but real problem solved by kindness, helping a friend and ingenuity.
 - Age 6: 520–720 words; richer vocabulary, gentle humor, cause-and-effect, a choice with two kind alternatives.
 Scene roles:
-1. Hook & discovery: unusual sensory opening, the specific micro-world, meeting the companion.
+1. Hook & discovery: unusual sensory opening, the specific world matching interests, meeting the companion.
 2. Gentle problem / mix-up / mystery. This pause triggers question 1.
-3. Creative action: the hero uses a detail of their clothing/toy/personality as the key to a kind, clever solution.
-4. Cozy resolution: sensory comfort, a memorable closing image, safe return, no unresolved conflict. This pause triggers question 2.
+3. Creative action / emotional resolution: the hero uses empathy, courage, teamwork, or a detail of their personality/toy/clothing to find a kind, heartwarming solution. If the parent provided special wishes, fulfill them here.
+4. Cozy resolution: sensory comfort, a memorable closing image, safe return, peaceful bedtime calm. This pause triggers question 2.
 Use 2–4 short paragraphs per scene, separated by "\\n\\n". Do not write stage directions, headings, or bullet points inside \`text\`.
 
 ### 6. PEDAGOGICAL QUESTIONS
@@ -304,19 +304,210 @@ function pick(list, random) {
 
 function ageBand(age) {
   if (age <= 3) {
-    return { label: '2–3 года', total: [240, 360], perScene: [50, 95], sentences: 'короткие, музыкальные, 5–8 слов' };
+    return { label: '2–3 года', total: [240, 360], perScene: [50, 95], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
   }
   if (age <= 5) {
-    return { label: '4–5 лет', total: [380, 540], perScene: [85, 140], sentences: 'живые диалоги, средние предложения' };
+    return { label: '4–5 лет', total: [380, 540], perScene: [85, 140], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
   }
   return { label: '6 лет', total: [520, 720], perScene: [120, 185], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
 }
 
+function getThemedWorld(params, random) {
+  const wishes = (params.customWishes || '').toLowerCase();
+  const theme = (params.theme || '').toLowerCase();
+  const interests = (params.interests || []).map((i) => i.toLowerCase());
+
+  // 1. Пожелание родителя по месту действия — приоритет №1
+  if (wishes.length > 5) {
+    if (wishes.includes('мор') || wishes.includes('океан') || wishes.includes('пляж') || wishes.includes('дельфин')) {
+      return {
+        type: 'Seaside Wonder (Тёплая морская бухта)',
+        desc: 'берег ласкового моря с мерцающими ракушками, тёплым песком и добрыми морскими светлячками',
+      };
+    }
+    if (wishes.includes('косм') || wishes.includes('звезд') || wishes.includes('звёзд') || wishes.includes('лун')) {
+      return {
+        type: 'Starlight Harbor (Звёздная тихая гавань)',
+        desc: 'мягкие лунные облака, далёкие мерцающие созвездия и сонный звездолёт с тёплыми иллюминаторами',
+      };
+    }
+    if (wishes.includes('лес') || wishes.includes('полян') || wishes.includes('дерев')) {
+      return {
+        type: 'Whispering Forest (Пушистая лесная опушка)',
+        desc: 'уютная опушка под соснами, где лесные зверушки дружат, строят домики и делятся ягодами',
+      };
+    }
+    if (wishes.includes('сад') || wishes.includes('детск')) {
+      return {
+        type: 'Friendly Playgroup (Сказочный детский садик)',
+        desc: 'уютная группа с мягкими ковриками, башнями из кубиков и добрыми играми, где каждый находит друга',
+      };
+    }
+  }
+
+  // 2. Тематический подбор по интересам ребёнка
+  const pool = [];
+  if (interests.some((i) => i.includes('дино'))) {
+    pool.push({
+      type: 'Gentle Dino Valley (Тёплая долина динозавриков)',
+      desc: 'долина с мягким мхом, тёплыми папоротниками и добрыми малышами-динозаврами, играющими в прятки',
+    });
+  }
+  if (interests.some((i) => i.includes('косм'))) {
+    pool.push({
+      type: 'Starlight Harbor (Звёздная тихая гавань)',
+      desc: 'мягкие лунные облака, далёкие мерцающие созвездия и сонный звездолёт с тёплыми иллюминаторами',
+    });
+  }
+  if (interests.some((i) => i.includes('машин'))) {
+    pool.push({
+      type: 'Town of Friendly Motors (Городок добрых машинок)',
+      desc: 'уютные дорожки из цветных лент, светящиеся светофорчики и домики-гаражи, где машинки помогают друг другу',
+    });
+  }
+  if (interests.some((i) => i.includes('животн'))) {
+    pool.push({
+      type: 'Whispering Forest (Пушистая лесная опушка)',
+      desc: 'уютная опушка под соснами, где лесные зверушки дружат, строят домики и делятся ягодами',
+    });
+  }
+  if (interests.some((i) => i.includes('волшеб'))) {
+    pool.push({
+      type: 'Garden of Fireflies (Сад мерцающих светлячков)',
+      desc: 'хрустальные колокольчики, раскрывающиеся на закате бутоны и звёздная пыльца, дарящая добрые сны',
+    });
+  }
+  if (interests.some((i) => i.includes('природ'))) {
+    pool.push({
+      type: 'Sunlit Meadow (Зелёная солнечная поляна)',
+      desc: 'шелест шелковистых трав, ласковый ручеёк с гладкими камушками и цветочные домики для бабочек',
+    });
+  }
+  if (theme.includes('сон')) {
+    pool.push({
+      type: 'Cozy Dream Nest (Уютное гнёздышко снов)',
+      desc: 'комната с мягкими одеялами, вечерними тенями на стене, колыбельным ветерком и тёплым ночником',
+    });
+  }
+
+  if (pool.length > 0) {
+    return pick(pool, random);
+  }
+
+  return pick(WORLD_SCALES, random);
+}
+
+function getThemedCompanionQuirk(params, random) {
+  const toy = (params.appearance?.toy || '').toLowerCase();
+
+  if (toy.includes('машин') || toy.includes('кар') || toy.includes('поезд') || toy.includes('самолёт')) {
+    const vehicleQuirks = [
+      'верный помощник: тихонько урчит моторчиком, мягко светит фарами в сумерках и всегда готов подвезти друга',
+      'храбрый маленький исследователь: уверенно крутит колёсиками по дорожкам и весело сигналит тихонько: «би-бип!»',
+      'аккуратный сонный автомобильчик: любит мягкие подушечные гаражи и убаюкивающе шуршит колёсиками',
+    ];
+    return pick(vehicleQuirks, random);
+  }
+
+  if (toy.includes('дино')) {
+    const dinoQuirks = [
+      'добродушный малыш-динозаврик: смешно виляет мягким хвостиком, осторожно нюхает цветы и обожает обниматься',
+      'любознательный травоядный друг: носит мягкие тканевые пятнышки и делится самыми сочными листиками',
+      'чуткий сонный дино: прячет носик в мягкие лапки и тихонько урчит, согревая перед сном',
+    ];
+    return pick(dinoQuirks, random);
+  }
+
+  if (toy.includes('мишк') || toy.includes('медвеж')) {
+    const bearQuirks = [
+      'пушистый хранитель уюта: ласково обнимает мягкими лапками, согревает в сумерках и хранит добрые секреты',
+      'степенный сладкоежка: смешно водит бархатным носиком, принюхиваясь к запаху яблочного пирога или мёда',
+      'сонный плюшевый мишутка: тихонько сопит рядом на подушке и бережёт сладкие сны',
+    ];
+    return pick(bearQuirks, random);
+  }
+
+  if (toy.includes('зай') || toy.includes('кролик')) {
+    const bunnyQuirks = [
+      'чуткий пушистый друг: забавно шевелит длинными ушками, прислушивается к шорохам и смело делает первый прыжок',
+      'ласковый зайчонок: прячет носик в мягкие лапки и согревает пушистым животиком',
+      'весёлый попрыгунчик: радуется золотистым искоркам и находит самые мягкие травинки для отдыха',
+    ];
+    return pick(bunnyQuirks, random);
+  }
+
+  if (toy.includes('кот') || toy.includes('кош')) {
+    const catQuirks = [
+      'мурлыкающий компаньон: ласково трётся тёплой щёчкой, поёт колыбельную песенку и бесшумно исследует мир',
+      'любопытный котик: смешно водит бархатными ушками и играет с добрыми лунными зайчиками',
+    ];
+    return pick(catQuirks, random);
+  }
+
+  if (toy.includes('звезд') || toy.includes('звёзд')) {
+    const starQuirks = [
+      'ласковая звёздочка-хранительница: мягко светится золотистым светом, рассеивая ночные тени и даря тепло',
+      'ночная звёздочка: оставляет за собой тонкий мерцающий хвостик из сонной пыльцы',
+    ];
+    return pick(starQuirks, random);
+  }
+
+  return pick(COMPANION_QUIRKS, random);
+}
+
+function getThemedHook(params, random) {
+  const interests = (params.interests || []).map((i) => i.toLowerCase());
+  const theme = (params.theme || '').toLowerCase();
+  const wishes = (params.customWishes || '').toLowerCase();
+
+  if (wishes.includes('мор') || wishes.includes('океан')) {
+    return 'Тёплый вечерний ветерок принёс в комнату ласковый шум морской волны и аромат солоноватого бриза.';
+  }
+  if (interests.some((i) => i.includes('косм'))) {
+    return 'За круглым вечерним окном тихо вспыхнула крошечная золотая звёздочка, оставив в небе искрящийся хвостик.';
+  }
+  if (interests.some((i) => i.includes('дино'))) {
+    return 'В комнате пахло сладкими сушёными яблоками, когда под мягким ковриком тихонько зашелестел сказочный листик.';
+  }
+  if (interests.some((i) => i.includes('машин'))) {
+    return 'На ковре тихонько заурчал маленький дружелюбный моторчик, а фары осветили дорогу к сказочной дверце.';
+  }
+  if (interests.some((i) => i.includes('животн')) || interests.some((i) => i.includes('природ'))) {
+    return 'В приоткрытую форточку заглянул пушистый рыжий солнечный лучик и мягко пощекотал носик.';
+  }
+  if (theme.includes('сон')) {
+    return 'В сумерках тихо зазвенел хрустальный колокольчик, зовя за собой в мягкую страну добрых снов.';
+  }
+
+  return pick(SENSORY_HOOKS, random);
+}
+
+function getHeroAnchor(params, hints) {
+  const wishes = (params.customWishes || '').trim();
+  if (wishes.length > 5) {
+    return `пожелание родителя («${wishes}»), соединённое с добротой героя и заботой о друге`;
+  }
+  const theme = (params.theme || 'Дружба').toLowerCase();
+  if (theme.includes('смел')) {
+    return `смелый шаг вперёд: глубокий спокойный вдох, тёплое пожатие лапки спутника (${hints.toy}) и ласковое слово, рассеивающее страх`;
+  }
+  if (theme.includes('сон')) {
+    return `успокаивающий сонный жест: тихая колыбельная песенка, мягкое укутывание друга и тёплые объятия в ${hints.clothes}`;
+  }
+  if (theme.includes('каприз') || theme.includes('эмоци')) {
+    return `умение выдохнуть и обнять: герой сжимает лапку ${hints.toy}, глубоко дышит, и сердитая тучка превращается в улыбку`;
+  }
+  if (theme.includes('забот') || theme.includes('добр')) {
+    return `чуткая забота: протянутая рука помощи, готовность поделиться и согреть маленького друга`;
+  }
+  return `искренняя доброта и сообразительность: тёплые объятия, ласковая поддержка спутника (${hints.toy}) и уютное тепло ${hints.clothes}`;
+}
+
 export function chooseStoryDna(params = {}, random = Math.random) {
-  const world = pick(WORLD_SCALES, random);
+  const world = getThemedWorld(params, random);
   const engine = pick(NARRATIVE_ENGINES, random);
-  const quirk = pick(COMPANION_QUIRKS, random);
-  const hook = pick(SENSORY_HOOKS, random);
+  const quirk = getThemedCompanionQuirk(params, random);
+  const hook = getThemedHook(params, random);
   const hints = appearanceHints(params.appearance);
   const trait = params.personality || 'Добрый';
   let voice = 'Тёплый, сердечный, осязаемый тон с живыми диалогами и маленькими совместными ритуалами';
@@ -335,7 +526,7 @@ export function chooseStoryDna(params = {}, random = Math.random) {
     literary_voice: voice,
     companion_quirk: quirk,
     opening_hook: hook,
-    hero_anchor: `${hints.clothes} (кармашек, манжет, пуговица или цвет)`,
+    hero_anchor: getHeroAnchor(params, hints),
     age_band: ageBand(Number(params.age) || 4),
   };
 }
@@ -364,20 +555,20 @@ export function buildStoryPrompt(params = {}, options = {}) {
 - Внешность (точные английские подсказки для character bible): ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}; favorite toy is ${hints.toy}
 - Тема: ${params.theme || 'Дружба'}
 - Интересы: ${(params.interests || []).join(', ') || 'приключения'}
-- Особые пожелания: ${params.customWishes ? `«${params.customWishes}»` : 'нет'}
+${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (ВЫСШИЙ ПРИОРИТЕТ ДЛЯ СЮЖЕТА): «${params.customWishes}». Обязательно вплети это пожелание в сюжет как ключевое событие или кульминацию!` : '- Особые пожелания: нет'}
 
 ВЫБРАННАЯ ДНК ЭТОЙ СКАЗКИ (строй сюжет вокруг неё):
 1. Мир: ${dna.world_scale} — ${dna.world_description}
 2. Сюжетный движок: ${dna.narrative_engine} — ${dna.narrative_description}
 3. Литературный голос: ${dna.literary_voice}
-4. Секретная профессия/изъян игрушки-спутника: ${dna.companion_quirk}. Сохрани при этом природу и форму игрушки: ${toy}. Не превращай игрушку в другое животное или предмет: машинка остаётся машинкой, зайка — зайкой.
+4. Секретная особенность игрушки-спутника: ${dna.companion_quirk}. Сохрани при этом природу и форму игрушки: ${toy}. Не превращай игрушку в другое животное или предмет: машинка остаётся машинкой, зайка — зайкой.
 5. Открывающий сенсорный крючок первой сцены: «${dna.opening_hook}»
-6. Якорь героя для третьей сцены: ${dna.hero_anchor} обязательно должен стать ключевым предметом доброго решения.
+6. Терапевтическое решение третьей сцены: ${dna.hero_anchor}.
 
-ТРЕБОВАНИЯ:
+ТРЕБОВАНИЯ ПО ТЗ (РАЗДЕЛЫ 6 И 15):
 - Ровно 4 сцены. Общий объём: ${band.total[0]}–${band.total[1]} русских слов. Ориентир на каждую сцену: ${band.perScene[0]}–${band.perScene[1]} слов. Стиль предложений: ${band.sentences}.
 - Каждая сцена — это 2–4 небольших абзаца, а не одна короткая фраза. Не растягивай текст водой: добавляй сенсорные детали, диалоги и маленькие действия.
-- Один вопрос после сцены 2 и один после сцены 4. Вопросы — про именно эту историю.
+- Один вопрос после сцены 2 и один после сцены 4. Вопросы — строго про переживания героев в этой истории под возраст ${band.label}.
 - Герой и спутник — отдельные объекты в characters[]. Не склеивай их.
 - visual-поля — только английский, без описания внешности персонажей: рендерер добавит её сам по character_ids.
 - Никаких «Жил-был», «Однажды», «в одном волшебном лесу», никакой морали в финале.

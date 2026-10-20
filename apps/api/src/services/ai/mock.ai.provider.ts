@@ -6,55 +6,60 @@ import {
   IImageAIProvider,
   ITextAIProvider,
 } from './ai.interface';
+import { STYLE_3D_PIXAR } from '@moya-skazka/story-engine';
 
 export class MockAIProvider implements ITextAIProvider, IImageAIProvider {
   /**
-   * Детерминированная генерация 4 сцен и вопросов под возраст ребенка
+   * Детерминированная качественная генерация 4 сцен и вопросов под возраст и параметры ребёнка
    */
   public async generateStory(input: GenerateStoryInput): Promise<AIGeneratedStory> {
-    const { childName, age, theme, interests } = input;
-    const interest = interests[0] || 'волшебство';
+    const { childName, age, theme, interests, appearance, customWishes } = input;
+    const interest = interests[0] || 'Волшебство';
+    const toy = appearance?.toy || 'любимый плюшевый спутник';
+    const clothing = appearance?.clothing || 'уютный свитер';
+    const hair = appearance?.hair || 'светлые волосы';
 
-    // Формируем сюжет по возрастной категории (Раздел 6 ТЗ)
-    let scenes = [];
-    let questions = [];
+    let scenes: Array<{ index: number; text: string; image_prompt: string }> = [];
+    let questions: Array<{ after_scene: number; question: string; parent_hint: string | null; skill_tag: string }> = [];
+
+    const wishesLine = customWishes ? ` ${customWishes}.` : '';
 
     if (age <= 3) {
-      // 2-3 года: короткие предложения, узнавание, эмоции
+      // 2-3 года: короткие фразы, узнавание, простые эмоции
       scenes = [
         {
           index: 1,
-          text: `Жил-был любознательный малыш ${childName}. Больше всего на свете ${childName} любил ${interest}. Однажды утром солнышко заглянуло в окно и улыбнулось.`,
-          image_prompt: `Cute fairy-tale storybook illustration, ${childName} as a 2-year old child waking up in a cozy warm bedroom, smiling at the morning sun. Soft pastel colors, gentle children book style.`,
+          text: `Солнечный зайчик прыгнул на мягкий коврик. Маленький ${childName} надел ${clothing} и взял на ручки своего друга — ${toy}. За окном тихо шелестели зелёные листочки, приглашая в добрую игру про ${theme}.`,
+          image_prompt: `A beautiful 3D Disney Pixar animation style movie still for a children's fairytale. A cute 3-year-old child named ${childName} with ${hair}, wearing ${clothing}, hugging ${toy} in a cozy sunlit room. Cinematic warm lighting, masterpiece. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 2,
-          text: `${childName} вышел на зелёную полянку и встретил доброго маленького друга. Друг был растерян и тихо сидел возле большого цветка.`,
-          image_prompt: `Warm children book art, ${childName} meeting a cute fluffy animal friend near a giant magical colorful flower on a green meadow. Sunny gentle day.`,
+          text: `${childName} и ${toy} вышли на солнечную полянку. Возле пушистого кустика сидел маленький зверёк и тихо вздыхал — он не мог найти свою любимую шишку. ${childName} ласково погладил зверька по спинке: «Не грусти, мы рядом!».`,
+          image_prompt: `A cute 3-year-old child named ${childName} and ${toy} on a magical blooming meadow comforting a tiny furry forest creature. Volumetric warm bedtime light. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 3,
-          text: `— Не бойся, я с тобой! — ласково сказал ${childName}. Они взялись за ручки и вместе весело зашагали по тропинке навстречу приключениям.`,
-          image_prompt: `Fairytale illustration, child and a cute animal holding hands and walking together along a winding path in a sunny fairytale forest.`,
+          text: `${toy} весело указал лапкой под большой колокольчик. Там и лежала потерянная шишка! Зверёк радостно захлопал в ладошки.${wishesLine} Все вокруг заулыбались, а солнышко согрело полянку ласковым теплом.`,
+          image_prompt: `Child ${childName} and ${toy} finding a lost pinecone under a giant fairy bellflower, happy smiling forest creature. Glowing magical particles. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 4,
-          text: `Вместе они нашли волшебную полянку и весело играли до самого вечера. ${childName} почувствовал, как тепло на душе, когда рядом настоящий друг.`,
-          image_prompt: `Peaceful bedtime storybook illustration, cozy evening sunset, glowing butterflies, happy child and cute friend hugging and smiling.`,
+          text: `Наступил тихий вечер. ${childName} вернулся в уютную кроватку, бережно уложив рядом ${toy}. Мама нежно поцеловала малыша: «Спи сладко, мой добрый помощник». Впереди ждали самые волшебные сны.`,
+          image_prompt: `Peaceful bedtime storybook illustration, cute child ${childName} in bed hugging ${toy}, soft moonlight, glowing fireflies, cozy night bedroom. ${STYLE_3D_PIXAR}`,
         },
       ];
 
       questions = [
         {
           after_scene: 2,
-          question: `Как ты думаешь, почему новый друг сидел тихо? Он испугался или просто ждал друга?`,
-          parent_hint: `Выслушайте ответ малыша. Можно ласково спросить: «А как ты помогаешь, когда кто-то грустит?»`,
+          question: `Как ты думаешь, зверёк грустил или радовался, когда ${childName} подошёл ему помочь?`,
+          parent_hint: `Попросите малыша показать эмоцию личиком или найти зверька на картинке.`,
           skill_tag: 'emotions',
         },
         {
-          after_scene: 5,
-          question: `Что ${childName}у понравилось больше всего: играть или помогать другу?`,
-          parent_hint: `Похвалите ребёнка за доброе сердце и сопереживание герою.`,
+          after_scene: 4,
+          question: `Какую любимую игрушку ты возьмёшь сегодня с собой в кроватку, как ${childName}?`,
+          parent_hint: `Обнимите ребёнка, укутайте одеялом и пожелайте добрых сказочных снов.`,
           skill_tag: 'empathy',
         },
       ];
@@ -63,44 +68,38 @@ export class MockAIProvider implements ITextAIProvider, IImageAIProvider {
       scenes = [
         {
           index: 1,
-          text: `В одном уютном городке жил смелый ${childName}. Каждый день он придумывал новые истории, ведь его страстью были ${interest} и невероятные тайны.`,
-          image_prompt: `Charming children illustration, courageous 4-year old child ${childName} looking through a toy telescope at a starlit horizon, cozy wooden room, warm glowing light.`,
+          text: `В комнате пахло спелыми яблоками и вечерней прохладой. ${childName} поправил ${clothing}, взял в руки ${toy} и посмотрел на карту сказочной страны. Сегодня их ждало удивительное путешествие, посвящённое теме «${theme}».`,
+          image_prompt: `A stunning 3D Pixar animation render of ${childName}, a curious 4-year-old child with ${hair}, wearing ${clothing}, holding ${toy} in a cozy room with glowing fairytale map. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 2,
-          text: `Гуляя по лесной опушке, ${childName} услышал тихий шорох. За кустом прятался маленький динозаврик Дино. Он потерял свою любимую звездочку и боялся перешагнуть через ручей.`,
-          image_prompt: `Children book style, adorable friendly little baby dinosaur hiding behind green leaves near a sparkling creek, looking worried. Child stepping closer with an encouraging smile.`,
+          text: `На пути к волшебной полянке звенел быстрый лесной ручеёк. Мостик через воду слегка покачивался, и новый лесной знакомый робко жался к траве, боясь сделать шаг. ${childName} крепко сжал ${toy} и ободряюще улыбнулся: «Держись за нас, вместе мы обязательно справимся!».`,
+          image_prompt: `3D Pixar animation style scene: child ${childName} and ${toy} standing near a sparkling forest stream with a quaint wooden bridge, encouraging a hesitant friendly creature. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 3,
-          text: `${childName} огляделся и придумал отличный план: из крепких сухих веточек они соорудили прочный мостик. Дино сделал первый шаг и радостно захлопал лапками!`,
-          image_prompt: `Cooperative storybook art, child and baby dinosaur building a wooden twig bridge over a creek, teamwork, joyful proud expressions.`,
+          text: `Шаг за шагом, поддерживая друг друга, друзья благополучно перешли ручеёк. ${toy} забавно покачивался в такт шагам, разгоняя любые сомнения.${wishesLine} Награда за отзывчивость не заставила себя ждать: над лесом зажглась золотистая искорка настоящей дружбы.`,
+          image_prompt: `Triumphant scene in 3D Pixar style: child ${childName} and ${toy} celebrating safe crossing of the stream with forest friend, magical golden sparkles. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 4,
-          text: `На другом берегу в мягкой траве сверкала потерянная звездочка! Дино обнял ${childName}а, а над лесом зажглась радуга дружбы. Настоящая смелость — это помогать тем, кто в этом нуждается.`,
-          image_prompt: `Triumphant fairytale climax, glowing magical star in soft grass, child and happy dinosaur hugging, warm golden sunlight, subtle rainbow.`,
+          text: `Небо окрасилось в мягкие сумеречные тона. Дома ${childName} с улыбкой забрался под тёплое пуховое одеяло, положив ${toy} рядом на подушку. На душе было спокойно и радостно: день принёс важный урок доброты. Глазки закрылись навстречу сладким снам.`,
+          image_prompt: `Cozy bedtime scene, warm cinematic lighting, child ${childName} asleep in cozy bed with ${toy}, moonlight streaming through window. ${STYLE_3D_PIXAR}`,
         },
       ];
 
       questions = [
         {
           after_scene: 2,
-          question: `Почему Дино не мог перейти ручей сам? Что помогло ему почувствовать себя смелее?`,
-          parent_hint: `Обратите внимание на то, как поддержка друга придаёт уверенности.`,
+          question: `Почему новому другу было страшно переходить ручей? Что помогло ему решиться?`,
+          parent_hint: `Обсудите, как поддержка и доброе слово помогают преодолевать любые сомнения.`,
           skill_tag: 'logic',
         },
         {
           after_scene: 4,
-          question: `Как ${childName} догадался построить мостик? А что бы предложил ты на его месте?`,
-          parent_hint: `Поощряйте ребёнка фантазировать и искать альтернативные решения.`,
-          skill_tag: 'creativity',
-        },
-        {
-          after_scene: 5,
-          question: `Какой момент в сказке показался тебе самым смелым?`,
-          parent_hint: `Обсудите, что смелость — это не отсутствие страха, а шаг вперёд вместе с другом.`,
-          skill_tag: 'courage',
+          question: `Что бы ты посоветовал другу, если бы он оказался в такой ситуации?`,
+          parent_hint: `Поощрите ребёнка поразмышлять и предложить свой собственный вариант помощи.`,
+          skill_tag: 'empathy',
         },
       ];
     } else {
@@ -108,58 +107,62 @@ export class MockAIProvider implements ITextAIProvider, IImageAIProvider {
       scenes = [
         {
           index: 1,
-          text: `На пороге великих открытий ${childName} держал в руках старинную карту созвездий. Тема «${theme}» давно влекла его, и сегодня открылся путь к забытой тайне.`,
-          image_prompt: `Atmospheric children book illustration, 6-year old child ${childName} examining an ancient glowing celestial map in a cozy observatory attic.`,
+          text: `Вечернее небо зажгло первые мерцающие созвездия. ${childName} в ${clothing} бережно держал ${toy}, размышляя о важной загадке на тему «${theme}». Интуиция и доброе сердце подсказывали, что сегодня откроется нечто особенное.`,
+          image_prompt: `Intricate 3D Pixar animation movie still: 6-year-old child ${childName} with ${hair}, wearing ${clothing}, holding ${toy}, studying enchanted star constellations. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 2,
-          text: `В пути ${childName} встретил хранителя древних часов, шестерёнки которых запутались в плюще. Хранитель спешил, но без помощи не мог запустить ход времени.`,
-          image_prompt: `Whimsical fantasy clockwork mechanism wrapped in ivy vines, an eccentric wise little forest keeper talking to the child, detailed warm style.`,
+          text: `На тропинке стояли старинные башенные часы, шестерёнки которых бережно укрывал вьющийся плющ. Маленький хранитель часов растерялся и не знал, с чего начать распутывать ветви. ${childName} понял: если поспешить дальше, тайна останется нераскрытой, но без помощи часы не пойдут.`,
+          image_prompt: `Whimsical 3D Pixar scene: child ${childName} and ${toy} examining glowing mechanical clockwork overgrown with ivy in a twilight fairytale forest. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 3,
-          text: `Перед ${childName}ом встал выбор: поспешить за своей мечтой или остаться и помочь распутать механизм. Подумав, он решил, что доброта важнее спешки.`,
-          image_prompt: `Thoughtful scene, child carefully untangling green vines from golden clockwork gears, showing patience and concentration.`,
+          text: `Не раздумывая ни секунды, ${childName} решил остаться и помочь. Вместе с ${toy} они аккуратно освободили механизм, не повредив ни единого зелёного листочка.${wishesLine} Часы благодарно зазвенели звонкими переливами колокольчиков, озарив дорогу мягким светом.`,
+          image_prompt: `Magical 3D Pixar scene: golden clockwork gears spinning, radiant amber light filling the enchanted forest glade, happy keeper thanking child ${childName}. ${STYLE_3D_PIXAR}`,
         },
         {
           index: 4,
-          text: `Часы забили торжественный звон, и из центра механизма вылетел золотистый ключик к тайне. Хранитель тепло поблагодарил ${childName}а: «Тот, кто умеет сопереживать, всегда находит верную дорогу».`,
-          image_prompt: `Golden glow, spinning clockwork, magical sparkling key appearing, wise keeper smiling warmly at the proud child, sense of accomplishment.`,
+          text: `Возвращаясь в уютную комнату, ${childName} ощутил глубокое внутреннее тепло. Укутавшись в одеяло рядом с верным ${toy}, он знал: истинная мудрость рождается из готовности прийти на помощь. Под тихий шёпот вечернего ветра начались самые волшебные сны.`,
+          image_prompt: `Warm soothing bedtime still in 3D Pixar style: child ${childName} falling asleep peacefully with ${toy}, comforting ambient bedroom glow. ${STYLE_3D_PIXAR}`,
         },
       ];
 
       questions = [
         {
           after_scene: 2,
-          question: `Перед каким выбором оказался ${childName}? Легко ли было остановиться и помочь?`,
-          parent_hint: `Поговорите о приоритетах и о том, как наши решения влияют на окружающих.`,
+          question: `Перед каким выбором оказался ${childName}? Почему он решил помочь хранителю, а не поспешил дальше?`,
+          parent_hint: `Поговорите о том, почему искренняя забота о других важнее спешки.`,
           skill_tag: 'dilemma',
         },
         {
-          after_scene: 5,
-          question: `Как ты понимаешь слова Хранителя о верной дороге?`,
-          parent_hint: `Дайте ребёнку возможность самому сделать вывод о ценности бескорыстной помощи.`,
-          skill_tag: 'reflection',
+          after_scene: 4,
+          question: `Какое доброе дело, сделанное сегодня тобой, запомнилось тебе больше всего?`,
+          parent_hint: `Поддержите самооценку ребёнка и похвалите за его чуткость и внимательность к близким.`,
+          skill_tag: 'empathy',
         },
       ];
     }
 
+    const coverPrompt = `A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book cover. Title: "${childName} и тайна «${theme}»". A cute ${age}-year-old child with ${hair}, wearing ${clothing}, smiling warmly and holding ${toy}. Cozy magical glowing environment with fireflies, golden lighting, Octane render, no text. ${STYLE_3D_PIXAR}`;
+
     return {
       title: `${childName} и тайна «${theme}»`,
       age,
+      theme,
       characters: [
         {
           id: 'hero',
           name: childName,
-          visual_description: `Ребёнок ${age} лет, добрый и выразительный взгляд, уютная одежда.`,
+          visual_description: `Cute ${age}-year-old child with ${hair}, rosy cheeks, expressive warm eyes, wearing ${clothing}.`,
         },
         {
           id: 'companion',
-          name: 'Дино / Друг',
-          visual_description: 'Милый сказочный спутник с добрыми глазами.',
+          name: typeof toy === 'string' ? toy : 'Верный спутник',
+          visual_description: `Beloved companion toy ${toy}, friendly rounded shape, soft tactile texture.`,
         },
       ],
-      story_outline: `4 сцены: знакомство с героем, встреча с препятствием, совместное нахождение решения, счастливый и поучительный финал.`,
+      story_outline: `4 сцены: завязка в уютной обстановке, встреча с препятствием, доброе и заботливое решение, уютный отход ко сну.`,
+      cover_prompt: coverPrompt,
       scenes,
       questions: input.includeQuestions ? questions : [],
       estimatedCost: 0.0,
@@ -167,29 +170,22 @@ export class MockAIProvider implements ITextAIProvider, IImageAIProvider {
   }
 
   /**
-   * Генерация иллюстрации (Mock возвращает готовый безопасный placeholder с палитрой проекта)
+   * Генерация иллюстрации (Mock возвращает готовую безопасную иллюстрацию)
    */
   public async generateImage(input: GenerateImageInput): Promise<AIGeneratedImage> {
     const isCover = input.type === 'cover';
     const seed = Math.floor(Math.random() * 1000000);
-    const key = `assets/mock_${input.type}_${seed}.webp`;
+    const key = `assets/mock_${input.type}_${seed}.jpg`;
 
-    // Для визуального соответствия макету описание.jpg используем качественные сказочные иллюстрации
-    const mockImageUrls = [
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
-    ];
-
-    const url = isCover
-      ? mockImageUrls[0]
-      : mockImageUrls[((input.sceneIndex || 1) % (mockImageUrls.length - 1)) + 1];
+    const sIdx = Number(input.sceneIndex || 1);
+    let fallback = `./illustrations/scene_${sIdx}.jpg`;
+    if (isCover) {
+      fallback = './illustrations/cover_forest.jpg';
+    }
 
     return {
       storageKey: key,
-      imageUrl: url,
+      imageUrl: fallback,
       generationCost: 0.0,
     };
   }

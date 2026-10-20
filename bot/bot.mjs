@@ -238,13 +238,7 @@ async function generateWellflowStoryAI(params) {
   }
 }
 
-function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0) {
-  const sIdx = Number(sceneIndex);
-  if (sIdx === 1) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_1.jpg';
-  if (sIdx === 2) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_2.jpg';
-  if (sIdx === 3) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_3.jpg';
-  if (sIdx === 4) return 'https://x9x9x9www.github.io/moya-skazka/illustrations/scene_4.jpg';
-
+function getThemedFallbackIllustration(themeOrInterest, _sceneIndex = 0) {
   const t = (themeOrInterest || '').toLowerCase();
   if (t.includes('дино')) {
     return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_dino.jpg';

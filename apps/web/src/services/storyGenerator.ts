@@ -20,7 +20,10 @@ export interface GenerateStoryParams {
   };
 }
 
-export const DEFAULT_API_BRIDGE_URL = 'https://b4e24b393c4c2c70-94-249-175-134.serveousercontent.com';
+export const DEFAULT_API_BRIDGE_URL =
+  (import.meta as any).env?.VITE_API_BRIDGE_URL ||
+  (import.meta as any).env?.VITE_API_URL ||
+  '';
 
 /**
  * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
@@ -31,7 +34,8 @@ export function resolveMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
   const mediaIndex = url.indexOf('/media/');
   if (mediaIndex === -1) return url;
-  return `${getActiveApiUrl()}${url.slice(mediaIndex)}`;
+  const base = getActiveApiUrl();
+  return base ? `${base}${url.slice(mediaIndex)}` : url;
 }
 
 export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
@@ -57,7 +61,12 @@ export function getActiveApiUrl(): string {
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
-      if (cached && !cached.includes('192a1eaba3c1ee78')) {
+      if (
+        cached &&
+        !cached.includes('192a1eaba3c1ee78') &&
+        !cached.includes('b4e24b393c4c2c70') &&
+        !cached.includes('serveousercontent.com')
+      ) {
         return cached.replace(/\/$/, '');
       }
     } catch {}
@@ -566,13 +575,7 @@ export async function callWellflowStory(
   throw new Error('Story generation endpoints unreachable or timed out');
 }
 
-export function getFairytaleFallbackIllustration(themeOrInterest?: string, sceneIndex = 1): string {
-  const sIdx = Number(sceneIndex);
-  if (sIdx === 1) return './illustrations/scene_1.jpg';
-  if (sIdx === 2) return './illustrations/scene_2.jpg';
-  if (sIdx === 3) return './illustrations/scene_3.jpg';
-  if (sIdx === 4) return './illustrations/scene_4.jpg';
-
+export function getFairytaleFallbackIllustration(themeOrInterest?: string, _sceneIndex = 1): string {
   const t = (themeOrInterest || '').toLowerCase();
   if (t.includes('дино')) return './illustrations/cover_dino.jpg';
   if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
@@ -607,15 +610,38 @@ export async function generateDynamicStory(
   });
 
   let storyData: any = null;
+  let lastError: any = null;
 
-  try {
-    storyData = await callWellflowStory(params, 180000, onProgress);
-  } catch (err) {
-    console.warn('[StoryGenerator] Wellflow text API timed out or failed, using procedural story:', err);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      if (attempt > 1) {
+        onProgress?.({
+          stage: 'writing',
+          progress: 25,
+          message: 'Повторное подключение к ИИ-мосту...',
+        });
+      }
+      storyData = await callWellflowStory(params, 90000, onProgress);
+      if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
+        break;
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[StoryGenerator] Попытка ${attempt} завершилась ошибкой:`, err);
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
   }
 
-  if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
-    const bookId = `book_${Date.now()}`;
+  if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
+    throw new Error(
+      lastError?.message ||
+      'Не удалось связаться с сервером генерации сказок. Пожалуйста, проверьте интернет-соединение или повторите попытку.'
+    );
+  }
+
+  const bookId = `book_${Date.now()}`;
     const scenes = storyData.scenes.slice(0, 4).map((s: any, idx: number) => {
       const sceneIndex = idx + 1;
       const prompt = s.image_prompt || s.visual || buildFairytaleImagePrompt(params, `in scene ${sceneIndex}`);
@@ -727,64 +753,6 @@ export async function generateDynamicStory(
     });
 
     return book;
-  }
-
-  // Fallback: процедурный генератор (если сеть упала)
-  onProgress?.({
-    stage: 'drawing',
-    progress: 75,
-    message: 'Создаём 3D-иллюстрации книги...',
-  });
-
-  const proceduralBook = generateProceduralStory(params);
-
-  // Ожидаем и предзагружаем обложку
-  if (proceduralBook.scenes[0]?.image_prompt) {
-    try {
-      const url = await generateWellflowImage(proceduralBook.scenes[0].image_prompt, 120000);
-      if (url) {
-        proceduralBook.scenes[0].image_url = url;
-      }
-    } catch {}
-  }
-
-  // Финальная проверка: каждая сцена гарантированно имеет иллюстрацию
-  proceduralBook.scenes.forEach((s: any, idx: number) => {
-    if (!s.image_url) {
-      s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
-    }
-  });
-
-  await Promise.all(
-    proceduralBook.scenes.map(
-      (scene: any) =>
-        new Promise<void>((resolve) => {
-          if (!scene.image_url) {
-            resolve();
-            return;
-          }
-          const img = new Image();
-          const timer = setTimeout(resolve, 4000);
-          img.onload = () => {
-            clearTimeout(timer);
-            resolve();
-          };
-          img.onerror = () => {
-            clearTimeout(timer);
-            resolve();
-          };
-          img.src = scene.image_url;
-        })
-    )
-  );
-
-  onProgress?.({
-    stage: 'finishing',
-    progress: 100,
-    message: 'Сказка готова!',
-  });
-
-  return proceduralBook;
 }
 
 
@@ -925,31 +893,67 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
   ];
   const conflictText = devList[Math.floor(Math.random() * devList.length)];
 
-  const wishesAddition = customWishes ? ` Как ${name.nom} и ${v.wished}, ${customWishes.toLowerCase()}.` : '';
+  const wishesAddition = customWishes ? ` ${customWishes.trim()}.` : '';
 
   // Кульминация (Сцена 3)
-  const climaxText = `Благодаря тому, что ${name.nom} ${v.showed} ${trait.nom} характер и чуткость к уроку «${theme}», всё сложилось наилучшим образом.${wishesAddition} Маленький ${toy.nom} словно улыбнулся в ответ, а вокруг разлилось мягкое сияние добра и гармонии.`;
+  const climaxText = `${name.nom} и ${toy.nom} крепко взялись за руки и поняли: когда рядом тот, кому ты доверяешь, а в сердце живут доброта и ${trait.nom} характер, всё обязательно получится.${wishesAddition} Вокруг разлилось мягкое золотистое сияние, и каждый лесной житель с благодарностью улыбнулся в ответ.`;
 
   // Финал (Сцена 4)
-  const conclusionText = `Сказочное приключение благополучно завершилось. ${name.nom} ${v.yawned}, ${v.changed} в мягкую пижамку и ${v.climbed} под тёплое, воздушное одеяло, бережно уложив рядом ${toy.acc}. Мама нежно погладила ${pronounAcc} по ${hair.dat}: «Спи сладко, мой маленький герой». Впереди ждали только добрые, волшебные сны.`;
+  const conclusionText = `Сказочное приключение благополучно завершилось. ${name.nom} ${v.yawned}, переоделся в уютную пижамку и забрался под воздушное одеяло, бережно уложив рядом ${toy.acc}. Мама ласково обняла ${pronounAcc}: «Спи сладко, мой маленький герой». Глазки закрылись, и начались самые добрые волшебные сны.`;
 
-  // Педагогические вопросы для родителя
-  const questionsList = [
+  // Педагогические вопросы для родителя, откалиброванные по возрасту (ТЗ Раздел 6)
+  let questionsList = [
     {
       id: 'q1',
       after_scene: 2,
-      question: `Как ты думаешь, почему для ${name.gen} было так важно проявить внимание к теме «${theme}»?`,
-      parent_hint: `Выслушайте ответ малыша. Поддержите его рассуждения о том, как доброта и смелость помогают окружающим.`,
-      skill_tag: 'emotions',
+      question: `Почему для ${name.gen} было так важно помочь другу и не оставить его одного?`,
+      parent_hint: `Выслушайте рассуждения малыша о взаимовыручке и поддержке.`,
+      skill_tag: 'logic',
     },
     {
       id: 'q2',
-      after_scene: 5,
-      question: `Что в этой сказке тебе понравилось больше всего? Какую игрушку взял бы в приключение ты?`,
-      parent_hint: `Обнимите ребёнка, поговорите о его любимой игрушке и пожелайте сладких снов.`,
-      skill_tag: 'reflection',
+      after_scene: 4,
+      question: `Какую игрушку ты возьмёшь сегодня с собой в кроватку, как ${name.nom} взял своего ${toy.acc}?`,
+      parent_hint: `Обнимите ребёнка, укутайте одеялом и пожелайте сладких добрых снов.`,
+      skill_tag: 'empathy',
     },
   ];
+
+  if (params.age <= 3) {
+    questionsList = [
+      {
+        id: 'q1',
+        after_scene: 2,
+        question: `Что почувствовал ${name.nom}, когда встретил друга? Попробуешь показать улыбку?`,
+        parent_hint: `Попросите малыша показать эмоцию личиком или найти героя на картинке.`,
+        skill_tag: 'emotions',
+      },
+      {
+        id: 'q2',
+        after_scene: 4,
+        question: `Какую любимую игрушку ты возьмёшь сегодня в кроватку, как ${name.nom} взял ${toy.acc}?`,
+        parent_hint: `Обнимите малыша перед сном и поговорите о его любимой игрушке.`,
+        skill_tag: 'empathy',
+      },
+    ];
+  } else if (params.age >= 6) {
+    questionsList = [
+      {
+        id: 'q1',
+        after_scene: 2,
+        question: `Перед каким выбором оказался ${name.nom}? Что помогло ему поступить правильно?`,
+        parent_hint: `Обсудите мотивы поступков и то, как наши решения влияют на окружающих.`,
+        skill_tag: 'logic',
+      },
+      {
+        id: 'q2',
+        after_scene: 4,
+        question: `Какой главный секрет темы «${theme}» открыл для себя ${name.nom}? Как бы ты поступил на его месте?`,
+        parent_hint: `Дайте ребёнку возможность сформулировать свой вывод о доброте и честности.`,
+        skill_tag: 'empathy',
+      },
+    ];
+  }
 
   const getSceneImageUrl = (idx: number): string => getFairytaleFallbackIllustration(params.theme || interest, idx);
 
@@ -1007,7 +1011,7 @@ function generateProceduralStory(params: GenerateStoryParams): BookDetailsDTO {
 
 /**
  * Эталонный генератор промпта для детской книжной иллюстрации
- * (стиль: Whimsical cozy 2D digital watercolor and gouache children's book illustration)
+ * (стиль: 3D Disney Pixar animation movie still согласно ТЗ)
  */
 export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneAction: string): string {
   const genderWord = params.gender === 'girl' ? 'girl' : 'boy';
@@ -1074,5 +1078,5 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
     'a small friendly companion creature';
 
-  return `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of a cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, and ${companion}, ${sceneAction}. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
+  return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
 }

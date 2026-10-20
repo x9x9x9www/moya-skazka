@@ -4,6 +4,7 @@ import { MockAIProvider } from '../../services/ai/mock.ai.provider';
 import { WellflowAIProvider } from '../../services/ai/wellflow.ai.provider';
 import { config } from '../../config/index';
 import { CreditsService } from '../credits/credits.service';
+import { buildCoverPrompt } from '@moya-skazka/story-engine';
 
 const textProvider =
   config.AI_TEXT_PROVIDER === 'wellflow'
@@ -179,7 +180,10 @@ export class JobWorker {
         data: {
           title: story.title,
           character_bible_json: story.characters as any,
-          story_outline_json: story.story_outline as any,
+          story_outline_json: {
+            outline: story.story_outline,
+            cover_prompt: story.cover_prompt,
+          } as any,
           status: book.format === 'TEXT' ? 'TEXT_READY' : 'ILLUSTRATIONS_QUEUED',
         },
       });
@@ -249,7 +253,13 @@ export class JobWorker {
     let totalCost = 0;
 
     // 1. Генерация обложки
-    const coverPrompt = `Fairytale book cover: ${book.title}. Warm enchanting style, highly detailed.`;
+    const outlineData = book.story_outline_json as any;
+    const coverPrompt =
+      outlineData?.cover_prompt ||
+      buildCoverPrompt({
+        cover_visual: `Enchanting bedtime fairytale book cover for ${book.title}`,
+        characters: (book.character_bible_json as any) || [],
+      });
     const coverImg = await imageProvider.generateImage({
       prompt: coverPrompt,
       type: 'cover',

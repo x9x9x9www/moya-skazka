@@ -17,6 +17,7 @@
     "@google/generative-ai": "^0.21.0",
     "@moya-skazka/database": "*",
     "@moya-skazka/shared": "*",
+    "@moya-skazka/story-engine": "*",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.0",
     "zod": "^3.23.8"

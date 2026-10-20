@@ -8,13 +8,31 @@ import {
   ITextAIProvider,
 } from './ai.interface';
 import { MockAIProvider } from './mock.ai.provider';
-import { AIStoryResponseSchema } from '@moya-skazka/shared';
+import {
+  buildStoryPrompt,
+  chooseStoryDna,
+  createSeededRandom,
+  normalizeStory,
+  buildRepairPrompt,
+  buildLengthRepairPrompt,
+  buildCoverPrompt,
+  buildScenePrompt,
+  STYLE_3D_PIXAR,
+} from '@moya-skazka/story-engine';
+
+function parseJsonContent(content: string) {
+  const cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  if (first === -1 || last === -1) throw new Error('JSON object not found');
+  return JSON.parse(cleaned.slice(first, last + 1));
+}
 
 export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
   private mockFallback = new MockAIProvider();
 
   /**
-   * Генерация сказки и педагогических вопросов через Google Gemini API
+   * Генерация сказки и педагогических вопросов через Google Gemini API с единым Story Engine
    */
   public async generateStory(input: GenerateStoryInput): Promise<AIGeneratedStory> {
     const apiKey = config.GEMINI_API_KEY;
@@ -23,66 +41,55 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       return await this.mockFallback.generateStory(input);
     }
 
-    const systemInstruction = `Ты — профессиональный детский сказкотерапевт и писатель для детей в возрасте ${input.age} лет.
-Твоя цель — написать добрую, безопасную, поучительную и захватывающую персонализированную сказку строго из 4 сцен на русском языке.
-Требования безопасности и педагогики (Разделы 6 и 15 ТЗ):
-- Возраст ребёнка: ${input.age} лет.
-- Имя главного героя: ${input.childName}.
-- Интересы: ${input.interests.join(', ')}.
-- Тема: ${input.theme}.
-- Особые пожелания: ${input.customWishes || 'нет'}.
-- Никакой жестокости, страхов, агрессии, дискриминации или опасных действий.
-- Текст должен состоять СТРОГО из 4 сцен (scenes).
-- Должно быть от 2 до 3 вопросов для родителя (questions): после сцены 2, после сцены 4 или в финале (after_scene = 5). Каждый вопрос должен сопровождаться короткой подсказкой parent_hint и тегом skill_tag.
-- Возрастные особенности вопросов:
-  * 2-3 года: узнавание героев, простые эмоции (грусть/радость), указание на действия.
-  * 4-5 лет: причины поступков, помощь другу, варианты решения.
-  * 6 лет: мотивы, причинно-следственные связи, моральный выбор.
-- Для каждой сцены составь детальный английский image_prompt СТРОГО по эталонной формуле 3D анимации Pixar/Disney для детской сказки:
-  "A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. A cute ${input.age}-year-old child with [visual hair], rosy cheeks, large luminous curious eyes, wearing [cozy clothing]. Accompanied by [companion creature/toy]. The hero is [scene specific action]. [Enchanted environment description: glowing magical forest / fairytale road / cozy bedroom]. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words."
+    const storyEngineInput = {
+      childName: input.childName,
+      age: input.age,
+      theme: input.theme,
+      interests: input.interests,
+      personality: input.appearance?.personality,
+      customWishes: input.customWishes,
+      gender: input.appearance?.gender,
+      appearance: {
+        hairColor: input.appearance?.hair,
+        clothingItem: input.appearance?.clothing,
+        toy: input.appearance?.toy,
+      },
+    };
 
-Ты ОБЯЗАН вернуть валидный JSON-объект без markdown-разметки:
-{
-  "title": "...",
-  "age": ${input.age},
-  "characters": [{"id": "hero", "name": "${input.childName}", "visual_description": "..."}],
-  "story_outline": "...",
-  "scenes": [
-    {"index": 1, "text": "...", "image_prompt": "..."},
-    {"index": 2, "text": "...", "image_prompt": "..."},
-    {"index": 3, "text": "...", "image_prompt": "..."},
-    {"index": 4, "text": "...", "image_prompt": "..."}
-  ],
-  "questions": [
-    {"after_scene": 2, "question": "...", "parent_hint": "...", "skill_tag": "emotions"},
-    {"after_scene": 5, "question": "...", "parent_hint": "...", "skill_tag": "reflection"}
-  ]
-}`;
+    const dna = chooseStoryDna(
+      storyEngineInput,
+      createSeededRandom(`${Date.now()}|${input.childName}|${input.age}|${input.theme}`)
+    );
+    const prompt = buildStoryPrompt(storyEngineInput, { dna });
+    const model = (config as any).GEMINI_MODEL || 'gemini-2.0-flash';
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: prompt.system }],
+          },
           contents: [
             {
               role: 'user',
-              parts: [{ text: systemInstruction }],
+              parts: [{ text: prompt.user }],
             },
           ],
           generationConfig: {
             response_mime_type: 'application/json',
             temperature: 0.7,
-            max_output_tokens: 2500,
+            max_output_tokens: 4000,
           },
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`Gemini API returned error ${response.status}: ${errorText}. Falling back to deterministic Mock provider.`);
+        console.warn(`Gemini API returned error ${response.status}: ${errorText}. Falling back to mock.`);
         return await this.mockFallback.generateStory(input);
       }
 
@@ -95,72 +102,101 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
         throw new Error('Пустой ответ от модели Gemini');
       }
 
-      // Парсинг и валидация через Zod схему
-      const parsed = JSON.parse(rawJson);
-      const validated = AIStoryResponseSchema.parse(parsed);
+      const parsed = parseJsonContent(rawJson);
+      let normalizedStory;
+      try {
+        normalizedStory = normalizeStory(parsed, storyEngineInput, dna);
+      } catch (err: any) {
+        console.warn(`[GeminiAIProvider] Normalization failed: ${(err.issues || [err.message]).join('; ')}`);
+        return await this.mockFallback.generateStory(input);
+      }
+
+      const coverPrompt = buildCoverPrompt(normalizedStory);
 
       return {
-        ...validated,
-        estimatedCost: 0.002, // Себестоимость Gemini Flash ≈ 0.002$
+        title: normalizedStory.title,
+        age: normalizedStory.age,
+        theme: normalizedStory.theme,
+        characters: normalizedStory.characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          visual_description: c.visual_description,
+        })),
+        story_outline: normalizedStory.story_outline,
+        cover_prompt: coverPrompt,
+        scenes: normalizedStory.scenes.map((s) => ({
+          index: s.index,
+          text: s.text,
+          image_prompt: buildScenePrompt(normalizedStory, s),
+        })),
+        questions: normalizedStory.questions.map((q) => ({
+          after_scene: q.after_scene,
+          question: q.question,
+          parent_hint: q.parent_hint,
+          skill_tag: q.skill_tag,
+        })),
+        estimatedCost: 0.005,
       };
     } catch (err) {
-      console.error('Ошибка вызова Gemini API:', err);
-      // Безопасный fallback, исключающий сбой пользователя
+      console.error('[GeminiAIProvider] Ошибка генерации сказки Gemini:', err);
       return await this.mockFallback.generateStory(input);
     }
   }
 
   /**
-   * Генерация иллюстрации через Imagen 3 или Mock fallback
+   * Генерация иллюстраций через Imagen (Imagen 3) или возврат безопасного мока
    */
   public async generateImage(input: GenerateImageInput): Promise<AIGeneratedImage> {
     const apiKey = config.GEMINI_API_KEY;
 
-    if (!apiKey || apiKey === '' || config.AI_IMAGE_PROVIDER === 'mock') {
+    if (!apiKey || apiKey === '' || apiKey.includes('placeholder')) {
       return await this.mockFallback.generateImage(input);
     }
 
+    let prompt = input.prompt;
+    if (!prompt.includes('Pixar') && !prompt.includes('3D')) {
+      prompt = `${prompt}. ${STYLE_3D_PIXAR}`;
+    }
+
     try {
-      // Imagen 3 endpoint в Google Generative Language API
       const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-      // Эталонная формула 3D Disney Pixar анимации для детской сказки
-      const finalPrompt = input.prompt.includes('3D Disney Pixar')
-        ? input.prompt
-        : `A breathtaking 3D Disney Pixar animation style movie still for a children's fairy tale book. ${input.prompt}. Rosy chubby cheeks with soft peach blush, large expressive curious eyes with bright catchlights, cinematic volumetric golden hour lighting, floating glowing particles, warm rim lighting, soft creamy bokeh background (85mm f/1.4 lens), modern 3D CGI render, Pixar RenderMan aesthetic, masterpiece, ultra-detailed, cozy bedtime story atmosphere, no text, no words.`;
-
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt: finalPrompt }],
+          instances: [{ prompt }],
           parameters: {
             sampleCount: 1,
-            aspectRatio: input.type === 'cover' ? '4:3' : '16:9',
-            personGeneration: 'ALLOW_ADULT_AND_CHILD',
+            aspectRatio: '1:1',
+            outputOptions: { mimeType: 'image/jpeg' },
           },
         }),
       });
 
       if (!response.ok) {
+        console.warn(`Imagen API error: ${response.status}. Falling back to mock.`);
         return await this.mockFallback.generateImage(input);
       }
 
       const data = (await response.json()) as {
-        predictions?: Array<{ bytesBase64Encoded?: string }>;
+        predictions?: Array<{ bytesBase64Encoded: string }>;
       };
 
       const base64 = data.predictions?.[0]?.bytesBase64Encoded;
-      if (base64) {
-        return {
-          storageKey: `assets/gemini_${input.type}_${Date.now()}.png`,
-          imageUrl: `data:image/png;base64,${base64}`,
-          generationCost: 0.03, // Ориентировочная себестоимость Imagen 3
-        };
+      if (!base64) {
+        throw new Error('Пустой ответ Imagen');
       }
 
-      return await this.mockFallback.generateImage(input);
-    } catch {
+      const imageUrl = `data:image/jpeg;base64,${base64}`;
+      const storageKey = `gemini_${Date.now()}_${input.sceneIndex ?? 'cover'}.jpg`;
+
+      return {
+        storageKey,
+        imageUrl,
+        generationCost: 0.03,
+      };
+    } catch (err) {
+      console.error('[GeminiAIProvider] Ошибка генерации Imagen:', err);
       return await this.mockFallback.generateImage(input);
     }
   }

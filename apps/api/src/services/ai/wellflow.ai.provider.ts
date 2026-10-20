@@ -8,7 +8,17 @@ import {
   ITextAIProvider,
 } from './ai.interface';
 import { MockAIProvider } from './mock.ai.provider';
-import { AIStoryResponseSchema } from '@moya-skazka/shared';
+import {
+  buildStoryPrompt,
+  chooseStoryDna,
+  createSeededRandom,
+  normalizeStory,
+  buildRepairPrompt,
+  buildLengthRepairPrompt,
+  buildCoverPrompt,
+  buildScenePrompt,
+  STYLE_3D_PIXAR,
+} from '@moya-skazka/story-engine';
 
 export const WELLFLOW_SYSTEM_PROMPT = `You are an award-winning Russian children's book author, child psychologist, and art director. Generate a personalized fairytale for a child aged 2–6 strictly as a valid JSON object without Markdown wrappers.
 
@@ -65,15 +75,24 @@ export const WELLFLOW_SYSTEM_PROMPT = `You are an award-winning Russian children
     { "after_scene": 2, "question": "Вопрос на русском...", "parent_hint": "Подсказка родителю на русском...", "skill": "emotions" },
     { "after_scene": 4, "question": "Финальный вопрос на русском...", "parent_hint": "Подсказка родителю на русском...", "skill": "empathy" }
   ]
-}`;
+}
+`;
 
 export const NANO_BANANA_STYLE_TEMPLATE = `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of [SCENE_AND_CHARACTERS]. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
+
+function parseJsonContent(content: string) {
+  const cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  if (first === -1 || last === -1) throw new Error('JSON object not found');
+  return JSON.parse(cleaned.slice(first, last + 1));
+}
 
 export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
   private mockFallback = new MockAIProvider();
 
   /**
-   * Генерация сказки через Wellflow API (GPT-6-Astra)
+   * Генерация сказки через Wellflow API на базе единого Story Engine
    */
   public async generateStory(input: GenerateStoryInput): Promise<AIGeneratedStory> {
     const apiUrl = config.WELLFLOW_API_URL;
@@ -85,47 +104,42 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
       return await this.mockFallback.generateStory(input);
     }
 
-    const openingHooks: Record<string, string> = {
-      Динозавры: `В комнате пахло сладкими сушёными яблоками и тёплым пледом, когда под мягким ковриком тихонько хрустнула сказочная скорлупка.`,
-      Космос: `За круглым окном вспыхнула крошечная золотая звёздочка, оставив в вечернем небе тонкий искрящийся хвостик.`,
-      Машинки: `На ковре тихонько заурчал маленький моторчик, а фары крошечной машинки осветили дорогу к волшебному туннелю.`,
-      Животные: `В раскрытую форточку заглянул пушистый рыжий лучик солнца и мягко пощекотал носик.`,
-      Волшебство: `Из резного деревянного сундучка выпорхнула звонкая синяя бабочка, осыпая вокруг мерцающую пыльцу.`,
-      Природа: `Капелька утренней росы на подоконнике отразила весь огромный зелёный лес за окном.`,
+    const storyEngineInput = {
+      childName: input.childName,
+      age: input.age,
+      theme: input.theme,
+      interests: input.interests,
+      personality: input.appearance?.personality,
+      customWishes: input.customWishes,
+      gender: input.appearance?.gender,
+      appearance: {
+        hairColor: input.appearance?.hair,
+        clothingItem: input.appearance?.clothing,
+        toy: input.appearance?.toy,
+      },
     };
 
-    const mainInterest = input.interests[0] || 'Волшебство';
-    const hook = openingHooks[mainInterest] || `В тихой вечерней комнате послышался ласковый перелив колокольчика.`;
-
-    const userPrompt = `Входные данные для генерации персонализированной сказки:
-- Имя ребёнка: ${input.childName}
-- Возраст: ${input.age} лет
-- Пол/характер: ${input.appearance?.personality || 'добрый, любознательный'}
-- Внешность: волосы: ${input.appearance?.hair || 'светлые'}, одежда: ${input.appearance?.clothing || 'уютный свитер'}
-- Любимая игрушка-спутник: ${input.appearance?.toy || 'плюшевый зверёк'}
-- Главная тема: ${input.theme}
-- Интересы: ${input.interests.join(', ')}
-- Особые пожелания: ${input.customWishes || 'нет'}
-- opening_hook: ${hook}
-- plot_archetype: Преодоление маленького препятствия с помощью дружбы и доброты
-- atmosphere_seed: Тёплый вечер, мягкий свет, шелест трав, аромат яблочного пирога и лесной мяты
-
-Строго следуй системной инструкции и верни валидный JSON по указанному контракту!`;
+    const dna = chooseStoryDna(
+      storyEngineInput,
+      createSeededRandom(`${Date.now()}|${input.childName}|${input.age}|${input.theme}`)
+    );
+    const prompt = buildStoryPrompt(storyEngineInput, { dna });
 
     try {
       const response = await fetch(`${apiUrl}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: WELLFLOW_SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt },
+            { role: 'system', content: prompt.system },
+            { role: 'user', content: prompt.user },
           ],
           response_format: { type: 'json_object' },
+          max_tokens: 4500,
         }),
       });
 
@@ -144,18 +158,122 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
         throw new Error(`Пустой ответ от модели ${model}`);
       }
 
-      const cleanedJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanedJson);
-      const validated = AIStoryResponseSchema.parse(parsed);
+      let parsedRaw: any;
+      try {
+        parsedRaw = parseJsonContent(rawContent);
+      } catch (e: any) {
+        console.warn('[WellflowAIProvider] Failed to parse JSON, falling back to mock:', e.message);
+        return await this.mockFallback.generateStory(input);
+      }
+
+      let normalizedStory;
+      try {
+        normalizedStory = normalizeStory(parsedRaw, storyEngineInput, dna);
+      } catch (valErr: any) {
+        console.warn(`[WellflowAIProvider] Validation issue: ${(valErr.issues || [valErr.message]).join('; ')}`);
+        // Попытка авто-ремонта через LLM
+        try {
+          const repairPrompt = buildRepairPrompt(parsedRaw, valErr.issues || [valErr.message]);
+          const repairRes = await fetch(`${apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: prompt.system },
+                { role: 'user', content: prompt.user },
+                { role: 'assistant', content: rawContent },
+                { role: 'user', content: repairPrompt },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          });
+          if (repairRes.ok) {
+            const repairData = (await repairRes.json()) as {
+              choices?: Array<{ message?: { content?: string } }>;
+            };
+            const repairedContent = repairData.choices?.[0]?.message?.content;
+            if (repairedContent) {
+              const repairedRaw = parseJsonContent(repairedContent);
+              normalizedStory = normalizeStory(repairedRaw, storyEngineInput, dna);
+            }
+          }
+        } catch (repairErr) {
+          console.warn('[WellflowAIProvider] Repair attempt failed:', repairErr);
+        }
+
+        if (!normalizedStory) {
+          return await this.mockFallback.generateStory(input);
+        }
+      }
+
+      // Проверка длины: если текст заметно короче цели по ТЗ — выполняем length repair
+      if (normalizedStory.metrics.total_words < normalizedStory.metrics.target[0]) {
+        console.log(`[WellflowAIProvider] Длина ${normalizedStory.metrics.total_words} < цели ${normalizedStory.metrics.target[0]}, расширяем...`);
+        try {
+          const lengthPrompt = buildLengthRepairPrompt(normalizedStory, normalizedStory.metrics.target);
+          const lenRes = await fetch(`${apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: prompt.system },
+                { role: 'user', content: prompt.user },
+                { role: 'assistant', content: rawContent },
+                { role: 'user', content: lengthPrompt },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          });
+          if (lenRes.ok) {
+            const lenData = (await lenRes.json()) as {
+              choices?: Array<{ message?: { content?: string } }>;
+            };
+            const expContent = lenData.choices?.[0]?.message?.content;
+            if (expContent) {
+              const expRaw = parseJsonContent(expContent);
+              const expanded = normalizeStory(expRaw, storyEngineInput, dna);
+              if (expanded.metrics.total_words > normalizedStory.metrics.total_words) {
+                normalizedStory = expanded;
+              }
+            }
+          }
+        } catch (lenErr) {
+          console.warn('[WellflowAIProvider] Length repair skipped:', lenErr);
+        }
+      }
+
+      const coverPrompt = buildCoverPrompt(normalizedStory);
 
       return {
-        title: validated.title,
-        age: validated.age,
-        characters: validated.characters,
-        story_outline: validated.story_outline,
-        scenes: validated.scenes,
-        questions: validated.questions,
-        cover_prompt: validated.cover_prompt,
+        title: normalizedStory.title,
+        age: normalizedStory.age,
+        theme: normalizedStory.theme,
+        characters: normalizedStory.characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          visual_description: c.visual_description,
+        })),
+        story_outline: normalizedStory.story_outline,
+        cover_prompt: coverPrompt,
+        scenes: normalizedStory.scenes.map((s) => ({
+          index: s.index,
+          text: s.text,
+          image_prompt: buildScenePrompt(normalizedStory, s),
+        })),
+        questions: normalizedStory.questions.map((q) => ({
+          after_scene: q.after_scene,
+          question: q.question,
+          parent_hint: q.parent_hint,
+          skill_tag: q.skill_tag,
+        })),
         estimatedCost: 0.005,
       };
     } catch (err) {
@@ -165,7 +283,7 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
   }
 
   /**
-   * Генерация иллюстраций через Wellflow API (Nano Banana 2)
+   * Генерация иллюстраций через Wellflow API (3D Pixar-стиль)
    */
   public async generateImage(input: GenerateImageInput): Promise<AIGeneratedImage> {
     const apiUrl = config.WELLFLOW_API_URL;
@@ -177,17 +295,17 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
       return await this.mockFallback.generateImage(input);
     }
 
-    // Собираем промпт в стиле акварели/гуаши согласно ТЗ
+    // Story Engine уже формирует промпты с 3D Pixar-стилем и character bible.
     let finalPrompt = input.prompt;
-    if (!finalPrompt.includes('watercolor and gouache')) {
-      finalPrompt = NANO_BANANA_STYLE_TEMPLATE.replace('[SCENE_AND_CHARACTERS]', input.prompt);
+    if (!finalPrompt.includes('Pixar') && !finalPrompt.includes('3D')) {
+      finalPrompt = `${input.prompt}. ${STYLE_3D_PIXAR}`;
     }
 
     try {
       const response = await fetch(`${apiUrl}/images/generations`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -206,10 +324,11 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
 
       const data = (await response.json()) as {
         data?: Array<{ url?: string }>;
+        imageUrl?: string;
         id?: string;
       };
 
-      const imageUrl = data.data?.[0]?.url;
+      const imageUrl = data.imageUrl || data.data?.[0]?.url;
       if (!imageUrl) {
         throw new Error('Пустой URL изображения от Nano Banana 2');
       }
