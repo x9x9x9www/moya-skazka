@@ -36,6 +36,9 @@ jobs:
       - name: Test Story Engine
         run: npm run test --workspace=@moya-skazka/story-engine
 
+      - name: Test Bot
+        run: npm run test:bot
+
       - name: Test API
         run: npm run test --workspace=@moya-skazka/api
 

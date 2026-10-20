@@ -4,6 +4,7 @@ import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import { shouldActivateTunnel } from './tunnelPriority.mjs';
 import {
   buildStoryPrompt,
   chooseStoryDna,
@@ -58,6 +59,7 @@ const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2'
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
 let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || '';
+let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : '';
 
 const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = path.join(BOT_DIR, 'generated');
@@ -600,8 +602,39 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
 });
 
 // ========================================================
-// 4. ЗАПУСК БЫСТРОГО И НАДЁЖНОГО HTTPS ТУННЕЛЯ (Serveo)
+// 4. ТУННЕЛИ: localtunnel важнее случайного serveo
 // ========================================================
+async function activateTunnel(url, source) {
+  if (!url) return;
+  if (!shouldActivateTunnel(source, activeTunnelSource)) {
+    console.log(`[Tunnel] ${source} не активирован: приоритет ниже ${activeTunnelSource || '—'}`);
+    return;
+  }
+  const cleanUrl = url.replace(/\/$/, '');
+  if (cleanUrl === publicTunnelUrl) return;
+
+  try {
+    const res = await fetch(`${cleanUrl}/health`, {
+      headers: { 'Bypass-Tunnel-Reminder': 'true' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data?.status !== 'ok') throw new Error('health status != ok');
+  } catch (error) {
+    console.warn(`[Tunnel] ${source} не прошёл health-check: ${error.message}`);
+    return;
+  }
+
+  publicTunnelUrl = cleanUrl;
+  activeTunnelSource = source;
+  console.log(`[Tunnel] 🚀 Активный туннель (${source}): ${publicTunnelUrl}`);
+  try {
+    fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
+  } catch {}
+  await updateChatMenuWithApi(publicTunnelUrl);
+}
+
 function startTunnel() {
   console.log('[Tunnel] 🌐 Запуск защищённого HTTPS туннеля через Serveo...');
   const child = spawn('ssh', [
@@ -615,13 +648,8 @@ function startTunnel() {
   const handleData = async (data) => {
     const text = data.toString();
     const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.serveousercontent\.com/);
-    if (match && match[0] && match[0] !== publicTunnelUrl) {
-      publicTunnelUrl = match[0];
-      console.log(`[Tunnel] 🚀 HTTPS туннель активен: ${publicTunnelUrl}`);
-      try {
-        fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
-      } catch {}
-      await updateChatMenuWithApi(publicTunnelUrl);
+    if (match && match[0]) {
+      await activateTunnel(match[0], 'serveo');
     }
   };
 
@@ -629,7 +657,11 @@ function startTunnel() {
   child.stderr.on('data', handleData);
 
   child.on('close', (code) => {
-    console.log(`[Tunnel] Туннель завершился (код: ${code}), перезапуск через 3 сек...`);
+    console.log(`[Tunnel] Serveo завершился (код: ${code}), перезапуск через 3 сек...`);
+    if (activeTunnelSource === 'serveo') {
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+    }
     setTimeout(startTunnel, 3000);
   });
 }
@@ -644,12 +676,8 @@ function startLocalTunnel() {
     if (text.includes('url is:')) {
       const match = text.match(/https:\/\/[^\s]+/);
       if (match) {
-        publicTunnelUrl = match[0];
-        console.log(`[LocalTunnel] 🚀 Постоянный домен активен: ${publicTunnelUrl}`);
-        try {
-          fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
-        } catch {}
-        await updateChatMenuWithApi(publicTunnelUrl);
+        const url = match[0].replace(/[),.;]+$/, '');
+        await activateTunnel(url, 'localtunnel');
       }
     }
   });
@@ -661,6 +689,10 @@ function startLocalTunnel() {
 
   lt.on('close', (c) => {
     console.log(`[LocalTunnel] Завершился (код: ${c}), перезапуск через 5 сек...`);
+    if (activeTunnelSource === 'localtunnel') {
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+    }
     setTimeout(startLocalTunnel, 5000);
   });
 }
