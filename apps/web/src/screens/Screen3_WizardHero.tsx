@@ -10,12 +10,14 @@ export interface WizardHeroData {
   appearance: {
     avatar_id: string;
     hairColor: string; // 'светлые' | 'русые' | 'тёмные' | 'рыжие'
-    hairType: string; // 'кудрявые' | 'короткие' | 'длинные'
-    clothingItem: string; // 'уютный свитер' | 'комбинезончик' | 'платьице' | 'толстовка'
-    clothingColor: string; // 'изумрудный' | 'солнечно-жёлтый' | 'небесно-голубой' | 'нежно-розовый' | 'терракотовый'
-    toy: string; // 'плюшевый мишка' | 'зайка' | 'динозаврик' | 'котёнок' | 'звёздочка'
+    hairType: string; // 'кудрявые' | 'короткие' | 'длинные' | 'прямые'
+    clothingItem: string; // Свободный ввод: 'жёлтый дождевик и резиновые сапожки', 'уютная пижамка...'
+    clothingColor: string; // акцентный цвет или автоопределённый
+    toy: string; // 'плюшевый мишка' | 'зайка' | 'динозаврик' | 'котёнок' | 'звёздочка' | 'быстрая машинка'
     eyeColor?: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
     skinTone?: string; // 'светлая' | 'персиковая' | 'смуглая'
+    hairLength?: string;
+    hairStructure?: string;
   };
 }
 
@@ -40,44 +42,43 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'Природа', icon: '🌿', label: 'Природа' },
   ];
 
+  // Расширенный список популярных и терапевтических тем
   const themesList = [
-    'Дружба',
-    'Смелость',
-    'Спокойный сон',
-    'Доброта и забота',
-    'Любознательность',
-    'Честность',
-    'Капризы и эмоции',
-    'Волшебные сны',
+    { id: 'Дружба и верность', label: 'Дружба и верность 🤝' },
+    { id: 'Доброта и забота', label: 'Доброта и забота 💛' },
+    { id: 'Смелость и победа над страхами', label: 'Смелость и отвага 🦁' },
+    { id: 'Спокойный и сладкий сон', label: 'Спокойный сон 🌙' },
+    { id: 'Волшебные сны и звездопад', label: 'Волшебные сны 🌌' },
+    { id: 'Тёплые объятия перед сном', label: 'Уют перед сном 🧸' },
+    { id: 'Заколдованный лес и тайны', label: 'Заколдованный лес 🌲' },
+    { id: 'Космическое путешествие', label: 'Космос и звёзды 🚀' },
+    { id: 'Морские глубины и киты', label: 'Подводный мир 🐬' },
+    { id: 'Страна дружелюбных динозавров', label: 'Остров динозавров 🦕' },
+    { id: 'Город добрых машинок', label: 'Город машинок 🚗' },
+    { id: 'Замок маленьких фей и магов', label: 'Замок фей 🪄' },
+    { id: 'Капризы и управление эмоциями', label: 'Капризы и эмоции 🎈' },
+    { id: 'Честность и искренность', label: 'Честность ✨' },
+    { id: 'Умение делиться и дружить', label: 'Умение делиться 💫' },
+    { id: 'Любознательность и открытия', label: 'Любознательность 🔍' },
+    { id: 'Порядок и уборка игрушек', label: 'Уборка игрушек 🧹' },
+    { id: 'Любовь к детскому садику', label: 'Любимый садик 🎒' },
+    { id: 'Смелый поход к врачу', label: 'Поход к врачу 🩺' },
+    { id: 'Появление братика или сестрёнки', label: 'Братик или сестрёнка 👶' },
+    { id: 'Бережное отношение к природе', label: 'Забота о природе 🌿' },
   ];
 
-  const hairColors = [
-    { id: 'светлые', label: 'Светлые', color: '#F7DC6F' },
-    { id: 'русые', label: 'Русые', color: '#C49A45' },
-    { id: 'тёмные', label: 'Тёмные', color: '#3E2723' },
-    { id: 'рыжие', label: 'Рыжие', color: '#E65100' },
-  ];
-
-  const hairTypes = [
-    { id: 'короткие', label: 'Короткие ✂️' },
-    { id: 'длинные', label: 'Длинные 🎀' },
-    { id: 'кудрявые', label: 'Кудрявые 🌀' },
-    { id: 'прямые', label: 'Прямые ✨' },
-  ];
-
-  const clothingItems = [
-    { id: 'уютный свитер', label: 'Свитер 🧶' },
-    { id: 'комбинезончик', label: 'Комбинезон 👖' },
-    { id: 'платьице', label: 'Платьице 👗' },
-    { id: 'толстовка', label: 'Толстовка 👕' },
-  ];
-
-  const clothingColorList = [
-    { id: 'изумрудный', label: 'Изумрудный', bg: '#2E6F5E' },
-    { id: 'солнечно-жёлтый', label: 'Жёлтый', bg: '#F5B041' },
-    { id: 'небесно-голубой', label: 'Голубой', bg: '#5DADE2' },
-    { id: 'нежно-розовый', label: 'Розовый', bg: '#F1948A' },
-    { id: 'терракотовый', label: 'Терракот', bg: '#D35400' },
+  // Быстрые подсказки-идеи для одежды
+  const clothingSuggestions = [
+    { icon: '🌧️', text: 'Жёлтый дождевик и сапожки' },
+    { icon: '⭐', text: 'Уютная пижамка со звёздочками' },
+    { icon: '🧶', text: 'Тёплый вязаный свитер' },
+    { icon: '👗', text: 'Сказочное пышное платьице' },
+    { icon: '👖', text: 'Джинсовый комбинезончик' },
+    { icon: '🚀', text: 'Костюм юного космонавта' },
+    { icon: '🦕', text: 'Футболка с динозавриком' },
+    { icon: '👑', text: 'Бархатная мантия волшебника' },
+    { icon: '🦊', text: 'Толстовка с рыжей лисичкой' },
+    { icon: '🦸', text: 'Костюм доброго супергероя' },
   ];
 
   const companionToys = [
@@ -86,14 +87,15 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'пушистый зайка', icon: '🐰', label: 'Зайка' },
     { id: 'маленький котёнок', icon: '🐱', label: 'Котёнок' },
     { id: 'волшебная звёздочка', icon: '⭐', label: 'Звёздочка' },
+    { id: 'быстрая машинка', icon: '🚗', label: 'Машинка' },
   ];
 
   const appearance = data.appearance || {
     avatar_id: 'hero_custom',
     hairColor: 'светлые',
     hairType: 'кудрявые',
-    clothingItem: 'уютный свитер',
-    clothingColor: 'изумрудный',
+    clothingItem: 'жёлтый дождевик и сапожки',
+    clothingColor: 'солнечно-жёлтый',
     toy: 'плюшевый динозаврик',
   };
 
@@ -114,10 +116,32 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     onChange({ ...data, interests: updated });
   };
 
-  const activeColorHex =
-    hairColors.find((h) => h.id === appearance.hairColor)?.color || '#F7DC6F';
-  const activeClothingHex =
-    clothingColorList.find((c) => c.id === appearance.clothingColor)?.bg || '#2E6F5E';
+  // Цвет волос для превью
+  const hairColorsMap: Record<string, string> = {
+    светлые: '#F7DC6F',
+    русые: '#C49A45',
+    тёмные: '#3E2723',
+    рыжие: '#E65100',
+  };
+  const activeColorHex = hairColorsMap[appearance.hairColor] || '#C49A45';
+
+  // Автоматическое определение цвета одежды по тексту для превью аватара
+  const detectClothingHex = (clothingText: string = '', fallbackColor: string = '') => {
+    const text = (clothingText + ' ' + fallbackColor).toLowerCase();
+    if (text.includes('жёлт')) return '#F5B041';
+    if (text.includes('голуб')) return '#5DADE2';
+    if (text.includes('син')) return '#2980B9';
+    if (text.includes('розов')) return '#F1948A';
+    if (text.includes('зелён') || text.includes('изумруд')) return '#2E6F5E';
+    if (text.includes('красн')) return '#E74C3C';
+    if (text.includes('терракот')) return '#D35400';
+    if (text.includes('фиолет') || text.includes('сирен')) return '#8E44AD';
+    if (text.includes('оранж')) return '#E67E22';
+    if (text.includes('бел')) return '#F4F6F6';
+    if (text.includes('сер')) return '#95A5A6';
+    return '#2E6F5E';
+  };
+  const activeClothingHex = detectClothingHex(appearance.clothingItem, appearance.clothingColor);
 
   return (
     <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
@@ -130,7 +154,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           Кто станет главным героем?
         </h2>
         <p className="text-xs text-stone-500 mt-1">
-          Настройте внешность малыша — он оживёт на иллюстрациях и страницах книги
+          Настройте одежду, спутника и тему — малыш оживёт на иллюстрациях сказки
         </p>
       </div>
 
@@ -141,12 +165,12 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           <div className="relative flex flex-col items-center">
             {/* Голова */}
             <div className="relative w-12 h-12 rounded-full bg-[#FFE0BD] border-2 border-[#F3C59D] flex items-center justify-center">
-              {/* Волосы */}
+              {/* Волосы по параметрам из профиля */}
               <div
                 className={`absolute -top-1 inset-x-0 ${
-                  appearance.hairType === 'кудрявые'
+                  appearance.hairType?.includes('кудр')
                     ? 'h-5 rounded-t-full border-t-2'
-                    : appearance.hairType === 'длинные'
+                    : appearance.hairType?.includes('длин')
                     ? 'h-7 rounded-t-xl'
                     : 'h-4 rounded-t-full'
                 }`}
@@ -163,7 +187,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             </div>
             {/* Одежда */}
             <div
-              className="w-10 h-7 rounded-t-lg -mt-1 border border-black/10 relative flex items-center justify-center"
+              className="w-10 h-7 rounded-t-lg -mt-1 border border-black/10 relative flex items-center justify-center transition-colors duration-300"
               style={{ backgroundColor: activeClothingHex }}
             >
               {/* Игрушка в ручках */}
@@ -173,186 +197,73 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             </div>
           </div>
         </div>
-        <div className="mt-2 text-center">
-          <div className="font-serif font-bold text-sm text-stone-900">
+        <div className="mt-2.5 text-center">
+          <div className="font-serif font-bold text-base text-stone-900">
             {data.childName || 'Герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} года
           </div>
-          <div className="text-[11px] text-stone-500">
-            {appearance.hairColor} {appearance.hairType} волосы, {appearance.clothingColor} {appearance.clothingItem}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
+            <span>✨</span>
+            <span>{appearance.hairColor} {appearance.hairType} волосы (из профиля)</span>
           </div>
         </div>
       </div>
 
-      {/* Имя ребёнка */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-stone-700">Имя ребёнка</label>
-        <input
-          type="text"
-          value={data.childName}
-          onChange={(e) => onChange({ ...data, childName: e.target.value })}
-          placeholder="Например, Петька"
-          className="w-full px-4 py-3.5 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-stone-800 shadow-sm"
-        />
-      </div>
-
-      {/* Пол (Мальчик / Девочка) */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-stone-700">Пол героя</label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onChange({ ...data, gender: 'boy' })}
-            className={`py-3 rounded-2xl font-bold text-sm border flex items-center justify-center gap-2 transition-all ${
-              data.gender === 'boy'
-                ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
-            }`}
-          >
-            <span>👦</span>
-            <span>Мальчик</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ ...data, gender: 'girl' })}
-            className={`py-3 rounded-2xl font-bold text-sm border flex items-center justify-center gap-2 transition-all ${
-              data.gender === 'girl'
-                ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
-            }`}
-          >
-            <span>👧</span>
-            <span>Девочка</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Возраст (2-6 лет) */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-stone-700">Возраст</label>
-        <div className="grid grid-cols-5 gap-2">
-          {[2, 3, 4, 5, 6].map((ageNum) => {
-            const isSelected = data.age === ageNum;
-            return (
-              <button
-                key={ageNum}
-                type="button"
-                onClick={() => onChange({ ...data, age: ageNum })}
-                className={`py-3 rounded-2xl font-bold text-sm border transition-all ${
-                  isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-md scale-105'
-                    : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'
-                }`}
-              >
-                {ageNum}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Цвет и тип волос */}
+      {/* Одежда героя (Свободный ввод + подсказки) */}
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
-        <label className="text-xs font-bold text-stone-700 block">
-          Причёска и цвет волос
-        </label>
-        
-        {/* Цвет волос */}
-        <div className="grid grid-cols-4 gap-2">
-          {hairColors.map((h) => {
-            const isSelected = appearance.hairColor === h.id;
-            return (
-              <button
-                key={h.id}
-                type="button"
-                onClick={() => updateAppearance({ hairColor: h.id })}
-                className={`py-2 px-1 rounded-xl text-xs font-bold border flex flex-col items-center gap-1 transition-all ${
-                  isSelected
-                    ? 'border-brand-500 bg-brand-50 text-brand-800 shadow-sm ring-1 ring-brand-500'
-                    : 'border-cream-300 bg-cream-50 text-stone-600'
-                }`}
-              >
-                <div
-                  className="w-4 h-4 rounded-full border border-black/20"
-                  style={{ backgroundColor: h.color }}
-                />
-                <span className="text-[11px]">{h.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+            <span>👕</span>
+            <span>Во что одет герой в сказке?</span>
+          </label>
+          <span className="text-[11px] font-medium text-brand-700">впишите любое</span>
         </div>
 
-        {/* Тип волос */}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {hairTypes.map((t) => {
-            const isSelected = appearance.hairType === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => updateAppearance({ hairType: t.id })}
-                className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all ${
-                  isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                    : 'bg-cream-50 text-stone-700 border-cream-300'
-                }`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Любимая одежда и её цвет */}
-      <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
-        <label className="text-xs font-bold text-stone-700 block">
-          Любимая одежда героя
-        </label>
-
-        {/* Фасон одежды */}
-        <div className="grid grid-cols-2 gap-2">
-          {clothingItems.map((c) => {
-            const isSelected = appearance.clothingItem === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => updateAppearance({ clothingItem: c.id })}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                  isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
-                    : 'bg-cream-50 text-stone-700 border-cream-300'
-                }`}
-              >
-                {c.label}
-              </button>
-            );
-          })}
+        {/* Текстовое поле ввода одежды */}
+        <div className="relative">
+          <input
+            type="text"
+            value={appearance.clothingItem || ''}
+            onChange={(e) => updateAppearance({ clothingItem: e.target.value })}
+            placeholder="Например: жёлтый дождевик и резиновые сапожки, пижамка с динозавриками, нарядное платьице..."
+            className="w-full px-4 py-3.5 pr-9 rounded-2xl bg-cream-50/70 border border-cream-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-stone-800 text-sm shadow-inner transition-all placeholder:text-stone-400 placeholder:font-normal"
+          />
+          {appearance.clothingItem && (
+            <button
+              type="button"
+              onClick={() => updateAppearance({ clothingItem: '' })}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-stone-200 text-stone-500 hover:bg-stone-300 flex items-center justify-center text-xs transition-colors"
+              title="Очистить"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Цвет одежды */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {clothingColorList.map((col) => {
-            const isSelected = appearance.clothingColor === col.id;
-            return (
-              <button
-                key={col.id}
-                type="button"
-                onClick={() => updateAppearance({ clothingColor: col.id })}
-                className={`py-1.5 px-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5 transition-all ${
-                  isSelected
-                    ? 'bg-brand-50 border-brand-500 text-brand-900 shadow-sm ring-1 ring-brand-500'
-                    : 'bg-white border-cream-300 text-stone-600'
-                }`}
-              >
-                <div
-                  className="w-3 h-3 rounded-full border border-black/20"
-                  style={{ backgroundColor: col.bg }}
-                />
-                <span>{col.label}</span>
-              </button>
-            );
-          })}
+        {/* Быстрые идеи для вдохновения */}
+        <div className="space-y-1.5 pt-1">
+          <div className="text-[11px] font-semibold text-stone-500">
+            Идеи для быстрого выбора:
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {clothingSuggestions.map((sug) => {
+              const isSelected = appearance.clothingItem === sug.text;
+              return (
+                <button
+                  key={sug.text}
+                  type="button"
+                  onClick={() => updateAppearance({ clothingItem: sug.text })}
+                  className={`py-1.5 px-3 rounded-full text-xs font-medium border transition-all ${
+                    isSelected
+                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
+                      : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 hover:border-brand-300 active:scale-95'
+                  }`}
+                >
+                  <span className="mr-1">{sug.icon}</span>
+                  <span>{sug.text}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -413,24 +324,27 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
-      {/* Теги «Главная тема» */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-stone-700">Главная тема сказки</label>
+      {/* Теги «Главная тема» (Расширенный список + свободный ввод) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-700">Главная тема сказки</label>
+          <span className="text-[11px] text-stone-400">выберите или введите свою</span>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {themesList.map((theme) => {
-            const isSelected = data.theme === theme;
+          {themesList.map((item) => {
+            const isSelected = data.theme === item.id || data.theme === item.label;
             return (
               <button
-                key={theme}
+                key={item.id}
                 type="button"
-                onClick={() => onChange({ ...data, theme })}
-                className={`px-4 py-2.5 rounded-full text-xs font-bold border transition-all ${
+                onClick={() => onChange({ ...data, theme: item.id })}
+                className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
                   isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
+                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
                     : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'
                 }`}
               >
-                {theme}
+                {item.label}
               </button>
             );
           })}
@@ -440,8 +354,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             type="text"
             value={data.theme}
             onChange={(e) => onChange({ ...data, theme: e.target.value })}
-            placeholder="Или введите свою тему (например: Любовь к садику, Уборка игрушек...)"
-            className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-sm"
+            placeholder="Или введите свою тему (например: Первый полёт на самолёте, Поход в цирк...)"
+            className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-sm placeholder:text-stone-400 placeholder:font-normal"
           />
         </div>
       </div>

@@ -269,6 +269,43 @@ const TOY_EN = {
   'быстрая машинка': 'a small well-loved toy car with rounded edges, chipped paint and bright friendly headlights',
 };
 
+export function translateClothingItem(item) {
+  if (!item) return 'knitted sweater';
+  const clean = String(item).trim().toLowerCase();
+  if (CLOTHING_ITEM_EN[clean]) {
+    return CLOTHING_ITEM_EN[clean];
+  }
+  if (clean.includes('дождевик')) return 'bright raincoat with a hood and tiny boots';
+  if (clean.includes('пижам')) return 'cozy bedtime pajama';
+  if (clean.includes('плать')) return 'charming fairytale dress with gentle ruffles';
+  if (clean.includes('свитер') || clean.includes('кофт')) return 'knitted sweater with soft yarn texture';
+  if (clean.includes('комбинезон')) return 'cute denim overalls dungarees';
+  if (clean.includes('толстовк') || clean.includes('худи')) return 'warm cozy hooded sweatshirt';
+  if (clean.includes('космонавт')) return 'playful astronaut suit';
+  if (clean.includes('супергеро')) return 'mini superhero costume';
+  if (clean.includes('манти') || clean.includes('волшебник')) return 'magical wizard robe with starry patterns';
+  if (clean.includes('футболк')) return 'comfortable soft t-shirt';
+  if (clean.includes('куртк')) return 'warm cozy jacket';
+  return `cute charming outfit (${clean})`;
+}
+
+export function translateClothingColor(color, clothingText = '') {
+  if (color && CLOTHING_COLOR_EN[color]) {
+    return CLOTHING_COLOR_EN[color];
+  }
+  const text = (String(color) + ' ' + String(clothingText)).toLowerCase();
+  if (text.includes('жёлт')) return 'bright sunny yellow';
+  if (text.includes('голуб')) return 'soft pastel sky-blue';
+  if (text.includes('син')) return 'deep royal blue';
+  if (text.includes('розов')) return 'gentle baby pink';
+  if (text.includes('зелён') || text.includes('изумруд')) return 'cozy emerald green';
+  if (text.includes('красн') || text.includes('терракот')) return 'warm vibrant terracotta';
+  if (text.includes('фиолет') || text.includes('сирен')) return 'gentle soft lilac purple';
+  if (text.includes('бел') || text.includes('светл')) return 'pure soft warm white';
+  if (text.includes('оранж')) return 'warm sunny orange';
+  return 'cozy';
+}
+
 export function appearanceHints(appearance = {}) {
   const hairColor = HAIR_COLOR_EN[appearance.hairColor] || 'soft light-brown';
 
@@ -301,9 +338,10 @@ export function appearanceHints(appearance = {}) {
 
   const eyes = EYE_COLOR_EN[appearance.eyeColor] || 'warm sparkling hazel-brown eyes';
   const skin = SKIN_TONE_EN[appearance.skinTone] || 'warm healthy peach complexion';
-  const clothes = `${CLOTHING_COLOR_EN[appearance.clothingColor] || 'cozy emerald green'} ${
-    CLOTHING_ITEM_EN[appearance.clothingItem] || 'knitted sweater'
-  }`;
+  const itemClean = appearance.clothingItem ? String(appearance.clothingItem).trim() : 'уютный свитер';
+  const itemEn = CLOTHING_ITEM_EN[itemClean] || translateClothingItem(itemClean);
+  const colorEn = CLOTHING_COLOR_EN[appearance.clothingColor] || translateClothingColor(appearance.clothingColor, itemClean);
+  const clothes = `${colorEn} ${itemEn}`;
   const toy = TOY_EN[appearance.toy] || 'a small soft plush toy with kind button eyes';
   return { hairColor, hairType, eyes, skin, clothes, toy };
 }
@@ -579,7 +617,7 @@ export function buildStoryPrompt(params = {}, options = {}) {
 - Возраст: ${Number(params.age) || 4} лет (${band.label})
 - Характер: ${params.personality || 'добрый, любознательный'}
 - Любимая игрушка-спутник: ${toy}
-- Внешность (русские значения): ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, ${params.appearance?.clothingColor || 'изумрудный'} ${params.appearance?.clothingItem || 'уютный свитер'}
+- Внешность (русские значения): ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, одежда: ${params.appearance?.clothingItem || (params.appearance?.clothingColor ? `${params.appearance.clothingColor} одежда` : 'уютный свитер')}
 - Внешность (точные английские подсказки для character bible): ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}; favorite toy is ${hints.toy}
 - Тема: ${params.theme || 'Дружба'}
 - Интересы: ${(params.interests || []).join(', ') || 'приключения'}

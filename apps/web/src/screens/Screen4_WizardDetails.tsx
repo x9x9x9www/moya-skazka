@@ -128,6 +128,8 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
               ? '🐰'
               : heroData.appearance?.toy?.includes('кот')
               ? '🐱'
+              : heroData.appearance?.toy?.includes('маш')
+              ? '🚗'
               : '⭐'}
           </span>
           <span className="text-[10px] font-bold text-amber-900 mt-0.5">
@@ -138,8 +140,8 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
           <div className="text-sm font-bold text-stone-900 truncate">
             {heroData.childName}, {heroData.age} года
           </div>
-          <div className="text-xs text-stone-600 mt-0.5">
-            {heroData.appearance?.hairColor} {heroData.appearance?.hairType} волосы • {heroData.appearance?.clothingColor} {heroData.appearance?.clothingItem}
+          <div className="text-xs text-stone-600 mt-0.5 line-clamp-1">
+            {heroData.appearance?.hairColor} {heroData.appearance?.hairType} волосы • {heroData.appearance?.clothingItem || 'уютная одежда'}
           </div>
           <div className="text-[11px] font-semibold text-brand-700 mt-1">
             Спутник: {heroData.appearance?.toy || 'любимая игрушка'}

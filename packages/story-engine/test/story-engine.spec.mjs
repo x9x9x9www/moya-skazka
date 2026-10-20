@@ -115,6 +115,11 @@ test('appearanceHints переводит русские параметры в а
   assert.match(appearanceHints({ hairType: 'длинные прямые' }).hairType, /ribbon/);
   assert.match(appearanceHints({ hairType: 'короткие кудрявые' }).hairType, /curly/);
   assert.match(appearanceHints({ hairType: 'короткие кудрявые' }).hairType, /short/);
+
+  // Проверка кастомного ввода одежды
+  assert.match(appearanceHints({ clothingItem: 'жёлтый дождевик и резиновые сапожки' }).clothes, /raincoat/i);
+  assert.match(appearanceHints({ clothingItem: 'уютная пижамка со звёздочками' }).clothes, /pajama/i);
+  assert.match(appearanceHints({ clothingItem: 'костюм космонавта' }).clothes, /astronaut/i);
 });
 
 test('chooseStoryDna детерминирован при одном seed', () => {

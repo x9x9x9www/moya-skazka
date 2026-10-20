@@ -200,6 +200,9 @@ export const App: React.FC = () => {
           appearance: {
             ...prev.appearance,
             hairColor: app.hairColor || prev.appearance.hairColor,
+            hairType: app.hairType || prev.appearance.hairType,
+            hairLength: app.hairLength || prev.appearance.hairLength,
+            hairStructure: app.hairStructure || prev.appearance.hairStructure,
             eyeColor: app.eyeColor || 'карие',
             skinTone: app.skinTone || 'персиковая',
             toy: app.toy || prev.appearance.toy,
@@ -235,6 +238,9 @@ export const App: React.FC = () => {
               appearance: {
                 ...prev.appearance,
                 hairColor: app.hairColor || prev.appearance.hairColor,
+                hairType: app.hairType || prev.appearance.hairType,
+                hairLength: app.hairLength || prev.appearance.hairLength,
+                hairStructure: app.hairStructure || prev.appearance.hairStructure,
                 eyeColor: app.eyeColor || 'карие',
                 skinTone: app.skinTone || 'персиковая',
                 toy: app.toy || prev.appearance.toy,
@@ -1086,6 +1092,9 @@ export const App: React.FC = () => {
               appearance: {
                 ...prev.appearance,
                 hairColor: app.hairColor || prev.appearance.hairColor,
+                hairType: app.hairType || prev.appearance.hairType,
+                hairLength: app.hairLength || prev.appearance.hairLength,
+                hairStructure: app.hairStructure || prev.appearance.hairStructure,
                 eyeColor: app.eyeColor || 'карие',
                 skinTone: app.skinTone || 'персиковая',
                 toy: app.toy || prev.appearance.toy,

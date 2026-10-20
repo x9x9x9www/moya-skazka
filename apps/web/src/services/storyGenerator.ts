@@ -560,14 +560,46 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     смуглая: 'warm golden sun-kissed skin tone',
   };
 
+  const resolveClothingItemPrompt = (item?: string): string => {
+    if (!item) return 'knitted sweater with soft yarn texture';
+    const clean = item.trim().toLowerCase();
+    if (clothingItemMap[clean]) return clothingItemMap[clean];
+    if (clean.includes('дождевик')) return 'bright raincoat with a hood and tiny boots';
+    if (clean.includes('пижам')) return 'cozy bedtime pajama';
+    if (clean.includes('плать')) return 'charming fairytale dress with soft ruffles';
+    if (clean.includes('свитер') || clean.includes('кофт')) return 'knitted sweater with soft yarn texture';
+    if (clean.includes('комбинезон')) return 'cute denim overalls dungarees';
+    if (clean.includes('толстовк') || clean.includes('худи')) return 'warm cozy hooded sweatshirt';
+    if (clean.includes('космонавт')) return 'playful astronaut suit';
+    if (clean.includes('супергеро')) return 'mini superhero costume';
+    if (clean.includes('манти') || clean.includes('волшебник')) return 'magical wizard robe with starry patterns';
+    if (clean.includes('футболк')) return 'comfortable soft t-shirt';
+    if (clean.includes('куртк')) return 'warm cozy jacket';
+    return `cute charming outfit (${clean})`;
+  };
+
+  const resolveClothingColorPrompt = (color?: string, itemText: string = ''): string => {
+    const text = (String(color || '') + ' ' + itemText).toLowerCase();
+    if (color && clothingColorMap[color.toLowerCase()]) return clothingColorMap[color.toLowerCase()];
+    if (text.includes('жёлт')) return 'bright sunny yellow';
+    if (text.includes('голуб')) return 'soft pastel sky-blue';
+    if (text.includes('син')) return 'deep royal blue';
+    if (text.includes('розов')) return 'gentle baby pink';
+    if (text.includes('зелён') || text.includes('изумруд')) return 'cozy emerald green';
+    if (text.includes('красн') || text.includes('терракот')) return 'warm vibrant terracotta orange';
+    if (text.includes('фиолет') || text.includes('сирен')) return 'gentle soft lilac purple';
+    if (text.includes('бел') || text.includes('светл')) return 'pure soft warm white';
+    if (text.includes('оранж')) return 'warm sunny orange';
+    return 'cozy';
+  };
+
   const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${resolveHairPrompt(
     params.appearance?.hairType
   )} hair`;
   const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling eyes';
   const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
-  const clothes = `${clothingColorMap[params.appearance?.clothingColor?.toLowerCase() || 'изумрудный'] || 'cozy emerald green'} ${
-    clothingItemMap[params.appearance?.clothingItem?.toLowerCase() || 'уютный свитер'] || 'knitted sweater'
-  }`;
+  const rawItem = params.appearance?.clothingItem || 'уютный свитер';
+  const clothes = `${resolveClothingColorPrompt(params.appearance?.clothingColor, rawItem)} ${resolveClothingItemPrompt(rawItem)}`;
   const companion =
     companionMap[params.appearance?.toy?.toLowerCase() || 'плюшевый динозаврик'] ||
     'a small friendly companion creature';
