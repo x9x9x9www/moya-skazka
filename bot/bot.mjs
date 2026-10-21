@@ -500,6 +500,138 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Анализ фото ребёнка для автоподбора параметров внешности (Опция А: фото НЕ сохраняется на диск/в БД)
+  if (url.pathname === '/api/v1/ai/analyze-photo' && req.method === 'POST') {
+    try {
+      let bodyStr = '';
+      for await (const chunk of req) bodyStr += chunk;
+      const { imageBase64 } = JSON.parse(bodyStr || '{}');
+
+      if (!imageBase64) {
+        res.writeHead(400, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(JSON.stringify({ error: 'imageBase64 is required' }));
+        return;
+      }
+
+      const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
+Внимательно посмотри на фото ребёнка и определи его визуальные черты для мультяшного 3D Pixar персонажа.
+Выбирай строго из указанных вариантов:
+- gender: "boy" или "girl"
+- estimatedAge: число от 2 до 6 (приблизительный возраст)
+- hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
+- hairLength: строго "короткие" или "длинные"
+- hairStructure: строго "прямые" или "кудрявые"
+- eyeColor: строго один из: "карие" | "голубые" | "зелёные" | "серые"
+- skinTone: строго один из: "светлая" | "персиковая" | "смуглая"
+- clothingDescription: короткое приятное описание одежды на фото (например: "жёлтая футболка", "синяя толстовка", "розовое платьице", "светлый свитер")
+- clothingColor: основной цвет одежды ("солнечно-жёлтый", "небесно-голубой", "нежно-розовый", "изумрудный", "терракотовый")
+- confidenceTip: тёплое доброе сообщение родителю о том, что удалось определить (1 короткое предложение на русском)
+
+Ответь ИСКЛЮЧИТЕЛЬНО валидным JSON-объектом:
+{
+  "gender": "boy",
+  "estimatedAge": 4,
+  "hairColor": "светлые",
+  "hairLength": "короткие",
+  "hairStructure": "прямые",
+  "eyeColor": "голубые",
+  "skinTone": "светлая",
+  "clothingDescription": "синяя футболка",
+  "clothingColor": "небесно-голубой",
+  "confidenceTip": "Определили светлые волосы, голубые глазки и синюю футболку."
+}`;
+
+      const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: visionPrompt },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ];
+
+      const raw = await callWellflowChat(messages, '[PhotoVision]');
+      let parsed = {};
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+      }
+
+      const hairColorMap = {
+        'светлые': 'светлые',
+        'блонд': 'светлые',
+        'русые': 'русые',
+        'шатен': 'русые',
+        'тёмные': 'тёмные',
+        'черные': 'тёмные',
+        'чёрные': 'тёмные',
+        'брюнет': 'тёмные',
+        'рыжие': 'рыжие',
+      };
+      const hairColor = hairColorMap[String(parsed.hairColor || '').toLowerCase()] || 'русые';
+      const hairLength = String(parsed.hairLength || '').includes('длин') ? 'длинные' : 'короткие';
+      const hairStructure =
+        String(parsed.hairStructure || '').includes('кудр') || String(parsed.hairStructure || '').includes('волн')
+          ? 'кудрявые'
+          : 'прямые';
+      const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'карие';
+      const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'персиковая';
+      const gender = parsed.gender === 'girl' ? 'girl' : 'boy';
+      const estimatedAge =
+        Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6 ? Number(parsed.estimatedAge) : 4;
+
+      const result = {
+        gender,
+        estimatedAge,
+        hairColor,
+        hairLength,
+        hairStructure,
+        eyeColor,
+        skinTone,
+        clothingDescription: parsed.clothingDescription || 'уютная футболка',
+        clothingColor: parsed.clothingColor || 'небесно-голубой',
+        confidenceTip: parsed.confidenceTip || 'Внешность малыша определена!',
+      };
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(JSON.stringify({ status: 'ok', analysis: result }));
+    } catch (err) {
+      console.warn('[PhotoVision] Ошибка анализа фото:', err.message);
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(
+        JSON.stringify({
+          status: 'fallback',
+          analysis: {
+            gender: 'boy',
+            estimatedAge: 4,
+            hairColor: 'русые',
+            hairLength: 'короткие',
+            hairStructure: 'прямые',
+            eyeColor: 'карие',
+            skinTone: 'персиковая',
+            clothingDescription: 'уютный свитер',
+            clothingColor: 'изумрудный',
+            confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+          },
+        })
+      );
+    }
+    return;
+  }
+
   // Полная генерация сказки + всех 4 иллюстраций на сервере (мгновенный 202 ответ + опрос)
   if (url.pathname === '/api/v1/ai/generate-story' && req.method === 'POST') {
     try {

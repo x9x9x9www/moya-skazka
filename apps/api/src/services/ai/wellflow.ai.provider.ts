@@ -345,4 +345,146 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
       return await this.mockFallback.generateImage(input);
     }
   }
+
+  /**
+   * Анализ фото ребёнка для автоподбора параметров внешности (без сохранения фото на сервере)
+   */
+  public async analyzePhoto(imageBase64: string): Promise<any> {
+    const apiUrl = config.WELLFLOW_API_URL;
+    const apiKey = config.WELLFLOW_TEXT_KEY;
+    const model = config.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash';
+
+    if (!apiKey) {
+      return {
+        gender: 'boy',
+        estimatedAge: 4,
+        hairColor: 'русые',
+        hairLength: 'короткие',
+        hairStructure: 'прямые',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        clothingDescription: 'уютный свитер',
+        clothingColor: 'изумрудный',
+        confidenceTip: 'Установили базовые параметры внешности.',
+      };
+    }
+
+    const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
+Внимательно посмотри на фото ребёнка и определи его визуальные черты для мультяшного 3D Pixar персонажа.
+Выбирай строго из указанных вариантов:
+- gender: "boy" или "girl"
+- estimatedAge: число от 2 до 6 (приблизительный возраст)
+- hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
+- hairLength: строго "короткие" или "длинные"
+- hairStructure: строго "прямые" или "кудрявые"
+- eyeColor: строго один из: "карие" | "голубые" | "зелёные" | "серые"
+- skinTone: строго один из: "светлая" | "персиковая" | "смуглая"
+- clothingDescription: короткое приятное описание одежды на фото (например: "жёлтая футболка", "синяя толстовка", "розовое платьице", "светлый свитер")
+- clothingColor: основной цвет одежды ("солнечно-жёлтый", "небесно-голубой", "нежно-розовый", "изумрудный", "терракотовый")
+- confidenceTip: тёплое доброе сообщение родителю о том, что удалось определить (1 короткое предложение на русском)
+
+Ответь ИСКЛЮЧИТЕЛЬНО валидным JSON-объектом:
+{
+  "gender": "boy",
+  "estimatedAge": 4,
+  "hairColor": "светлые",
+  "hairLength": "короткие",
+  "hairStructure": "прямые",
+  "eyeColor": "голубые",
+  "skinTone": "светлая",
+  "clothingDescription": "синяя футболка",
+  "clothingColor": "небесно-голубой",
+  "confidenceTip": "Определили светлые волосы, голубые глазки и синюю футболку."
+}`;
+
+    const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+
+    try {
+      const response = await fetch(`${apiUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: visionPrompt },
+                { type: 'image_url', image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const resData = (await response.json()) as any;
+      const rawContent = resData.choices?.[0]?.message?.content || '{}';
+      let parsed: any = {};
+      try {
+        parsed = JSON.parse(rawContent);
+      } catch {
+        const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+      }
+
+      const hairColorMap: Record<string, string> = {
+        светлые: 'светлые',
+        блонд: 'светлые',
+        русые: 'русые',
+        шатен: 'русые',
+        тёмные: 'тёмные',
+        черные: 'тёмные',
+        чёрные: 'тёмные',
+        брюнет: 'тёмные',
+        рыжие: 'рыжие',
+      };
+      const hairColor = hairColorMap[String(parsed.hairColor || '').toLowerCase()] || 'русые';
+      const hairLength = String(parsed.hairLength || '').includes('длин') ? 'длинные' : 'короткие';
+      const hairStructure =
+        String(parsed.hairStructure || '').includes('кудр') || String(parsed.hairStructure || '').includes('волн')
+          ? 'кудрявые'
+          : 'прямые';
+      const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'карие';
+      const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'персиковая';
+      const gender = parsed.gender === 'girl' ? 'girl' : 'boy';
+      const estimatedAge =
+        Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6 ? Number(parsed.estimatedAge) : 4;
+
+      return {
+        gender,
+        estimatedAge,
+        hairColor,
+        hairLength,
+        hairStructure,
+        eyeColor,
+        skinTone,
+        clothingDescription: parsed.clothingDescription || 'уютная футболка',
+        clothingColor: parsed.clothingColor || 'небесно-голубой',
+        confidenceTip: parsed.confidenceTip || 'Внешность малыша определена!',
+      };
+    } catch (err: any) {
+      console.warn('[WellflowAIProvider] analyzePhoto error:', err.message);
+      return {
+        gender: 'boy',
+        estimatedAge: 4,
+        hairColor: 'русые',
+        hairLength: 'короткие',
+        hairStructure: 'прямые',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        clothingDescription: 'уютный свитер',
+        clothingColor: 'изумрудный',
+        confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+      };
+    }
+  }
 }

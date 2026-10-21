@@ -13,7 +13,11 @@ import {
   Star,
   Shield,
   HelpCircle,
+  Camera,
+  Upload,
+  Loader2,
 } from 'lucide-react';
+import { api } from '../api/client';
 
 export interface ChildRegistrationData {
   name: string;
@@ -57,6 +61,11 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const [hairStructure, setHairStructure] = useState<'прямые' | 'кудрявые'>('прямые');
   const [eyeColor, setEyeColor] = useState('карие');
   const [skinTone, setSkinTone] = useState('персиковая');
+
+  // Опциональная автонастройка по фото
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [photoAnalysisTip, setPhotoAnalysisTip] = useState<string | null>(null);
 
   // Характер и психоэмоциональные предпочтения
   const [personality, setPersonality] = useState('Добрый и заботливый');
@@ -187,6 +196,80 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     );
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsAnalyzingPhoto(true);
+      setPhotoAnalysisTip(null);
+
+      // Читаем файл в DataURL
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Оптимизируем размер через canvas до max 800px для мгновенной передачи
+      const img = new Image();
+      const optimizedBase64 = await new Promise<string>((resolve) => {
+        img.onload = () => {
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(base64Data);
+        img.src = base64Data;
+      });
+
+      setPhotoPreview(optimizedBase64);
+
+      // Отправляем в AI Vision API
+      const res = await api.analyzeChildPhoto(optimizedBase64);
+      if (res && res.analysis) {
+        const a = res.analysis;
+        if (a.hairColor) setHairColor(a.hairColor);
+        if (a.hairLength) setHairLength(a.hairLength);
+        if (a.hairStructure) setHairStructure(a.hairStructure);
+        if (a.eyeColor) setEyeColor(a.eyeColor);
+        if (a.skinTone) setSkinTone(a.skinTone);
+        if (a.gender) setGender(a.gender);
+        if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
+          setAge(Number(a.estimatedAge));
+        }
+        setPhotoAnalysisTip(a.confidenceTip || 'Внешность малыша определена!');
+      }
+    } catch (err: any) {
+      console.warn('[Screen1] Ошибка анализа фото:', err);
+      setPhotoAnalysisTip('Не удалось распознать фото. Вы можете легко настроить параметры вручную ниже.');
+    } finally {
+      setIsAnalyzingPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleClearPhoto = () => {
+    setPhotoPreview(null);
+    setPhotoAnalysisTip(null);
+  };
+
   const handleNextStep = () => {
     // Если родитель не ввёл имя, аккуратно подставим "Малыш"
     if (!name.trim()) {
@@ -278,6 +361,86 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       {/* ШАГ 1: Имя, Возраст, Пол, Внешность (Волосы, Глаза, Кожа) */}
       {step === 1 && (
         <div className="space-y-4 pb-20">
+          {/* Опциональный блок: Автонастройка по фото (по желанию родителя) */}
+          <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-amber-100/30 rounded-3xl p-4 border border-amber-200/80 shadow-xs space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                    <span>Настроить героя по фото</span>
+                    <span className="text-[10px] font-semibold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                      по желанию
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-500 leading-tight mt-0.5">
+                    AI подберёт причёску и глазки. Вы сможете всё скорректировать. Фото не сохраняется.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Состояние: идёт анализ */}
+            {isAnalyzingPhoto && (
+              <div className="flex items-center justify-center gap-2.5 py-3.5 px-3 rounded-2xl bg-white/90 border border-amber-200 text-amber-900 text-xs font-semibold animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                <span>AI бережно анализирует черты лица малыша...</span>
+              </div>
+            )}
+
+            {/* Состояние: фото успешно загружено */}
+            {!isAnalyzingPhoto && photoPreview && (
+              <div className="p-3 rounded-2xl bg-white/90 border border-amber-200 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-amber-300 shadow-xs shrink-0">
+                    <img src={photoPreview} alt="Превью" className="w-full h-full object-cover" />
+                    <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+                      ✓
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                      <span>✨ Внешность определена!</span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 leading-tight mt-0.5 truncate">
+                      {photoAnalysisTip || 'Параметры заполнены. Вы можете изменить любые поля ниже.'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearPhoto}
+                    className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 text-xs"
+                    title="Сбросить фото"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Состояние: фото ещё не загружено (кнопка выбора) */}
+            {!isAnalyzingPhoto && !photoPreview && (
+              <div>
+                <input
+                  type="file"
+                  id="child-photo-input"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="child-photo-input"
+                  className="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98] transition-all"
+                >
+                  <Upload className="w-4 h-4 text-amber-700" />
+                  <span>Загрузить фото для автоподбора</span>
+                </label>
+              </div>
+            )}
+          </div>
+
           {/* Интерактивная живая карточка героя с визуализацией выбора */}
           <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center gap-4">
             <div

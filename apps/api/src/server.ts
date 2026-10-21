@@ -808,6 +808,37 @@ app.register(
         });
       }
     });
+
+    api.post('/ai/analyze-photo', async (req: FastifyRequest, reply: FastifyReply) => {
+      const wellflow = new WellflowAIProvider();
+      const { imageBase64 } = (req.body as any) || {};
+      if (!imageBase64) {
+        return reply.status(400).send({
+          code: 'VALIDATION_ERROR',
+          message: 'imageBase64 обязателен',
+        });
+      }
+      try {
+        const analysis = await wellflow.analyzePhoto(imageBase64);
+        return { status: 'ok', analysis };
+      } catch (err: any) {
+        return reply.status(200).send({
+          status: 'fallback',
+          analysis: {
+            gender: 'boy',
+            estimatedAge: 4,
+            hairColor: 'русые',
+            hairLength: 'короткие',
+            hairStructure: 'прямые',
+            eyeColor: 'карие',
+            skinTone: 'персиковая',
+            clothingDescription: 'уютный свитер',
+            clothingColor: 'изумрудный',
+            confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+          },
+        });
+      }
+    });
   },
   { prefix: '/api/v1' }
 );

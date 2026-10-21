@@ -198,6 +198,28 @@ class ApiClient {
   public async getAdminAnalytics() {
     return await this.request<any>('/admin/analytics');
   }
+
+  // 12. Анализ фото ребёнка для автоподбора параметров внешности (без сохранения фото)
+  public async analyzeChildPhoto(imageBase64: string): Promise<{
+    status: 'ok' | 'fallback';
+    analysis: {
+      gender?: 'boy' | 'girl';
+      estimatedAge?: number;
+      hairColor?: string;
+      hairLength?: 'короткие' | 'длинные';
+      hairStructure?: 'прямые' | 'кудрявые';
+      eyeColor?: string;
+      skinTone?: string;
+      clothingDescription?: string;
+      clothingColor?: string;
+      confidenceTip?: string;
+    };
+  }> {
+    return await this.request('/ai/analyze-photo', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64 }),
+    });
+  }
 }
 
 export const api = new ApiClient();

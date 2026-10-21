@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus, Sparkles } from 'lucide-react';
+import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
+import { api } from '../api/client';
 
 interface ChildProfileModalProps {
   isOpen: boolean;
@@ -31,6 +32,79 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [toy, setToy] = useState('плюшевый динозаврик');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(['Динозавры', 'Волшебство']);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoTip, setPhotoTip] = useState<string | null>(null);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите файл изображения (JPG, PNG).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setPhotoPreview(compressedDataUrl);
+
+          setIsAnalyzingPhoto(true);
+          try {
+            const res = await api.analyzeChildPhoto(compressedDataUrl);
+            if (res && res.analysis) {
+              const a = res.analysis;
+              if (a.gender === 'boy' || a.gender === 'girl') setGender(a.gender);
+              if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
+                setAge(Number(a.estimatedAge));
+              }
+              if (a.hairColor) setHairColor(a.hairColor);
+              if (a.hairLength || a.hairStructure) {
+                if (a.hairStructure === 'кудрявые') setHairType('кудрявые');
+                else if (a.hairLength === 'длинные') setHairType('длинные');
+                else if (a.hairLength === 'короткие') setHairType('короткие');
+              }
+              if (a.clothingColor) setClothingColor(a.clothingColor);
+              setPhotoTip(a.confidenceTip || 'Внешность определена по фото!');
+            }
+          } catch (err) {
+            console.warn('ChildProfileModal photo analysis failed:', err);
+          } finally {
+            setIsAnalyzingPhoto(false);
+          }
+        }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleClearPhoto = () => {
+    setPhotoPreview(null);
+    setPhotoTip(null);
+  };
 
   if (!isOpen) return null;
 
@@ -145,6 +219,75 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleCreate} className="py-4 space-y-4">
+            {/* AI автоподбор по фото (опционально) */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-800">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                    <span>Настроить по фото</span>
+                    <span className="text-[10px] font-semibold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                      по желанию
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-500 leading-tight mt-0.5">
+                    AI подберёт параметры внешности. Фото не сохраняется (152-ФЗ).
+                  </div>
+                </div>
+              </div>
+
+              {isAnalyzingPhoto && (
+                <div className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/90 border border-amber-200 text-amber-900 text-xs font-semibold animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                  <span>AI определяет черты лица малыша...</span>
+                </div>
+              )}
+
+              {!isAnalyzingPhoto && photoPreview && (
+                <div className="p-2.5 rounded-xl bg-white/90 border border-amber-200 flex items-center gap-2.5">
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-amber-300 shadow-xs shrink-0">
+                    <img src={photoPreview} alt="Превью" className="w-full h-full object-cover" />
+                    <div className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px]">
+                      ✓
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-emerald-800">✨ Внешность определена!</div>
+                    <div className="text-[10px] text-stone-600 truncate">{photoTip || 'Параметры заполнены ниже'}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearPhoto}
+                    className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 text-xs"
+                    title="Сбросить фото"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {!isAnalyzingPhoto && !photoPreview && (
+                <div>
+                  <input
+                    type="file"
+                    id="modal-child-photo-input"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="modal-child-photo-input"
+                    className="w-full py-2 px-3 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98] transition-all"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Загрузить фото для автоподбора</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
                 Имя ребёнка
