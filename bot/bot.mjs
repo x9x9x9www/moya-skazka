@@ -62,6 +62,14 @@ if (!BOT_TOKEN) {
 }
 
 const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.4';
+const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'google'; // 'google' | 'wellflow'
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
+const GOOGLE_AI_URL = process.env.GOOGLE_AI_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
+const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3-flash-preview')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
 const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || '';
 const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash';
@@ -82,7 +90,7 @@ fs.mkdirSync(GENERATED_DIR, { recursive: true });
 // Промпт, Story DNA и контракт сказки живут в packages/story-engine/src/index.mjs
 
 // ========================================================
-// 2. ВЫЗОВЫ WELLFLOW API (Node.js без ограничений CORS)
+// 2. ВЫЗОВЫ AI API (Google AI или Wellflow API)
 // ========================================================
 function parseJsonContent(content) {
   const cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -105,22 +113,81 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   }
 }
 
-async function callWellflowChat(messages, label) {
+async function callGoogleAIChat(messages, label) {
+  let lastError;
+  for (const model of GOOGLE_TEXT_MODELS) {
+    try {
+      console.log(`[GoogleAI] 🚀 ${label} -> вызов ${model}...`);
+      const res = await fetchWithTimeout(
+        `${GOOGLE_AI_URL}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${GOOGLE_AI_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            response_format: { type: 'json_object' },
+            max_tokens: 4500,
+          }),
+        },
+        90000
+      );
+
+      if (res.status === 503 || res.status === 429) {
+        const errText = await res.text();
+        console.warn(`[GoogleAI] ⚠️ ${model} вернул HTTP ${res.status}. Переходим к следующей модели...`);
+        lastError = new Error(`GoogleAI ${model} HTTP ${res.status}: ${errText.slice(0, 150)}`);
+        continue;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`GoogleAI ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`);
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error(`GoogleAI ${model}: пустой ответ`);
+      console.log(`[GoogleAI] ✅ Ответ получен от ${model}`);
+      return content;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[GoogleAI] Ошибка модели ${model}: ${err.message}`);
+    }
+  }
+
+  // Если все модели Google AI дали ошибку, пробуем Wellflow как резерв
+  if (WELLFLOW_TEXT_KEY) {
+    console.warn(`[AI] ⚠️ Google AI модели исчерпаны, пробуем резерв Wellflow (${WELLFLOW_TEXT_MODEL})...`);
+    return await callWellflowDirect(messages, label);
+  }
+
+  throw lastError || new Error('Все модели Google AI недоступны');
+}
+
+async function callWellflowDirect(messages, label) {
   let res;
   try {
-    res = await fetchWithTimeout(`${WELLFLOW_API_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${WELLFLOW_TEXT_KEY}`,
-        'Content-Type': 'application/json',
+    res = await fetchWithTimeout(
+      `${WELLFLOW_API_URL}/chat/completions`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${WELLFLOW_TEXT_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: WELLFLOW_TEXT_MODEL,
+          messages,
+          response_format: { type: 'json_object' },
+          max_tokens: 4500,
+        }),
       },
-      body: JSON.stringify({
-        model: WELLFLOW_TEXT_MODEL,
-        messages,
-        response_format: { type: 'json_object' },
-        max_tokens: 4500,
-      }),
-    }, 90000);
+      90000
+    );
   } catch (error) {
     const cause = error.cause ? ` (${error.cause.code || error.cause.message || error.cause})` : '';
     throw new Error(`${label}: fetch failed: ${error.message}${cause}`);
@@ -137,15 +204,24 @@ async function callWellflowChat(messages, label) {
   return content;
 }
 
+async function callTextChat(messages, label) {
+  if (AI_TEXT_PROVIDER === 'google') {
+    return await callGoogleAIChat(messages, label);
+  }
+  return await callWellflowDirect(messages, label);
+}
+
+const callWellflowChat = callTextChat;
+
 async function callWithRetry(messages, label, attempts = 2) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      if (attempt > 1) console.warn(`[Wellflow] 🔁 ${label}: повторная попытка ${attempt}/${attempts}`);
-      return await callWellflowChat(messages, `${label}#${attempt}`);
+      if (attempt > 1) console.warn(`[AI] 🔁 ${label}: повторная попытка ${attempt}/${attempts}`);
+      return await callTextChat(messages, `${label}#${attempt}`);
     } catch (error) {
       lastError = error;
-      console.warn(`[Wellflow] ⚠️ ${label}: ${error.message}`);
+      console.warn(`[AI] ⚠️ ${label}: ${error.message}`);
       if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
     }
   }
@@ -472,7 +548,20 @@ const server = http.createServer(async (req, res) => {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
     });
-    res.end(JSON.stringify({ status: 'ok', provider: 'wellflow', models: { text: WELLFLOW_TEXT_MODEL, image: WELLFLOW_IMAGE_MODEL } }));
+    res.end(
+      JSON.stringify({
+        status: 'ok',
+        providers: {
+          text: AI_TEXT_PROVIDER,
+          image: 'wellflow',
+        },
+        models: {
+          text: AI_TEXT_PROVIDER === 'google' ? GOOGLE_TEXT_MODELS[0] : WELLFLOW_TEXT_MODEL,
+          textFallbackModels: AI_TEXT_PROVIDER === 'google' ? GOOGLE_TEXT_MODELS : [],
+          image: WELLFLOW_IMAGE_MODEL,
+        },
+      })
+    );
     return;
   }
 

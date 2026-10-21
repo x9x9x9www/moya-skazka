@@ -9,7 +9,7 @@ import { buildCoverPrompt } from '@moya-skazka/story-engine';
 const textProvider =
   config.AI_TEXT_PROVIDER === 'wellflow'
     ? new WellflowAIProvider()
-    : config.AI_TEXT_PROVIDER === 'gemini'
+    : config.AI_TEXT_PROVIDER === 'google' || config.AI_TEXT_PROVIDER === 'gemini'
     ? new GeminiAIProvider()
     : new MockAIProvider();
 

@@ -61,46 +61,58 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       createSeededRandom(`${Date.now()}|${input.childName}|${input.age}|${input.theme}`)
     );
     const prompt = buildStoryPrompt(storyEngineInput, { dna });
-    const model = (config as any).GEMINI_MODEL || 'gemini-2.0-flash';
+    const models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview'];
+    let rawJson: string | null = null;
+    let lastError: any = null;
 
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: prompt.system }],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt.user }],
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
             },
-          ],
-          generationConfig: {
-            response_mime_type: 'application/json',
-            temperature: 0.7,
-            max_output_tokens: 4000,
-          },
-        }),
-      });
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: prompt.system },
+                { role: 'user', content: prompt.user },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          }
+        );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`Gemini API returned error ${response.status}: ${errorText}. Falling back to mock.`);
-        return await this.mockFallback.generateStory(input);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(`[GeminiAIProvider] ${model} returned ${response.status}: ${errorText.slice(0, 100)}. Trying next model...`);
+          lastError = new Error(`${model} HTTP ${response.status}`);
+          continue;
+        }
+
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          rawJson = content;
+          console.log(`[GeminiAIProvider] ✅ Успешная генерация через ${model}`);
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[GeminiAIProvider] Ошибка вызова ${model}:`, err.message);
       }
+    }
 
-      const data = (await response.json()) as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      };
-
-      const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawJson) {
-        throw new Error('Пустой ответ от модели Gemini');
-      }
+    if (!rawJson) {
+      console.warn('[GeminiAIProvider] All models failed, falling back to mock provider:', lastError?.message);
+      return await this.mockFallback.generateStory(input);
+    }
 
       const parsed = parseJsonContent(rawJson);
       let normalizedStory;
