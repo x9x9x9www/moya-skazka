@@ -61,7 +61,7 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       createSeededRandom(`${Date.now()}|${input.childName}|${input.age}|${input.theme}`)
     );
     const prompt = buildStoryPrompt(storyEngineInput, { dna });
-    const models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview'];
+    const models = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
     let rawJson: string | null = null;
     let lastError: any = null;
 

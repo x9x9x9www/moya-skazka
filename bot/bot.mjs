@@ -65,7 +65,7 @@ const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'google'; // 'google' | 'wellflow'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
 const GOOGLE_AI_URL = process.env.GOOGLE_AI_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
-const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3-flash-preview')
+const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
