@@ -23,7 +23,7 @@ export interface GenerateStoryParams {
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  '';
+  'https://moya-skazka-bridge.loca.lt';
 
 /**
  * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
@@ -80,7 +80,7 @@ export function getActiveApiUrl(): string {
 async function pollJob<T>(
   activeApi: string,
   jobId: string,
-  maxWaitMs = 60000,
+  maxWaitMs = 120000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<T> {
   const start = Date.now();
@@ -216,7 +216,7 @@ export function getRecentBooksBlacklist(): string[] {
  */
 export async function callWellflowStory(
   params: GenerateStoryParams,
-  timeoutMs = 60000,
+  timeoutMs = 120000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<any> {
   const controller = new AbortController();
@@ -255,6 +255,18 @@ export async function callWellflowStory(
       },
       body,
       pollBase: activeApi,
+    });
+  }
+
+  if (activeApi !== 'https://moya-skazka-bridge.loca.lt') {
+    endpoints.push({
+      url: 'https://moya-skazka-bridge.loca.lt/api/v1/ai/generate-story',
+      headers: {
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
+      },
+      body,
+      pollBase: 'https://moya-skazka-bridge.loca.lt',
     });
   }
 
@@ -357,7 +369,7 @@ export async function generateDynamicStory(
           message: 'Повторное подключение к ИИ-мосту...',
         });
       }
-      storyData = await callWellflowStory(params, 90000, onProgress);
+      storyData = await callWellflowStory(params, 120000, onProgress);
       if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
         break;
       }

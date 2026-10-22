@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
 import { shouldActivateTunnel } from './tunnelPriority.mjs';
 import {
   buildStoryPrompt,
@@ -17,6 +16,7 @@ import {
   fallbackQuestions,
 } from '../packages/story-engine/src/index.mjs';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import localtunnel from 'localtunnel';
 
 // Автоматическая загрузка переменных из .env
 function loadEnv() {
@@ -65,7 +65,7 @@ const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'google'; // 'google' | 'wellflow'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
 const GOOGLE_AI_URL = process.env.GOOGLE_AI_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
-const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite')
+const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-flash-latest')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -136,21 +136,19 @@ async function callGoogleAIChat(messages, label) {
         90000
       );
 
-      if (res.status === 503 || res.status === 429) {
+      if (!res.ok) {
         const errText = await res.text();
-        console.warn(`[GoogleAI] ⚠️ ${model} вернул HTTP ${res.status}. Переходим к следующей модели...`);
+        console.warn(`[GoogleAI] ⚠️ ${model} вернул HTTP ${res.status}: ${errText.slice(0, 150)}. Пробуем следующую модель...`);
         lastError = new Error(`GoogleAI ${model} HTTP ${res.status}: ${errText.slice(0, 150)}`);
         continue;
       }
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`GoogleAI ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`);
-      }
-
       const data = await res.json();
       const content = data.choices?.[0]?.message?.content;
-      if (!content) throw new Error(`GoogleAI ${model}: пустой ответ`);
+      if (!content) {
+        console.warn(`[GoogleAI] ⚠️ ${model}: пустой ответ. Пробуем следующую модель...`);
+        continue;
+      }
       console.log(`[GoogleAI] ✅ Ответ получен от ${model}`);
       return content;
     } catch (err) {
@@ -867,80 +865,38 @@ async function activateTunnel(url, source) {
   await updateChatMenuWithApi(publicTunnelUrl);
 }
 
-function startTunnel() {
-  console.log('[Tunnel] 🌐 Запуск защищённого HTTPS туннеля через Serveo...');
-  const child = spawn('ssh', [
-    '-o', 'StrictHostKeyChecking=no',
-    '-o', 'ServerAliveInterval=15',
-    '-o', 'ServerAliveCountMax=10',
-    '-R', `80:localhost:${BRIDGE_PORT}`,
-    'serveo.net',
-  ]);
+let currentTunnel = null;
 
-  const handleData = async (data) => {
-    const text = data.toString();
-    const match = text.match(/https:\/\/[a-zA-Z0-9.-]+\.serveousercontent\.com/);
-    if (match && match[0]) {
-      lastServeoUrl = match[0];
-      await activateTunnel(lastServeoUrl, 'serveo');
-    }
-  };
-
-  child.stdout.on('data', handleData);
-  child.stderr.on('data', handleData);
-
-  child.on('close', async (code) => {
-    console.log(`[Tunnel] Serveo завершился (код: ${code}), перезапуск через 3 сек...`);
-    if (activeTunnelSource === 'serveo') {
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      if (lastLocalTunnelUrl) await activateTunnel(lastLocalTunnelUrl, 'localtunnel');
-    }
-    setTimeout(startTunnel, 3000);
-  });
-}
-
-function startLocalTunnel() {
+async function startLocalTunnel() {
   console.log('[LocalTunnel] 🌐 Запуск постоянного туннеля через LocalTunnel...');
-  const ltArgs = ['localtunnel', '--port', `${BRIDGE_PORT}`];
-  if (process.env.LOCALTUNNEL_SUBDOMAIN) {
-    ltArgs.push('--subdomain', process.env.LOCALTUNNEL_SUBDOMAIN);
-  }
-  const lt = spawn('npx', ltArgs);
+  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'moya-skazka-bridge';
+  try {
+    currentTunnel = await localtunnel({ port: BRIDGE_PORT, subdomain });
+    lastLocalTunnelUrl = currentTunnel.url;
+    console.log(`[LocalTunnel] 🚀 Постоянный туннель готов: ${currentTunnel.url}`);
+    await activateTunnel(currentTunnel.url, 'localtunnel');
 
-  lt.stdout.on('data', async (d) => {
-    const text = d.toString();
-    console.log('[LocalTunnel]', text.trim());
-    if (text.includes('url is:')) {
-      const match = text.match(/https:\/\/[^\s]+/);
-      if (match) {
-        const url = match[0].replace(/[),.;]+$/, '');
-        lastLocalTunnelUrl = url;
-        await activateTunnel(url, 'localtunnel');
+    currentTunnel.on('close', () => {
+      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 3 сек...');
+      if (activeTunnelSource === 'localtunnel') {
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
       }
-    }
-  });
+      setTimeout(startLocalTunnel, 3000);
+    });
 
-  lt.stderr.on('data', (d) => {
-    const msg = d.toString().trim();
-    if (!msg.includes('node')) console.warn('[LocalTunnel Warning]', msg);
-  });
-
-  lt.on('close', async (c) => {
-    console.log(`[LocalTunnel] Завершился (код: ${c}), перезапуск через 5 сек...`);
-    if (activeTunnelSource === 'localtunnel') {
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      if (lastServeoUrl) await activateTunnel(lastServeoUrl, 'serveo');
-    }
-    setTimeout(startLocalTunnel, 5000);
-  });
+    currentTunnel.on('error', (err) => {
+      console.warn('[LocalTunnel Ошибка]', err.message);
+    });
+  } catch (err) {
+    console.error('[LocalTunnel Сбой старта]:', err.message);
+    setTimeout(startLocalTunnel, 4000);
+  }
 }
 
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startTunnel();
   startLocalTunnel();
 }
 
