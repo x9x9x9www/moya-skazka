@@ -61,7 +61,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.4';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.5';
 const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow'; // 'wellflow' | 'google'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';

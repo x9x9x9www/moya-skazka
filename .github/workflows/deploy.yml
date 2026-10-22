@@ -33,6 +33,9 @@ jobs:
       - name: Build Shared Types
         run: npm run build --workspace=@moya-skazka/shared
 
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=packages/database/prisma/schema.prisma
+
       - name: Test Story Engine
         run: npm run test --workspace=@moya-skazka/story-engine
 
