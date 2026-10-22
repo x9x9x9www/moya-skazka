@@ -11,7 +11,31 @@ import {
   Camera,
   Upload,
   Loader2,
+  Scissors,
+  Search,
+  Compass,
+  Smile,
+  Coffee,
+  Map,
+  Pencil,
 } from 'lucide-react';
+import {
+  BoyAvatar,
+  GirlAvatar,
+  FairyStarIcon,
+  FairytaleInterestIcon,
+  PrincessCrownIcon,
+  TeddyBearIcon,
+  SpaceRocketIcon,
+  NatureLeafIcon,
+  MagicWandIcon,
+  FluffyBunnyIcon,
+  SweetKittenIcon,
+  DinoIcon,
+  ToyCarIcon,
+  StraightHairIcon,
+  CurlyHairIcon,
+} from '../components/FairytaleIcons';
 import { api } from '../api/client';
 
 export interface ChildRegistrationData {
@@ -95,19 +119,19 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   ];
 
   const HAIR_LENGTHS = [
-    { id: 'короткие' as const, label: 'Короткие', icon: '✂️' },
-    { id: 'длинные' as const, label: 'Длинные', icon: '🎀' },
+    { id: 'короткие' as const, label: 'Короткие', icon: <Scissors className="w-4 h-4 text-brand-600" /> },
+    { id: 'длинные' as const, label: 'Длинные', icon: <PrincessCrownIcon className="w-4 h-4 text-amber-500" /> },
   ];
 
   const HAIR_STRUCTURES = [
-    { id: 'прямые' as const, label: 'Прямые', icon: '✨' },
-    { id: 'кудрявые' as const, label: 'Кудрявые', icon: '🌀' },
+    { id: 'прямые' as const, label: 'Прямые', icon: <StraightHairIcon className="w-4 h-4 text-brand-600" /> },
+    { id: 'кудрявые' as const, label: 'Кудрявые', icon: <CurlyHairIcon className="w-4 h-4 text-amber-500" /> },
   ];
 
   const SKIN_TONES = [
-    { id: 'светлая', label: 'Светлая', preview: '#FFE0BD', icon: '🏻' },
-    { id: 'персиковая', label: 'Персиковая', preview: '#FCD0A1', icon: '🏼' },
-    { id: 'смуглая', label: 'Смуглая', preview: '#D19C74', icon: '🏽' },
+    { id: 'светлая', label: 'Светлая', preview: '#FFE0BD' },
+    { id: 'персиковая', label: 'Персиковая', preview: '#FCD0A1' },
+    { id: 'смуглая', label: 'Смуглая', preview: '#D19C74' },
   ];
 
   // Вопросы по характеру
@@ -115,72 +139,72 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     {
       id: 'Добрый и заботливый',
       label: 'Добрый и заботливый',
-      emoji: '💛',
+      icon: <Heart className="w-5 h-5 text-rose-500 fill-rose-100" />,
       desc: 'Ласковый, сопереживает и помогает друзьям',
     },
     {
       id: 'Смелый первооткрыватель',
       label: 'Смелый первооткрыватель',
-      emoji: '🚀',
+      icon: <SpaceRocketIcon className="w-5 h-5 text-brand-600" />,
       desc: 'Любит подвиги и исследует новое',
     },
     {
       id: 'Любознательный исследователь',
       label: 'Любознательный',
-      emoji: '🔍',
+      icon: <Search className="w-5 h-5 text-amber-600" />,
       desc: 'Задаёт 100 вопросов обо всём на свете',
     },
     {
       id: 'Мечтатель и фантазёр',
       label: 'Мечтатель',
-      emoji: '☁️',
+      icon: <FairyStarIcon className="w-5 h-5 text-amber-500" />,
       desc: 'Видит сказку и чудеса в простых вещах',
     },
     {
       id: 'Весёлый непоседа',
       label: 'Весёлый непоседа',
-      emoji: '🎈',
+      icon: <Smile className="w-5 h-5 text-emerald-600" />,
       desc: 'Обожает смех, шалости и задорные игры',
     },
     {
       id: 'Спокойный и рассудительный',
       label: 'Спокойный',
-      emoji: '🌿',
+      icon: <NatureLeafIcon className="w-5 h-5 text-emerald-700" />,
       desc: 'Вдумчивый, внимательный и терпеливый',
     },
   ];
 
   const STORY_PREFERENCES = [
-    { id: 'Уютные и добрые истории', label: 'Уютные и добрые', emoji: '☕' },
-    { id: 'Захватывающие приключения', label: 'Захватывающие приключения', emoji: '🗺️' },
-    { id: 'Тайны и волшебство', label: 'Тайны и волшебство', emoji: '🪄' },
-    { id: 'Смешные и озорные моменты', label: 'Смешные и озорные', emoji: '😄' },
+    { id: 'Уютные и добрые истории', label: 'Уютные и добрые', icon: <Coffee className="w-4 h-4 text-amber-600" /> },
+    { id: 'Захватывающие приключения', label: 'Захватывающие приключения', icon: <Compass className="w-4 h-4 text-blue-600" /> },
+    { id: 'Тайны и волшебство', label: 'Тайны и волшебство', icon: <MagicWandIcon className="w-4 h-4 text-brand-600" /> },
+    { id: 'Смешные и озорные моменты', label: 'Смешные и озорные', icon: <Smile className="w-4 h-4 text-amber-500" /> },
   ];
 
   const BEDTIME_RITUALS = [
-    { id: 'Чтение в тёплых объятиях', label: 'Чтение в обнимку', emoji: '📖' },
-    { id: 'Сказка с любимой игрушкой', label: 'Сказка с игрушкой', emoji: '🧸' },
-    { id: 'Тихий разговор перед сном', label: 'Разговор по душам', emoji: '🌙' },
+    { id: 'Чтение в тёплых объятиях', label: 'Чтение в обнимку', icon: <BookOpen className="w-4 h-4 text-brand-600" /> },
+    { id: 'Сказка с любимой игрушкой', label: 'Сказка с игрушкой', icon: <TeddyBearIcon className="w-4 h-4 text-amber-600" /> },
+    { id: 'Тихий разговор перед сном', label: 'Разговор по душам', icon: <Moon className="w-4 h-4 text-indigo-500 fill-indigo-100" /> },
   ];
 
   const TOYS = [
-    { id: 'плюшевый мишка', label: 'Мишка 🧸' },
-    { id: 'пушистый зайка', label: 'Зайка 🐰' },
-    { id: 'плюшевый динозаврик', label: 'Динозаврик 🦕' },
-    { id: 'маленький котёнок', label: 'Котёнок 🐱' },
-    { id: 'волшебная звёздочка', label: 'Звёздочка ⭐' },
-    { id: 'быстрая машинка', label: 'Машинка 🏎️' },
+    { id: 'плюшевый мишка', label: 'Мишка', icon: <TeddyBearIcon className="w-3.5 h-3.5" /> },
+    { id: 'пушистый зайка', label: 'Зайка', icon: <FluffyBunnyIcon className="w-3.5 h-3.5" /> },
+    { id: 'плюшевый динозаврик', label: 'Динозаврик', icon: <DinoIcon className="w-3.5 h-3.5" /> },
+    { id: 'маленький котёнок', label: 'Котёнок', icon: <SweetKittenIcon className="w-3.5 h-3.5" /> },
+    { id: 'волшебная звёздочка', label: 'Звёздочка', icon: <FairyStarIcon className="w-3.5 h-3.5" /> },
+    { id: 'быстрая машинка', label: 'Машинка', icon: <ToyCarIcon className="w-3.5 h-3.5" /> },
   ];
 
   const INTERESTS_LIST = [
-    { id: 'Динозавры', label: 'Динозавры 🦖' },
-    { id: 'Космос', label: 'Космос 🚀' },
-    { id: 'Животные', label: 'Животные 🦊' },
-    { id: 'Волшебство', label: 'Волшебство 🪄' },
-    { id: 'Машинки', label: 'Машинки 🚗' },
-    { id: 'Принцессы и замки', label: 'Принцессы 👑' },
-    { id: 'Морской мир', label: 'Морской мир 🐬' },
-    { id: 'Природа и лес', label: 'Природа 🌿' },
+    { id: 'Динозавры', label: 'Динозавры' },
+    { id: 'Космос', label: 'Космос' },
+    { id: 'Животные', label: 'Животные' },
+    { id: 'Волшебство', label: 'Волшебство' },
+    { id: 'Машинки', label: 'Машинки' },
+    { id: 'Принцессы и замки', label: 'Принцессы' },
+    { id: 'Морской мир', label: 'Морской мир' },
+    { id: 'Природа и лес', label: 'Природа' },
   ];
 
   const toggleInterest = (interestId: string) => {
@@ -338,12 +362,15 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
         </div>
 
         <div className="mt-4">
-          <h1 className="font-serif font-bold text-2xl text-stone-900 tracking-tight">
-            {step === 1
-              ? isSecondChild
-                ? 'Новый сказочный герой ✨'
-                : 'Кто наш главный герой? 🪄'
-              : 'Характер и увлечения 💛'}
+          <h1 className="font-serif font-bold text-2xl text-stone-900 tracking-tight flex items-center gap-2">
+            <span>
+              {step === 1
+                ? isSecondChild
+                  ? 'Новый сказочный герой'
+                  : 'Кто наш главный герой?'
+                : 'Характер и увлечения'}
+            </span>
+            <FairyStarIcon className="w-5 h-5 text-amber-500 shrink-0" />
           </h1>
           <p className="text-xs text-stone-600 mt-1">
             {step === 1
@@ -396,8 +423,9 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                      <span>✨ Внешность определена!</span>
+                    <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Внешность определена!</span>
                     </div>
                     <div className="text-[11px] text-stone-600 leading-tight mt-0.5 truncate">
                       {photoAnalysisTip || 'Параметры заполнены. Вы можете изменить любые поля ниже.'}
@@ -439,7 +467,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           {/* Интерактивная живая карточка героя с визуализацией выбора */}
           <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center gap-4">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-cream-300 transition-all"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner border border-cream-300 transition-all p-1.5"
               style={{
                 backgroundColor:
                   skinTone === 'светлая'
@@ -449,7 +477,11 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     : '#FFE7D1',
               }}
             >
-              {gender === 'girl' ? '👧' : '👦'}
+              {gender === 'girl' ? (
+                <GirlAvatar className="w-13 h-13 drop-shadow-sm" />
+              ) : (
+                <BoyAvatar className="w-13 h-13 drop-shadow-sm" />
+              )}
             </div>
             <div className="flex-1">
               <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">
@@ -508,13 +540,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     setGender('boy');
                     setHairLength('короткие');
                   }}
-                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'boy'
                       ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
                       : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                   }`}
                 >
-                  <span>👦</span>
+                  <BoyAvatar className="w-5 h-5 shrink-0" />
                   <span>Мальчик</span>
                 </button>
                 <button
@@ -523,13 +555,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     setGender('girl');
                     setHairLength('длинные');
                   }}
-                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'girl'
                       ? 'bg-rose-500 text-white shadow-sm ring-2 ring-rose-500/30'
                       : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                   }`}
                 >
-                  <span>👧</span>
+                  <GirlAvatar className="w-5 h-5 shrink-0" />
                   <span>Девочка</span>
                 </button>
               </div>
@@ -758,7 +790,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                         : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
                     }`}
                   >
-                    <div className="text-xl mb-1">{item.emoji}</div>
+                    <div className="mb-2">{item.icon}</div>
                     <div className="text-xs font-bold text-stone-800 leading-tight">
                       {item.label}
                     </div>
@@ -791,7 +823,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                         : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
                     }`}
                   >
-                    <span className="text-base">{item.emoji}</span>
+                    <span className="shrink-0">{item.icon}</span>
                     <span className="text-xs font-bold text-stone-800">{item.label}</span>
                   </button>
                 );
@@ -813,13 +845,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => setBedtimeRitual(item.id)}
-                    className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
+                    className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 ${
                       isSelected
                         ? 'border-brand-500 bg-brand-50/80 ring-2 ring-brand-500/20 shadow-sm'
                         : 'border-cream-300 bg-cream-50 hover:bg-cream-100'
                     }`}
                   >
-                    <span className="text-base">{item.emoji}</span>
+                    <span className="shrink-0">{item.icon}</span>
                     <span className="text-[11px] font-bold text-stone-800 leading-tight">
                       {item.label}
                     </span>
@@ -850,26 +882,28 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       setIsCustomToy(false);
                       setToy(t.id);
                     }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-amber-500 text-white shadow-sm'
                         : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                     }`}
                   >
-                    {t.label}
+                    <span>{t.icon}</span>
+                    <span>{t.label}</span>
                   </button>
                 );
               })}
               <button
                 type="button"
                 onClick={() => setIsCustomToy(true)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                   isCustomToy
                     ? 'bg-amber-500 text-white shadow-sm'
                     : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                 }`}
               >
-                ✏️ Своя игрушка...
+                <Pencil className="w-3.5 h-3.5 text-stone-500" />
+                <span>Своя игрушка...</span>
               </button>
             </div>
 
@@ -900,12 +934,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => toggleInterest(item.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-brand-500 text-white shadow-sm'
                         : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                     }`}
                   >
+                    <FairytaleInterestIcon id={item.id} className="w-3.5 h-3.5 shrink-0" />
                     <span>{item.label}</span>
                     {isSelected && <Check className="w-3 h-3 text-white ml-0.5" />}
                   </button>
@@ -946,7 +981,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5 fill-white text-white" />
-              <span>{isSecondChild ? 'Сохранить героя ✨' : 'Готово! Открыть сказки ✨'}</span>
+              <span>{isSecondChild ? 'Сохранить героя' : 'Готово! Открыть сказки'}</span>
+              <FairyStarIcon className="w-4 h-4 text-amber-200" />
             </button>
           </div>
         )}

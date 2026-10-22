@@ -7,6 +7,11 @@ import {
   Bookmark,
   ChevronRight,
 } from 'lucide-react';
+import {
+  FairyStarIcon,
+  FairyGiftIcon,
+  FairyBookIcon,
+} from '../components/FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface Screen2HomeProps {
@@ -135,12 +140,12 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           {/* Верхний бейдж */}
           {canClaimFreeStory ? (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-xs font-bold mb-3.5 shadow-md border border-amber-300/60">
-              <span>🎁</span>
+              <FairyGiftIcon className="w-3.5 h-3.5" />
               <span>Первая сказка бесплатно</span>
             </div>
           ) : (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-200 text-xs font-medium mb-3.5 border border-white/15 shadow-sm">
-              <span className="text-amber-400">✨</span>
+              <FairyStarIcon className="w-3.5 h-3.5" />
               <span>Сказка для {childName}</span>
             </div>
           )}
@@ -160,7 +165,8 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
             className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#F5B955] via-[#F3B755] to-[#E39E2F] hover:brightness-105 active:scale-[0.98] spring-transition text-stone-950 font-bold text-sm glow-gold animate-glow-gold flex items-center justify-center gap-2 border border-amber-200/60 shadow-lg"
           >
             <Wand2 className="w-4 h-4 text-stone-900 fill-stone-900/30" />
-            <span className="tracking-wide">Открыть вечернюю сказку ✨</span>
+            <span className="tracking-wide">Открыть вечернюю сказку</span>
+            <FairyStarIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -243,8 +249,9 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-powder-peach to-orange-100 border border-amber-300/40 flex items-center justify-center shadow-sm">
                   <Gift className="w-5 h-5 text-amber-800" />
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold text-[10px] shadow-sm border border-amber-300/70">
-                  +1 подарок
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold text-[10px] shadow-sm border border-amber-300/70">
+                  <FairyGiftIcon className="w-2.5 h-2.5" />
+                  <span>+1 подарок</span>
                 </span>
               </div>
 
@@ -267,8 +274,9 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           <h3 className="font-serif font-bold text-lg text-stone-900">
             Сказка дня
           </h3>
-          <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 shadow-inner-paper">
-            📖 Выбор вечера
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 shadow-inner-paper">
+            <FairyBookIcon className="w-3.5 h-3.5" />
+            <span>Выбор вечера</span>
           </span>
         </div>
 
@@ -331,7 +339,10 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
                     : 'text-amber-200 fill-amber-200/80'
                 }`}
               />
-              <span>{isSaved ? 'В закладках ✨' : 'Сохранить'}</span>
+              <span className="inline-flex items-center gap-1">
+                <span>{isSaved ? 'В закладках' : 'Сохранить'}</span>
+                {isSaved && <FairyStarIcon className="w-3 h-3" />}
+              </span>
             </button>
           </div>
         </div>

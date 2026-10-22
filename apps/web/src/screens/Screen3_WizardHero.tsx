@@ -9,7 +9,30 @@ import {
   ChevronUp,
   AlertCircle,
   Lock,
+  Heart,
+  CloudRain,
+  Shirt,
+  Scissors,
 } from 'lucide-react';
+import {
+  BoyAvatar,
+  GirlAvatar,
+  FairyStarIcon,
+  DinoIcon,
+  SpaceRocketIcon,
+  WoodlandFoxIcon,
+  MagicWandIcon,
+  ToyCarIcon,
+  TeddyBearIcon,
+  NatureLeafIcon,
+  BlocksIcon,
+  ArtPaletteIcon,
+  TrainSteamIcon,
+  OceanDolphinIcon,
+  MusicNotesIcon,
+  SportBallIcon,
+  PrincessCrownIcon,
+} from '../components/FairytaleIcons';
 import { api } from '../api/client';
 
 export interface WizardHeroData {
@@ -51,75 +74,71 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   const [showManualAppearance, setShowManualAppearance] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Популярные интересы для быстрого выбора
+  // Популярные интересы для быстрого выбора с векторными сказочными иконками
   const interestsList = [
-    { id: 'Динозавры', icon: '🦖', label: 'Динозавры' },
-    { id: 'Космос', icon: '🚀', label: 'Космос' },
-    { id: 'Животные', icon: '🦊', label: 'Животные' },
-    { id: 'Волшебство', icon: '🪄', label: 'Волшебство' },
-    { id: 'Машинки', icon: '🚗', label: 'Машинки' },
-    { id: 'Природа', icon: '🌿', label: 'Природа' },
-    { id: 'Лего и конструктор', icon: '🧱', label: 'Лего' },
-    { id: 'Рисование', icon: '🎨', label: 'Рисование' },
-    { id: 'Поезда', icon: '🚂', label: 'Поезда' },
-    { id: 'Море и дельфины', icon: '🐬', label: 'Море' },
-    { id: 'Музыка', icon: '🎵', label: 'Музыка' },
-    { id: 'Спорт и мяч', icon: '⚽', label: 'Спорт' },
+    { id: 'Динозавры', icon: <DinoIcon className="w-6 h-6" />, label: 'Динозавры' },
+    { id: 'Космос', icon: <SpaceRocketIcon className="w-6 h-6" />, label: 'Космос' },
+    { id: 'Животные', icon: <WoodlandFoxIcon className="w-6 h-6" />, label: 'Животные' },
+    { id: 'Волшебство', icon: <MagicWandIcon className="w-6 h-6" />, label: 'Волшебство' },
+    { id: 'Машинки', icon: <ToyCarIcon className="w-6 h-6" />, label: 'Машинки' },
+    { id: 'Природа', icon: <NatureLeafIcon className="w-6 h-6" />, label: 'Природа' },
+    { id: 'Лего и конструктор', icon: <BlocksIcon className="w-6 h-6" />, label: 'Лего' },
+    { id: 'Рисование', icon: <ArtPaletteIcon className="w-6 h-6" />, label: 'Рисование' },
+    { id: 'Поезда', icon: <TrainSteamIcon className="w-6 h-6" />, label: 'Поезда' },
+    { id: 'Море и дельфины', icon: <OceanDolphinIcon className="w-6 h-6" />, label: 'Море' },
+    { id: 'Музыка', icon: <MusicNotesIcon className="w-6 h-6" />, label: 'Музыка' },
+    { id: 'Спорт и мяч', icon: <SportBallIcon className="w-6 h-6" />, label: 'Спорт' },
   ];
 
-  // Расширенный список популярных и терапевтических тем
+  // Расширенный список популярных и терапевтических тем (без сырых эмодзи)
   const themesList = [
-    { id: 'Дружба и верность', label: 'Дружба и верность 🤝' },
-    { id: 'Доброта и забота', label: 'Доброта и забота 💛' },
-    { id: 'Смелость и победа над страхами', label: 'Смелость и отвага 🦁' },
-    { id: 'Спокойный и сладкий сон', label: 'Спокойный сон 🌙' },
-    { id: 'Волшебные сны и звездопад', label: 'Волшебные сны 🌌' },
-    { id: 'Тёплые объятия перед сном', label: 'Уют перед сном 🧸' },
-    { id: 'Заколдованный лес и тайны', label: 'Заколдованный лес 🌲' },
-    { id: 'Космическое путешествие', label: 'Космос и звёзды 🚀' },
-    { id: 'Морские глубины и киты', label: 'Подводный мир 🐬' },
-    { id: 'Страна дружелюбных динозавров', label: 'Остров динозавров 🦕' },
-    { id: 'Город добрых машинок', label: 'Город машинок 🚗' },
-    { id: 'Замок маленьких фей и магов', label: 'Замок фей 🪄' },
-    { id: 'Капризы и управление эмоциями', label: 'Капризы и эмоции 🎈' },
-    { id: 'Честность и искренность', label: 'Честность ✨' },
-    { id: 'Умение делиться и дружить', label: 'Умение делиться 💫' },
-    { id: 'Любознательность и открытия', label: 'Любознательность 🔍' },
-    { id: 'Порядок и уборка игрушек', label: 'Уборка игрушек 🧹' },
-    { id: 'Любовь к детскому садику', label: 'Любимый садик 🎒' },
-    { id: 'Смелый поход к врачу', label: 'Поход к врачу 🩺' },
-    { id: 'Появление братика или сестрёнки', label: 'Братик или сестрёнка 👶' },
-    { id: 'Бережное отношение к природе', label: 'Забота о природе 🌿' },
+    { id: 'Дружба и верность', label: 'Дружба и верность' },
+    { id: 'Доброта и забота', label: 'Доброта и забота' },
+    { id: 'Смелость и победа над страхами', label: 'Смелость и отвага' },
+    { id: 'Спокойный и сладкий сон', label: 'Спокойный сон' },
+    { id: 'Волшебные сны и звездопад', label: 'Волшебные сны' },
+    { id: 'Тёплые объятия перед сном', label: 'Уют перед сном' },
+    { id: 'Заколдованный лес и тайны', label: 'Заколдованный лес' },
+    { id: 'Космическое путешествие', label: 'Космос и звёзды' },
+    { id: 'Морские глубины и киты', label: 'Подводный мир' },
+    { id: 'Страна дружелюбных динозавров', label: 'Остров динозавров' },
+    { id: 'Город добрых машинок', label: 'Город машинок' },
+    { id: 'Замок маленьких фей и магов', label: 'Замок фей' },
+    { id: 'Капризы и управление эмоциями', label: 'Капризы и эмоции' },
+    { id: 'Честность и искренность', label: 'Честность и правда' },
+    { id: 'Умение делиться и дружить', label: 'Умение делиться' },
+    { id: 'Любознательность и открытия', label: 'Любознательность' },
+    { id: 'Порядок и уборка игрушек', label: 'Уборка игрушек' },
+    { id: 'Любовь к детскому садику', label: 'Любимый садик' },
+    { id: 'Смелый поход к врачу', label: 'Поход к врачу' },
+    { id: 'Появление братика или сестрёнки', label: 'Братик или сестрёнка' },
+    { id: 'Бережное отношение к природе', label: 'Забота о природе' },
   ];
 
-  // Быстрые подсказки-идеи для одежды
+  // Быстрые подсказки-идеи для одежды с векторными иконками
   const clothingSuggestions = [
-    { icon: '🌧️', text: 'Жёлтый дождевик и сапожки' },
-    { icon: '⭐', text: 'Уютная пижамка со звёздочками' },
-    { icon: '🧶', text: 'Тёплый вязаный свитер' },
-    { icon: '👗', text: 'Сказочное пышное платьице' },
-    { icon: '👖', text: 'Джинсовый комбинезончик' },
-    { icon: '🚀', text: 'Костюм юного космонавта' },
-    { icon: '🦕', text: 'Футболка с динозавриком' },
-    { icon: '👑', text: 'Бархатная мантия волшебника' },
-    { icon: '🦊', text: 'Толстовка с рыжей лисичкой' },
-    { icon: '🦸', text: 'Костюм доброго супергероя' },
+    { icon: <CloudRain className="w-3.5 h-3.5 text-sky-500" />, text: 'Жёлтый дождевик и сапожки' },
+    { icon: <FairyStarIcon className="w-3.5 h-3.5" />, text: 'Уютная пижамка со звёздочками' },
+    { icon: <Shirt className="w-3.5 h-3.5 text-amber-700" />, text: 'Тёплый вязаный свитер' },
+    { icon: <PrincessCrownIcon className="w-3.5 h-3.5" />, text: 'Сказочное пышное платьице' },
+    { icon: <Shirt className="w-3.5 h-3.5 text-blue-600" />, text: 'Джинсовый комбинезончик' },
+    { icon: <SpaceRocketIcon className="w-3.5 h-3.5" />, text: 'Костюм юного космонавта' },
+    { icon: <DinoIcon className="w-3.5 h-3.5" />, text: 'Футболка с динозавриком' },
+    { icon: <MagicWandIcon className="w-3.5 h-3.5" />, text: 'Бархатная мантия волшебника' },
+    { icon: <WoodlandFoxIcon className="w-3.5 h-3.5" />, text: 'Толстовка с рыжей лисичкой' },
+    { icon: <FairyStarIcon className="w-3.5 h-3.5 text-amber-500" />, text: 'Костюм доброго супергероя' },
   ];
 
-  // Быстрые подсказки-идеи для игрушки-спутника
+  // Быстрые подсказки-идеи для игрушки-спутника с векторными иконками
   const companionToys = [
-    { id: 'плюшевый динозаврик', icon: '🦖', label: 'Динозаврик' },
-    { id: 'плюшевый мишка', icon: '🧸', label: 'Мишка' },
-    { id: 'пушистый зайка', icon: '🐰', label: 'Зайка' },
-    { id: 'маленький котёнок', icon: '🐱', label: 'Котёнок' },
-    { id: 'волшебная звёздочка', icon: '⭐', label: 'Звёздочка' },
-    { id: 'быстрая машинка', icon: '🚗', label: 'Машинка' },
-    { id: 'плюшевый жирафик', icon: '🦒', label: 'Жирафик' },
-    { id: 'заводной робот', icon: '🤖', label: 'Робот' },
-    { id: 'верный щенок', icon: '🐶', label: 'Щенок' },
-    { id: 'тряпичная куколка', icon: '🪆', label: 'Куколка' },
-    { id: 'жёлтая уточка', icon: '🦆', label: 'Уточка' },
-    { id: 'сказочный единорожек', icon: '🦄', label: 'Единорог' },
+    { id: 'плюшевый динозаврик', icon: <DinoIcon className="w-4 h-4" />, label: 'Динозаврик' },
+    { id: 'плюшевый мишка', icon: <TeddyBearIcon className="w-4 h-4" />, label: 'Мишка' },
+    { id: 'пушистый зайка', icon: <WoodlandFoxIcon className="w-4 h-4" />, label: 'Зайка' },
+    { id: 'маленький котёнок', icon: <WoodlandFoxIcon className="w-4 h-4" />, label: 'Котёнок' },
+    { id: 'волшебная звёздочка', icon: <FairyStarIcon className="w-4 h-4" />, label: 'Звёздочка' },
+    { id: 'быстрая машинка', icon: <ToyCarIcon className="w-4 h-4" />, label: 'Машинка' },
+    { id: 'плюшевый жирафик', icon: <TeddyBearIcon className="w-4 h-4" />, label: 'Жирафик' },
+    { id: 'заводной робот', icon: <BlocksIcon className="w-4 h-4" />, label: 'Робот' },
   ];
 
   // Параметры ручной настройки внешности
@@ -131,10 +150,37 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   ];
 
   const hairTypesList = [
-    { id: 'короткие', label: 'Короткие', icon: '✂️' },
-    { id: 'прямые', label: 'Прямые', icon: '〰️' },
-    { id: 'кудрявые', label: 'Кудрявые', icon: '🌀' },
-    { id: 'длинные', label: 'Длинные', icon: '🎀' },
+    {
+      id: 'короткие',
+      label: 'Короткие',
+      icon: <Scissors className="w-3.5 h-3.5 text-stone-600" />,
+    },
+    {
+      id: 'прямые',
+      label: 'Прямые',
+      icon: (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 stroke-stone-600" strokeWidth="1.5">
+          <line x1="4" y1="2" x2="4" y2="14" strokeLinecap="round" />
+          <line x1="8" y1="2" x2="8" y2="14" strokeLinecap="round" />
+          <line x1="12" y1="2" x2="12" y2="14" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      id: 'кудрявые',
+      label: 'Кудрявые',
+      icon: (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 stroke-stone-600" strokeWidth="1.5">
+          <path d="M4 3C6 3 6 6 4 6C2 6 2 9 4 9C6 9 6 12 4 12" strokeLinecap="round" />
+          <path d="M10 3C12 3 12 6 10 6C8 6 8 9 10 9C12 9 12 12 10 12" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      id: 'длинные',
+      label: 'Длинные',
+      icon: <PrincessCrownIcon className="w-3.5 h-3.5" />,
+    },
   ];
 
   const eyeColorsList = [
@@ -489,24 +535,26 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                     <button
                       type="button"
                       onClick={() => onChange({ ...data, gender: 'boy' })}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-2 transition-all ${
                         data.gender === 'boy'
                           ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <span>👦 Мальчик</span>
+                      <BoyAvatar className="w-4 h-4" />
+                      <span>Мальчик</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => onChange({ ...data, gender: 'girl' })}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-2 transition-all ${
                         data.gender === 'girl'
                           ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <span>👧 Девочка</span>
+                      <GirlAvatar className="w-4 h-4" />
+                      <span>Девочка</span>
                     </button>
                   </div>
                 </div>
@@ -656,7 +704,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 style={{ backgroundColor: activeColorHex }}
               />
               {data.gender === 'girl' && (
-                <div className="absolute -top-1.5 right-0 text-[10px]">🎀</div>
+                <div className="absolute -top-1.5 right-0">
+                  <PrincessCrownIcon className="w-3.5 h-3.5" />
+                </div>
               )}
               {/* Глазки с цветом */}
               <div className="flex gap-2 mt-2">
@@ -687,7 +737,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             {data.childName || 'Герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} года
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
-            <span>✨</span>
+            <FairyStarIcon className="w-3 h-3 text-amber-600" />
             <span>
               {appearance.hairColor} {appearance.hairType} волосы • {appearance.eyeColor || 'карие'} глаза
             </span>
@@ -699,7 +749,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-            <span>👕</span>
+            <Shirt className="w-3.5 h-3.5 text-brand-700" />
             <span>Во что одет герой в сказке?</span>
           </label>
           <span className="text-[11px] font-medium text-brand-700">впишите любое</span>
@@ -758,7 +808,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-            <span>{detectToyEmoji(appearance.toy)}</span>
+            <TeddyBearIcon className="w-4 h-4 text-amber-700" />
             <span>Любимая игрушка-спутник</span>
           </label>
           <span className="text-[11px] font-medium text-brand-700">впишите любую</span>
@@ -817,7 +867,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-            <span>❤️</span>
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-400/40" />
             <span>Что любит ребёнок?</span>
           </label>
           <span className="text-[11px] font-medium text-brand-700">можно добавить своё</span>
@@ -885,7 +935,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   key={item}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-300 text-brand-900 text-xs font-semibold shadow-xs"
                 >
-                  <span>✨ {item}</span>
+                  <FairyStarIcon className="w-3 h-3 text-brand-600" />
+                  <span>{item}</span>
                   <button
                     type="button"
                     onClick={() => toggleInterest(item)}

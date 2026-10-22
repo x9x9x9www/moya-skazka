@@ -20,6 +20,8 @@ import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
 import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
+import { FairyStarIcon } from './components/FairytaleIcons';
+import { Clock } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -592,8 +594,8 @@ export const App: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-5 transition-all">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-amber-100">
             {/* Иконка */}
-            <div className="relative mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-brand-500 text-white flex items-center justify-center text-3xl shadow-lg shadow-brand-500/20">
-              <span className="animate-spin" style={{ animationDuration: '4s' }}>✨</span>
+            <div className="relative mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/20">
+              <FairyStarIcon className="w-8 h-8 text-white animate-spin" style={{ animationDuration: '4s' }} />
             </div>
 
             <div className="space-y-1">
@@ -607,7 +609,7 @@ export const App: React.FC = () => {
 
             {/* Таймер с примерным временем ожидания */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
-              <span>⏳</span>
+              <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
               <span>
                 {remainingSeconds > 0 && creationStage !== 'finishing'
                   ? `Примерное ожидание: ~${remainingSeconds} сек`

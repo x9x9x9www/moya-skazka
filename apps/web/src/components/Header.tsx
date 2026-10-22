@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Plus, Settings, Sparkles, Bell } from 'lucide-react';
+import { BoyAvatar, GirlAvatar, FairyStarIcon } from './FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface HeaderProps {
@@ -39,8 +40,12 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onOpenChildModal}
               className="flex items-center gap-2 bg-cream-200/90 hover:bg-cream-300/80 active:scale-95 transition-all px-2.5 py-1.5 rounded-full border border-cream-300 shadow-sm"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-200 to-amber-100 text-stone-800 text-xs flex items-center justify-center overflow-hidden border border-amber-300 shadow-inner">
-                {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? '👧' : '👦'}
+              <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden border border-amber-300 shadow-sm shrink-0">
+                {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? (
+                  <GirlAvatar className="w-full h-full" />
+                ) : (
+                  <BoyAvatar className="w-full h-full" />
+                )}
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-stone-800 leading-tight">
@@ -53,8 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
               <Plus className="w-3.5 h-3.5 text-stone-400 ml-0.5" />
             </button>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-cream-200/80 flex items-center justify-center text-sm shadow-inner">
-              ✨
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center border border-amber-300/60 shadow-inner">
+              <FairyStarIcon className="w-4 h-4" />
             </div>
           )}
         </div>

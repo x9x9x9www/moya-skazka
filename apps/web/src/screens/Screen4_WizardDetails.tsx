@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, MessageCircleQuestion } from 'lucide-react';
 import { WizardHeroData } from './Screen3_WizardHero';
+import { FairytaleToyIcon, BoyAvatar, GirlAvatar } from '../components/FairytaleIcons';
 
 interface Screen4WizardDetailsProps {
   heroData: WizardHeroData;
@@ -28,26 +29,6 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({ personality, customWishes, includeQuestions });
-  };
-
-  const detectToyEmoji = (toyText: string = ''): string => {
-    const t = toyText.toLowerCase();
-    if (t.includes('дино')) return '🦖';
-    if (t.includes('миш') || t.includes('медв')) return '🧸';
-    if (t.includes('зай') || t.includes('крол')) return '🐰';
-    if (t.includes('кот') || t.includes('кош')) return '🐱';
-    if (t.includes('звезд') || t.includes('звёзд')) return '⭐';
-    if (t.includes('машин') || t.includes('кар') || t.includes('поезд') || t.includes('паровоз')) return '🚗';
-    if (t.includes('жираф')) return '🦒';
-    if (t.includes('робот')) return '🤖';
-    if (t.includes('собак') || t.includes('щен') || t.includes('пёс')) return '🐶';
-    if (t.includes('кукл')) return '🪆';
-    if (t.includes('утк')) return '🦆';
-    if (t.includes('лис')) return '🦊';
-    if (t.includes('слон')) return '🐘';
-    if (t.includes('дракон')) return '🐲';
-    if (t.includes('единорог')) return '🦄';
-    return '🧸';
   };
 
   return (
@@ -136,13 +117,16 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
 
       {/* Карточка превью сгенерированного героя */}
       <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-4 flex items-center gap-3.5 shadow-sm">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center">
-          <span className="text-2xl">
-            {detectToyEmoji(heroData.appearance?.toy)}
-          </span>
-          <span className="text-[10px] font-bold text-amber-900 mt-0.5">
-            {heroData.gender === 'girl' ? '👧' : '👦'} Герой
-          </span>
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center p-1">
+          <FairytaleToyIcon toy={heroData.appearance?.toy} className="w-7 h-7" />
+          <div className="flex items-center gap-1 text-[10px] font-bold text-amber-900 mt-0.5">
+            {heroData.gender === 'girl' ? (
+              <GirlAvatar className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <BoyAvatar className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span>Герой</span>
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-stone-900 truncate">

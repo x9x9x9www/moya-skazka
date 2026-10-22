@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FairyStarIcon, FairyBookIcon, ArtPaletteIcon } from './FairytaleIcons';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -90,15 +91,15 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
           className={`absolute inset-0 bg-gradient-to-br ${getThemeGradient()} flex flex-col items-center justify-center p-6 text-center text-white`}
         >
           {/* Волшебные парящие искры */}
-          <div className="absolute top-4 left-6 text-amber-200/80 text-xl animate-pulse">✨</div>
+          <FairyStarIcon className="absolute top-4 left-6 w-5 h-5 text-amber-200/80 animate-pulse" />
           <div className="absolute top-8 right-8 text-amber-100/70 text-sm animate-ping">✦</div>
           <div className="absolute bottom-6 left-8 text-amber-200/60 text-lg">✦</div>
           <div className="absolute -top-12 -left-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-300/15 rounded-full blur-2xl pointer-events-none" />
 
           {/* Анимированная иконка художника */}
-          <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl shadow-lg animate-bounce mb-3">
-            🎨
+          <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-lg animate-bounce mb-3">
+            <ArtPaletteIcon className="w-8 h-8 text-amber-100 drop-shadow" />
           </div>
 
           <div className="relative z-10 font-serif font-bold text-lg tracking-wide text-amber-100 drop-shadow-sm">
@@ -117,13 +118,15 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
       )}
 
       {/* Бейдж номера сцены слева вверху */}
-      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-white shadow-sm border border-white/20">
-        📖 Сцена {sceneIndex} из 4
+      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-white shadow-sm border border-white/20 flex items-center gap-1.5">
+        <FairyBookIcon className="w-3.5 h-3.5 text-amber-300" />
+        <span>Сцена {sceneIndex} из 4</span>
       </div>
 
       {/* Бейдж темы / интереса справа вверху */}
-      <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-amber-200 shadow-sm border border-white/20">
-        ✨ {interest}
+      <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-amber-200 shadow-sm border border-white/20 flex items-center gap-1.5">
+        <FairyStarIcon className="w-3.5 h-3.5 text-amber-300" />
+        <span>{interest}</span>
       </div>
     </div>
   );

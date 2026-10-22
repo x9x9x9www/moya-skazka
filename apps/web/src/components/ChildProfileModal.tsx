@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload } from 'lucide-react';
+import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload, Scissors } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 import { api } from '../api/client';
+import {
+  BoyAvatar,
+  GirlAvatar,
+  FairytaleInterestIcon,
+  FairytaleToyIcon,
+  StraightHairIcon,
+  CurlyHairIcon,
+  PrincessCrownIcon,
+} from './FairytaleIcons';
 
 interface ChildProfileModalProps {
   isOpen: boolean;
@@ -109,12 +118,12 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   if (!isOpen) return null;
 
   const interestsList = [
-    { id: 'Динозавры', label: 'Динозавры 🦖' },
-    { id: 'Космос', label: 'Космос 🚀' },
-    { id: 'Животные', label: 'Животные 🦊' },
-    { id: 'Волшебство', label: 'Волшебство 🪄' },
-    { id: 'Машинки', label: 'Машинки 🚗' },
-    { id: 'Природа', label: 'Природа 🌿' },
+    { id: 'Динозавры', label: 'Динозавры' },
+    { id: 'Космос', label: 'Космос' },
+    { id: 'Животные', label: 'Животные' },
+    { id: 'Волшебство', label: 'Волшебство' },
+    { id: 'Машинки', label: 'Машинки' },
+    { id: 'Природа', label: 'Природа' },
   ];
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -254,7 +263,10 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-emerald-800">✨ Внешность определена!</div>
+                    <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Внешность определена!</span>
+                    </div>
                     <div className="text-[10px] text-stone-600 truncate">{photoTip || 'Параметры заполнены ниже'}</div>
                   </div>
                   <button
@@ -311,24 +323,26 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setGender('boy')}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'boy'
-                      ? 'bg-brand-500 text-white border-brand-500'
+                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
                       : 'bg-white text-stone-700 border-cream-300'
                   }`}
                 >
-                  👦 Мальчик
+                  <BoyAvatar className="w-4 h-4 shrink-0" />
+                  <span>Мальчик</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setGender('girl')}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'girl'
-                      ? 'bg-brand-500 text-white border-brand-500'
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
                       : 'bg-white text-stone-700 border-cream-300'
                   }`}
                 >
-                  👧 Девочка
+                  <GirlAvatar className="w-4 h-4 shrink-0" />
+                  <span>Девочка</span>
                 </button>
               </div>
             </div>
@@ -391,22 +405,23 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'короткие', label: 'Короткие ✂️' },
-                  { id: 'длинные', label: 'Длинные 🎀' },
-                  { id: 'кудрявые', label: 'Кудрявые 🌀' },
-                  { id: 'прямые', label: 'Прямые ✨' },
+                  { id: 'короткие', label: 'Короткие', icon: <Scissors className="w-3 h-3 text-brand-600" /> },
+                  { id: 'длинные', label: 'Длинные', icon: <PrincessCrownIcon className="w-3 h-3 text-amber-500" /> },
+                  { id: 'кудрявые', label: 'Кудрявые', icon: <CurlyHairIcon className="w-3 h-3 text-amber-500" /> },
+                  { id: 'прямые', label: 'Прямые', icon: <StraightHairIcon className="w-3 h-3 text-brand-600" /> },
                 ].map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setHairType(t.id)}
-                    className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all text-center ${
+                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
                       hairType === t.id
                         ? 'bg-brand-50 border-brand-500 text-brand-800'
                         : 'bg-white border-cream-300 text-stone-600'
                     }`}
                   >
-                    {t.label}
+                    <span>{t.icon}</span>
+                    <span>{t.label}</span>
                   </button>
                 ))}
               </div>
@@ -419,23 +434,24 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               </label>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { id: 'плюшевый динозаврик', label: '🦖 Динозаврик' },
-                  { id: 'плюшевый мишка', label: '🧸 Мишка' },
-                  { id: 'пушистый зайка', label: '🐰 Зайка' },
-                  { id: 'маленький котёнок', label: '🐱 Котёнок' },
-                  { id: 'волшебная звёздочка', label: '⭐ Звёздочка' },
+                  { id: 'плюшевый динозаврик', label: 'Динозаврик' },
+                  { id: 'плюшевый мишка', label: 'Мишка' },
+                  { id: 'пушистый зайка', label: 'Зайка' },
+                  { id: 'маленький котёнок', label: 'Котёнок' },
+                  { id: 'волшебная звёздочка', label: 'Звёздочка' },
                 ].map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setToy(t.id)}
-                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border truncate transition-all ${
+                    className={`py-1.5 px-1.5 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
                       toy === t.id
                         ? 'bg-brand-50 border-brand-500 text-brand-800'
                         : 'bg-white border-cream-300 text-stone-600'
                     }`}
                   >
-                    {t.label}
+                    <FairytaleToyIcon toy={t.id} className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{t.label}</span>
                   </button>
                 ))}
               </div>
@@ -459,7 +475,10 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                           : 'bg-white border-cream-300 text-stone-600'
                       }`}
                     >
-                      <span>{item.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <FairytaleInterestIcon id={item.id} className="w-3.5 h-3.5 shrink-0" />
+                        <span>{item.label}</span>
+                      </div>
                       {isSelected && <Check className="w-3.5 h-3.5 text-brand-600" />}
                     </button>
                   );
