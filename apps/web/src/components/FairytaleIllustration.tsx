@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FairyStarIcon, FairyBookIcon, ArtPaletteIcon } from './FairytaleIcons';
+import { FairyStarIcon, ArtPaletteIcon } from './FairytaleIcons';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -117,17 +117,6 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
         </div>
       )}
 
-      {/* Бейдж номера сцены слева вверху */}
-      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-white shadow-sm border border-white/20 flex items-center gap-1.5">
-        <FairyBookIcon className="w-3.5 h-3.5 text-amber-300" />
-        <span>Сцена {sceneIndex} из 4</span>
-      </div>
-
-      {/* Бейдж темы / интереса справа вверху */}
-      <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[11px] font-bold text-amber-200 shadow-sm border border-white/20 flex items-center gap-1.5">
-        <FairyStarIcon className="w-3.5 h-3.5 text-amber-300" />
-        <span>{interest}</span>
-      </div>
     </div>
   );
 };
