@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Type,
   Sun,
   Moon,
   Coffee,
@@ -8,7 +7,6 @@ import {
   FileText,
   Shield,
   Trash2,
-  Check,
   AlertTriangle,
 } from 'lucide-react';
 import { ReaderFontSize, ReaderSettings, ReaderTheme } from '../hooks/useReaderSettings';
@@ -17,14 +15,14 @@ interface Screen12SettingsProps {
   settings: ReaderSettings;
   onUpdateSetting: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
   onDeleteAccount: () => Promise<void>;
-  onClose: () => void;
+  onOpenAdmin?: () => void;
 }
 
 export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
   settings,
   onUpdateSetting,
   onDeleteAccount,
-  onClose,
+  onOpenAdmin,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -232,6 +230,19 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
             </div>
             <span className="text-stone-400">›</span>
           </a>
+
+          {onOpenAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="w-full p-3.5 flex items-center justify-between text-stone-700 hover:bg-cream-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2.5">
+                <Shield className="w-4 h-4 text-brand-600" />
+                <span>Панель управления (Admin)</span>
+              </div>
+              <span className="text-stone-400">›</span>
+            </button>
+          )}
 
           <button
             onClick={() => setShowDeleteConfirm(true)}

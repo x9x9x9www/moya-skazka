@@ -220,6 +220,27 @@ class ApiClient {
       body: JSON.stringify({ imageBase64 }),
     });
   }
+
+  // 13. Безопасный анализ фото ребенка для автосоздания персонажа (Zero-Storage Vision)
+  public async analyzeCharacterPhoto(
+    imageBase64: string,
+    mimeType: string = 'image/jpeg'
+  ): Promise<{
+    gender?: 'boy' | 'girl';
+    approxAge?: number;
+    hairColor?: 'светлые' | 'русые' | 'тёмные' | 'рыжие';
+    hairType?: 'кудрявые' | 'короткие' | 'длинные' | 'прямые';
+    eyeColor?: 'карие' | 'голубые' | 'зелёные' | 'серые';
+    skinTone?: 'светлая' | 'персиковая' | 'смуглая';
+    distinctiveFeatures?: string;
+    error?: 'FACE_NOT_DETECTED' | string;
+    message?: string;
+  }> {
+    return await this.request('/character/analyze-photo', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64, mimeType }),
+    });
+  }
 }
 
 export const api = new ApiClient();

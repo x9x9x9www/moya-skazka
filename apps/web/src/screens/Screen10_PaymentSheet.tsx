@@ -17,7 +17,7 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const { tg, haptic } = useTelegram();
+  const { haptic } = useTelegram();
 
   if (!isOpen) return null;
 

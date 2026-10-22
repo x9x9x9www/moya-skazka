@@ -6,6 +6,7 @@
 // Генерирует сказку, обложку и 4 сцены, сохраняет всё в out/story-samples/<id>.
 // ========================================================
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -32,12 +33,10 @@ function arg(name, fallback = null) {
 
 const hasFlag = (name) => process.argv.includes(`--${name}`);
 
-import nodeFs from 'node:fs';
-
 function loadEnvSync() {
   const envPath = path.join(ROOT, '.env');
   try {
-    const text = nodeFs.readFileSync(envPath, 'utf8');
+    const text = readFileSync(envPath, 'utf8');
     for (const line of text.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;

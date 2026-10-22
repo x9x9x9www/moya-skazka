@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ArrowRight, Sparkles, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Check, ArrowRight, Sparkles, X, FileText } from 'lucide-react';
 
 interface Screen8UpgradeModalProps {
   isOpen: boolean;

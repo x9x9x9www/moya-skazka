@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Plus, Settings, Sparkles, ShieldAlert, Bell } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Sparkles, Bell } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
 interface HeaderProps {
@@ -9,7 +9,6 @@ interface HeaderProps {
   onBack?: () => void;
   onOpenChildModal: () => void;
   onOpenSettings: () => void;
-  onOpenAdmin: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +18,6 @@ export const Header: React.FC<HeaderProps> = ({
   onBack,
   onOpenChildModal,
   onOpenSettings,
-  onOpenAdmin,
 }) => {
   const showBackButton = onBack && currentScreen !== 'home' && currentScreen !== 'onboarding';
 

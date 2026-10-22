@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowLeft, ArrowRight, MessageSquareQuote } from 'lucide-react';
 import { BookDetailsDTO } from '@moya-skazka/shared';
 import { ReaderSettings } from '../hooks/useReaderSettings';
@@ -32,8 +32,6 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   onClose,
   onToggleQuestions,
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [showPromptDetails, setShowPromptDetails] = useState(false);
   const currentScene = book.scenes.find((s) => s.scene_index === currentSceneIndex) || book.scenes[0];
 
   const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(currentScene?.image_url);

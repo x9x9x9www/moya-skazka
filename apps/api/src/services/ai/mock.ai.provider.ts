@@ -13,8 +13,7 @@ export class MockAIProvider implements ITextAIProvider, IImageAIProvider {
    * Детерминированная качественная генерация 4 сцен и вопросов под возраст и параметры ребёнка
    */
   public async generateStory(input: GenerateStoryInput): Promise<AIGeneratedStory> {
-    const { childName, age, theme, interests, appearance, customWishes } = input;
-    const interest = interests[0] || 'Волшебство';
+    const { childName, age, theme, appearance, customWishes } = input;
     const toy = appearance?.toy || 'любимый плюшевый спутник';
     const clothing = appearance?.clothing || 'уютный свитер';
     const hair = appearance?.hair || 'светлые волосы';

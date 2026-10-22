@@ -49,7 +49,7 @@ export const App: React.FC = () => {
   }
 
   // Проверка завершения онбординга/регистрации первого ребёнка
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
+  const [, setIsOnboardingCompleted] = useState<boolean>(() => {
     try {
       return localStorage.getItem('ms_onboarding_completed') === 'true';
     } catch {
@@ -584,7 +584,6 @@ export const App: React.FC = () => {
           }}
           onOpenChildModal={() => setChildModalOpen(true)}
           onOpenSettings={() => setCurrentScreen('settings')}
-          onOpenAdmin={() => setAdminModalOpen(true)}
         />
       )}
 
@@ -694,6 +693,7 @@ export const App: React.FC = () => {
             canClaimFreeStory={canClaimFree}
             balance={balance}
             dailyIdea={dailyIdea}
+            booksCount={books.length}
             onStartCreateStory={() => setCurrentScreen('wizard_hero')}
             onNavigateTab={handleTabChange}
             onRefreshIdea={refreshLocalDailyIdea}
@@ -724,7 +724,6 @@ export const App: React.FC = () => {
             remainingSeconds={remainingSeconds}
             creationMessage={creationMessage}
             onSubmit={handleCreateStorySubmit}
-            onBack={() => setCurrentScreen('wizard_hero')}
           />
         )}
 
@@ -1034,7 +1033,7 @@ export const App: React.FC = () => {
           <Screen12_Settings
             settings={settings}
             onUpdateSetting={updateSetting}
-            onClose={() => setCurrentScreen('home')}
+            onOpenAdmin={() => setAdminModalOpen(true)}
             onDeleteAccount={async () => {
               try {
                 await api.deleteAccount();

@@ -20,10 +20,8 @@ interface FairytaleIllustrationProps {
 
 export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   sceneIndex,
-  theme,
   interest,
   childName,
-  appearance,
   imageUrl,
 }) => {
   const fallbackSrc = `./illustrations/scene_${sceneIndex}.jpg`;

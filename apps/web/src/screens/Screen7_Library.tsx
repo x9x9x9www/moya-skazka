@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, BookOpen, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Plus, BookOpen, Image as ImageIcon } from 'lucide-react';
 import { BookSummaryDTO } from '@moya-skazka/shared';
 import { getFairytaleFallbackIllustration } from '../services/storyGenerator';
 

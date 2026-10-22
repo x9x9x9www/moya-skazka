@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
-import { ArrowRight, Check, Plus } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  ArrowRight,
+  Check,
+  Plus,
+  Camera,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Lock,
+} from 'lucide-react';
+import { api } from '../api/client';
 
 export interface WizardHeroData {
   childName: string;
@@ -25,7 +36,7 @@ interface Screen3WizardHeroProps {
   data: WizardHeroData;
   onChange: (data: WizardHeroData) => void;
   onNext: () => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
@@ -34,6 +45,11 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   onNext,
 }) => {
   const [customInterest, setCustomInterest] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const [visionSuccess, setVisionSuccess] = useState<string | null>(null);
+  const [showManualAppearance, setShowManualAppearance] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Популярные интересы для быстрого выбора
   const interestsList = [
@@ -106,6 +122,34 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'сказочный единорожек', icon: '🦄', label: 'Единорог' },
   ];
 
+  // Параметры ручной настройки внешности
+  const hairColorsList = [
+    { id: 'светлые', label: 'Светлые', color: '#F7DC6F' },
+    { id: 'русые', label: 'Русые', color: '#C49A45' },
+    { id: 'тёмные', label: 'Тёмные', color: '#3E2723' },
+    { id: 'рыжие', label: 'Рыжие', color: '#E65100' },
+  ];
+
+  const hairTypesList = [
+    { id: 'короткие', label: 'Короткие', icon: '✂️' },
+    { id: 'прямые', label: 'Прямые', icon: '〰️' },
+    { id: 'кудрявые', label: 'Кудрявые', icon: '🌀' },
+    { id: 'длинные', label: 'Длинные', icon: '🎀' },
+  ];
+
+  const eyeColorsList = [
+    { id: 'карие', label: 'Карие', color: '#5D4037' },
+    { id: 'голубые', label: 'Голубые', color: '#42A5F5' },
+    { id: 'зелёные', label: 'Зелёные', color: '#4CAF50' },
+    { id: 'серые', label: 'Серые', color: '#90A4AE' },
+  ];
+
+  const skinTonesList = [
+    { id: 'светлая', label: 'Светлая', color: '#FFE0BD' },
+    { id: 'персиковая', label: 'Персиковая', color: '#FAD0B3' },
+    { id: 'смуглая', label: 'Смуглая', color: '#D7A173' },
+  ];
+
   const appearance = data.appearance || {
     avatar_id: 'hero_custom',
     hairColor: 'светлые',
@@ -113,6 +157,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     clothingItem: 'жёлтый дождевик и сапожки',
     clothingColor: 'солнечно-жёлтый',
     toy: 'плюшевый динозаврик',
+    eyeColor: 'карие',
+    skinTone: 'светлая',
   };
 
   const updateAppearance = (patch: Partial<typeof appearance>) => {
@@ -141,6 +187,92 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     setCustomInterest('');
   };
 
+  // Zero-Storage Vision: Обработка загруженного фото ребенка исключительно в оперативной памяти
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.match(/^image\/(jpeg|png|webp|jpg)$/i)) {
+      setVisionError('Пожалуйста, выберите фото в формате JPG, PNG или WEBP.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setVisionError('Размер фото не должен превышать 5 МБ.');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setVisionError(null);
+    setVisionSuccess(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        let base64String = reader.result as string;
+        try {
+          const res = await api.analyzeCharacterPhoto(base64String, file.type);
+          // Zero-Storage: немедленно зануляем ссылку на base64
+          base64String = '';
+
+          if (res.error === 'FACE_NOT_DETECTED') {
+            setVisionError(
+              res.message ||
+                'Не удалось чётко разглядеть личико. Попробуйте другое фото или просто выберите параметры вручную ниже.'
+            );
+            setShowManualAppearance(true);
+          } else {
+            const newAppearance = {
+              ...appearance,
+              hairColor: res.hairColor || appearance.hairColor,
+              hairType: res.hairType || appearance.hairType,
+              eyeColor: res.eyeColor || appearance.eyeColor,
+              skinTone: res.skinTone || appearance.skinTone,
+            };
+
+            const patch: Partial<WizardHeroData> = {
+              appearance: newAppearance,
+            };
+            if (res.gender) {
+              patch.gender = res.gender;
+            }
+            if (res.approxAge && res.approxAge >= 1 && res.approxAge <= 12) {
+              patch.age = res.approxAge;
+            }
+
+            onChange({
+              ...data,
+              ...patch,
+            });
+
+            setVisionSuccess(
+              res.distinctiveFeatures
+                ? `Мы увидели героя! Особенность: «${res.distinctiveFeatures}». Проверьте, всё ли верно — при желании вы можете поправить любую деталь ниже.`
+                : 'Мы увидели героя! Проверьте, всё ли верно — при желании вы можете поправить любую деталь ниже.'
+            );
+          }
+        } catch (err: any) {
+          base64String = '';
+          setVisionError(
+            err?.message ||
+              'Не удалось чётко разглядеть личико. Попробуйте другое фото или просто выберите параметры вручную ниже.'
+          );
+          setShowManualAppearance(true);
+        } finally {
+          setIsAnalyzing(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setIsAnalyzing(false);
+      setVisionError('Не удалось прочитать файл фото. Попробуйте ещё раз.');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Цвет волос для превью
   const hairColorsMap: Record<string, string> = {
     светлые: '#F7DC6F',
@@ -149,6 +281,23 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     рыжие: '#E65100',
   };
   const activeColorHex = hairColorsMap[appearance.hairColor] || '#C49A45';
+
+  // Тон кожи для превью
+  const skinTonesMap: Record<string, string> = {
+    светлая: '#FFE0BD',
+    персиковая: '#FAD0B3',
+    смуглая: '#D7A173',
+  };
+  const activeSkinHex = skinTonesMap[appearance.skinTone || 'светлая'] || '#FFE0BD';
+
+  // Цвет глаз для превью
+  const eyeColorsMap: Record<string, string> = {
+    карие: '#4E342E',
+    голубые: '#29B6F6',
+    зелёные: '#43A047',
+    серые: '#78909C',
+  };
+  const activeEyeHex = eyeColorsMap[appearance.eyeColor || 'карие'] || '#2D3436';
 
   // Автоматическое определение цвета одежды по тексту для превью аватара
   const detectClothingHex = (clothingText: string = '', fallbackColor: string = '') => {
@@ -205,8 +354,284 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           Кто станет главным героем?
         </h2>
         <p className="text-xs text-stone-500 mt-1">
-          Настройте одежду, спутника и увлечения — малыш оживёт на иллюстрациях сказки
+          Настройте внешность, одежду и спутника — малыш оживёт на иллюстрациях сказки
         </p>
+      </div>
+
+      {/* 🔒 Блок Zero-Storage: Создать героя по фото (по желанию) */}
+      <div className="rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-amber-50/50 border border-amber-200/90 p-4 shadow-sm space-y-3">
+        <div>
+          <div className="font-serif font-bold text-base text-stone-900 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+            <span>✨ Создать героя по фото (по желанию)</span>
+          </div>
+          <p className="text-[11px] text-stone-600 mt-1.5 leading-relaxed flex items-start gap-1.5 bg-white/70 p-2.5 rounded-xl border border-amber-100">
+            <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>
+              <strong className="font-semibold text-stone-700">🔒 Мы заботимся о безопасности:</strong> фото обрабатывается нейросетью за пару секунд и сразу навсегда удаляется. Мы не храним снимки детей.
+            </span>
+          </p>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handlePhotoSelected}
+          className="hidden"
+          id="hero-photo-upload"
+        />
+
+        {/* Состояние 1: Загрузка / Анализ фото */}
+        {isAnalyzing ? (
+          <div className="p-4 rounded-2xl bg-amber-100/80 border border-amber-300 flex items-center gap-3 animate-pulse shadow-inner">
+            <div className="w-8 h-8 rounded-full border-3 border-amber-600 border-t-transparent animate-spin shrink-0" />
+            <div className="text-xs font-semibold text-amber-900 leading-snug">
+              Художник изучает черты лица и подбирает краски... 🎨
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {/* Кнопка выбора файла */}
+            <label
+              htmlFor="hero-photo-upload"
+              className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-amber-300 hover:border-amber-400 bg-white hover:bg-amber-50/60 cursor-pointer transition-all flex items-center justify-center gap-3 shadow-xs active:scale-[0.99]"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-xs">
+                <Camera className="w-5 h-5 text-amber-700" />
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-bold text-stone-800">
+                  {visionSuccess ? 'Выбрать другое фото' : 'Загрузить портрет малыша'}
+                </div>
+                <div className="text-[10px] text-stone-500">
+                  JPG, PNG или WEBP до 5 МБ • Мгновенный анализ
+                </div>
+              </div>
+            </label>
+
+            {/* Состояние 2: Успех автоподбора */}
+            {visionSuccess && (
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">{visionSuccess}</div>
+              </div>
+            )}
+
+            {/* Состояние 3: Ошибка / Нечеткое фото */}
+            {visionError && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">{visionError}</div>
+              </div>
+            )}
+
+            {/* Кнопка-альтернатива «Или настройте внешность вручную» */}
+            <button
+              type="button"
+              onClick={() => setShowManualAppearance(!showManualAppearance)}
+              className="w-full py-2 px-3 text-xs font-bold text-brand-700 hover:text-brand-800 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>Или настройте внешность вручную</span>
+              {showManualAppearance ? (
+                <ChevronUp className="w-3.5 h-3.5 text-brand-500" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-brand-500" />
+              )}
+            </button>
+
+            {/* Разворачивающийся блок ручной настройки параметров внешности */}
+            {showManualAppearance && (
+              <div className="p-3.5 rounded-2xl bg-cream-50 border border-cream-300 space-y-4 animate-in fade-in">
+                {/* Имя и возраст */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Имя героя
+                    </label>
+                    <input
+                      type="text"
+                      value={data.childName}
+                      onChange={(e) => onChange({ ...data, childName: e.target.value })}
+                      placeholder="Имя малыша"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-cream-300 text-xs font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Возраст
+                    </label>
+                    <div className="flex gap-1">
+                      {[2, 3, 4, 5, 6].map((ageNum) => (
+                        <button
+                          key={ageNum}
+                          type="button"
+                          onClick={() => onChange({ ...data, age: ageNum })}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            data.age === ageNum
+                              ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                              : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                          }`}
+                        >
+                          {ageNum}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Пол */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Пол героя
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...data, gender: 'boy' })}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                        data.gender === 'boy'
+                          ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                          : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                      }`}
+                    >
+                      <span>👦 Мальчик</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...data, gender: 'girl' })}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                        data.gender === 'girl'
+                          ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                          : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                      }`}
+                    >
+                      <span>👧 Девочка</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Цвет волос */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Цвет волос
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {hairColorsList.map((item) => {
+                      const isSel = appearance.hairColor === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => updateAppearance({ hairColor: item.id })}
+                          className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border flex items-center gap-2 transition-all ${
+                            isSel
+                              ? 'bg-white border-brand-500 shadow-xs ring-1 ring-brand-500 font-bold'
+                              : 'bg-white/70 border-cream-300 hover:bg-white text-stone-700'
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Тип волос */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Причёска
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {hairTypesList.map((item) => {
+                      const isSel = appearance.hairType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => updateAppearance({ hairType: item.id })}
+                          className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border flex items-center gap-2 transition-all ${
+                            isSel
+                              ? 'bg-white border-brand-500 shadow-xs ring-1 ring-brand-500 font-bold'
+                              : 'bg-white/70 border-cream-300 hover:bg-white text-stone-700'
+                          }`}
+                        >
+                          <span className="text-sm shrink-0">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Цвет глаз и Тон кожи */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Цвет глаз
+                    </label>
+                    <div className="space-y-1">
+                      {eyeColorsList.map((item) => {
+                        const isSel = appearance.eyeColor === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => updateAppearance({ eyeColor: item.id })}
+                            className={`w-full py-1 px-2 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                              isSel
+                                ? 'bg-white border-brand-500 shadow-2xs font-bold text-brand-900'
+                                : 'bg-white/60 border-cream-300 text-stone-600'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Тон кожи
+                    </label>
+                    <div className="space-y-1">
+                      {skinTonesList.map((item) => {
+                        const isSel = appearance.skinTone === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => updateAppearance({ skinTone: item.id })}
+                            className={`w-full py-1 px-2 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                              isSel
+                                ? 'bg-white border-brand-500 shadow-2xs font-bold text-brand-900'
+                                : 'bg-white/60 border-cream-300 text-stone-600'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Интерактивный нарисованный аватар ребёнка по его параметрам */}
@@ -215,8 +640,11 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           {/* Нарисованный малыш */}
           <div className="relative flex flex-col items-center">
             {/* Голова */}
-            <div className="relative w-12 h-12 rounded-full bg-[#FFE0BD] border-2 border-[#F3C59D] flex items-center justify-center">
-              {/* Волосы по параметрам из профиля */}
+            <div
+              className="relative w-12 h-12 rounded-full border-2 border-black/10 flex items-center justify-center transition-colors duration-300 shadow-inner"
+              style={{ backgroundColor: activeSkinHex }}
+            >
+              {/* Волосы по параметрам */}
               <div
                 className={`absolute -top-1 inset-x-0 ${
                   appearance.hairType?.includes('кудр')
@@ -230,10 +658,16 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               {data.gender === 'girl' && (
                 <div className="absolute -top-1.5 right-0 text-[10px]">🎀</div>
               )}
-              {/* Глазки */}
+              {/* Глазки с цветом */}
               <div className="flex gap-2 mt-2">
-                <div className="w-1.5 h-1.5 bg-[#2D3436] rounded-full" />
-                <div className="w-1.5 h-1.5 bg-[#2D3436] rounded-full" />
+                <div
+                  className="w-1.5 h-1.5 rounded-full border border-black/20 shadow-xs transition-colors duration-300"
+                  style={{ backgroundColor: activeEyeHex }}
+                />
+                <div
+                  className="w-1.5 h-1.5 rounded-full border border-black/20 shadow-xs transition-colors duration-300"
+                  style={{ backgroundColor: activeEyeHex }}
+                />
               </div>
             </div>
             {/* Одежда */}
@@ -254,7 +688,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
             <span>✨</span>
-            <span>{appearance.hairColor} {appearance.hairType} волосы (из профиля)</span>
+            <span>
+              {appearance.hairColor} {appearance.hairType} волосы • {appearance.eyeColor || 'карие'} глаза
+            </span>
           </div>
         </div>
       </div>

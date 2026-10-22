@@ -20,6 +20,7 @@ import { JobsService } from './modules/jobs/jobs.service';
 import { OrdersService } from './modules/orders/orders.service';
 import { jobWorker } from './modules/jobs/worker';
 import { WellflowAIProvider } from './services/ai/wellflow.ai.provider';
+import { CharacterVisionService } from './services/characterVision.service';
 
 export const app = fastify({
   logger: config.NODE_ENV === 'development',
@@ -302,7 +303,7 @@ app.register(
       return idea;
     });
 
-    api.post('/daily-idea/refresh', { preHandler: [authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    api.post('/daily-idea/refresh', { preHandler: [authenticate] }, async (req: FastifyRequest) => {
       const { child_id } = req.body as { child_id: string };
       const today = new Date().toISOString().split('T')[0];
 
@@ -839,9 +840,55 @@ app.register(
         });
       }
     });
+    // ----------------------------------------------------
+    // Zero-Storage Vision: Анализ фото ребенка через Gemini 1.5 Flash
+    // Фото никогда не сохраняется на диск/БД и обрабатывается исключительно in-memory
+    // ----------------------------------------------------
+    const characterVision = new CharacterVisionService();
+    const handleCharacterAnalyzePhoto = async (req: FastifyRequest, reply: FastifyReply) => {
+      const { imageBase64, mimeType } = (req.body as any) || {};
+      if (!imageBase64) {
+        return reply.status(400).send({
+          error: 'VALIDATION_ERROR',
+          message: 'Поле imageBase64 обязательно',
+        });
+      }
+      try {
+        const result = await characterVision.analyzePhoto({ imageBase64, mimeType });
+        return reply.status(200).send(result);
+      } catch (err: any) {
+        return reply.status(400).send({
+          error: 'VISION_ERROR',
+          message: err?.message || 'Не удалось проанализировать фото',
+        });
+      }
+    };
+
+    api.post('/character/analyze-photo', handleCharacterAnalyzePhoto);
   },
   { prefix: '/api/v1' }
 );
+
+// Прямой роут /api/character/analyze-photo без префикса /v1
+const rootCharacterVision = new CharacterVisionService();
+app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: FastifyReply) => {
+  const { imageBase64, mimeType } = (req.body as any) || {};
+  if (!imageBase64) {
+    return reply.status(400).send({
+      error: 'VALIDATION_ERROR',
+      message: 'Поле imageBase64 обязательно',
+    });
+  }
+  try {
+    const result = await rootCharacterVision.analyzePhoto({ imageBase64, mimeType });
+    return reply.status(200).send(result);
+  } catch (err: any) {
+    return reply.status(400).send({
+      error: 'VISION_ERROR',
+      message: err?.message || 'Не удалось проанализировать фото',
+    });
+  }
+});
 
 // Запуск сервера
 export async function startServer() {

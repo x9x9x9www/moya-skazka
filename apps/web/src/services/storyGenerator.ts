@@ -516,7 +516,7 @@ export async function generateDynamicStory(
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.warn('[StoryGenerator] ⚠️ Сервер генерации недоступен, переключаемся на локальную сказку без сбоя');
+    console.warn('[StoryGenerator] ⚠️ Сервер генерации недоступен, переключаемся на локальную сказку без сбоя:', lastError?.message);
     return createMockStory(params);
   }
 

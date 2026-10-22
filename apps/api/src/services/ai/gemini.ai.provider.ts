@@ -13,8 +13,6 @@ import {
   chooseStoryDna,
   createSeededRandom,
   normalizeStory,
-  buildRepairPrompt,
-  buildLengthRepairPrompt,
   buildCoverPrompt,
   buildScenePrompt,
   STYLE_3D_PIXAR,
@@ -41,7 +39,8 @@ export class GeminiAIProvider implements ITextAIProvider, IImageAIProvider {
       return await this.mockFallback.generateStory(input);
     }
 
-    const storyEngineInput = {
+    try {
+      const storyEngineInput = {
       childName: input.childName,
       age: input.age,
       theme: input.theme,

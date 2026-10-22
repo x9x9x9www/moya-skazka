@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift, Copy, Check, Share2, Users, Sparkles } from 'lucide-react';
+import { Gift, Copy, Check, Share2, Sparkles } from 'lucide-react';
 
 interface Screen11ReferralsProps {
   referralLink: string;

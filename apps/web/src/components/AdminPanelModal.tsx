@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, PlusCircle, MinusCircle, ShieldCheck, Database, BarChart3, AlertCircle } from 'lucide-react';
+import { X, RefreshCw, ShieldCheck, BarChart3 } from 'lucide-react';
 import { api } from '../api/client';
 
 interface AdminPanelModalProps {
