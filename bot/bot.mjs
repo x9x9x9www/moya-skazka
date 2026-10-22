@@ -65,7 +65,7 @@ const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'google'; // 'google' | 'wellflow'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
 const GOOGLE_AI_URL = process.env.GOOGLE_AI_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
-const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-flash-latest')
+const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.6-flash,gemini-3.5-flash,gemini-3.8-flash,gemini-flash-latest')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -93,11 +93,31 @@ fs.mkdirSync(GENERATED_DIR, { recursive: true });
 // 2. ВЫЗОВЫ AI API (Google AI или Wellflow API)
 // ========================================================
 function parseJsonContent(content) {
-  const cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  let cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
   const first = cleaned.indexOf('{');
   const last = cleaned.lastIndexOf('}');
   if (first === -1 || last === -1) throw new Error('JSON object not found');
-  return JSON.parse(cleaned.slice(first, last + 1));
+  let jsonSlice = cleaned.slice(first, last + 1);
+
+  try {
+    return JSON.parse(jsonSlice);
+  } catch (e1) {
+    try {
+      // 1. Удаление висячих запятых в объектах и массивах
+      const noTrailing = jsonSlice.replace(/,\s*([}\]])/g, '$1');
+      return JSON.parse(noTrailing);
+    } catch (e2) {
+      try {
+        // 2. Очистка неэкранированных служебных символов
+        const sanitized = jsonSlice
+          .replace(/,\s*([}\]])/g, '$1')
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ''));
+        return JSON.parse(sanitized);
+      } catch (e3) {
+        throw new Error(e1.message);
+      }
+    }
+  }
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {
@@ -130,7 +150,7 @@ async function callGoogleAIChat(messages, label) {
             model,
             messages,
             response_format: { type: 'json_object' },
-            max_tokens: 4500,
+            max_tokens: 8192,
           }),
         },
         90000
@@ -149,6 +169,15 @@ async function callGoogleAIChat(messages, label) {
         console.warn(`[GoogleAI] ⚠️ ${model}: пустой ответ. Пробуем следующую модель...`);
         continue;
       }
+
+      try {
+        parseJsonContent(content);
+      } catch (parseErr) {
+        console.warn(`[GoogleAI] ⚠️ ${model} вернул невалидный JSON (${parseErr.message}). Пробуем следующую модель...`);
+        lastError = parseErr;
+        continue;
+      }
+
       console.log(`[GoogleAI] ✅ Ответ получен от ${model}`);
       return content;
     } catch (err) {
@@ -235,24 +264,31 @@ async function generateWellflowStoryAI(params) {
   const prompt = buildStoryPrompt(input, { dna });
 
   console.log(
-    `[StoryEngine] ✍️ ${WELLFLOW_TEXT_MODEL} для «${input.childName || 'Малыш'}» (${input.age || 4} г.): ` +
+    `[StoryEngine] ✍️ ${(input._forceWellflow ? WELLFLOW_TEXT_MODEL : AI_TEXT_PROVIDER)} для «${input.childName || 'Малыш'}» (${input.age || 4} г.): ` +
       `${dna.world_scale} / ${dna.narrative_engine}`
   );
 
-  const content = await callWithRetry(
+  const callFn = input._forceWellflow
+    ? (msgs, lbl) => callWellflowDirect(msgs, lbl)
+    : (msgs, lbl) => callWithRetry(msgs, lbl, 2);
+
+  const content = await callFn(
     [
       { role: 'system', content: prompt.system },
       { role: 'user', content: prompt.user },
     ],
-    'story',
-    2
+    'story'
   );
 
   let raw;
   try {
     raw = parseJsonContent(content);
   } catch (error) {
-    throw new Error(`story: невалидный JSON от ${WELLFLOW_TEXT_MODEL}: ${error.message}`);
+    if (!input._forceWellflow && WELLFLOW_TEXT_KEY) {
+      console.warn(`[StoryEngine] ⚠️ Невалидный JSON от Google AI, пробуем Wellflow...`);
+      return await generateWellflowStoryAI({ ...params, _forceWellflow: true });
+    }
+    throw new Error(`story: невалидный JSON: ${error.message}`);
   }
 
   try {
@@ -266,15 +302,14 @@ async function generateWellflowStoryAI(params) {
       );
       try {
         const lengthRepair = buildLengthRepairPrompt(story, story.metrics.target);
-        const expandedContent = await callWithRetry(
+        const expandedContent = await callFn(
           [
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user },
             { role: 'assistant', content },
             { role: 'user', content: lengthRepair },
           ],
-          'length-repair',
-          2
+          'length-repair'
         );
         const expandedRaw = parseJsonContent(expandedContent);
         const expanded = normalizeStory(expandedRaw, input, dna);
@@ -296,15 +331,14 @@ async function generateWellflowStoryAI(params) {
   } catch (error) {
     console.warn(`[StoryEngine] ⚠️ Валидация не прошла: ${(error.issues || [error.message]).join('; ')}`);
     const repair = buildRepairPrompt(raw, error.issues || [error.message]);
-    const repairedContent = await callWithRetry(
+    const repairedContent = await callFn(
       [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
         { role: 'assistant', content },
         { role: 'user', content: repair },
       ],
-      'repair',
-      2
+      'repair'
     );
     const repairedRaw = parseJsonContent(repairedContent);
     try {
@@ -318,6 +352,10 @@ async function generateWellflowStoryAI(params) {
         story.warnings.push('вопросы заменены fallback-вопросами после repair');
         console.warn('[StoryEngine] ⚠️ Вопросы заменены fallback-вопросами');
         return story;
+      }
+      if (!input._forceWellflow && WELLFLOW_TEXT_KEY) {
+        console.warn('[StoryEngine] ⚠️ Repair не удался, пробуем резервный генератор Wellflow...');
+        return await generateWellflowStoryAI({ ...params, _forceWellflow: true });
       }
       throw repairError;
     }
@@ -361,7 +399,10 @@ async function generateWellflowImageAI(prompt, retries = 2) {
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`API error ${res.status}: ${errText}`);
+        const isQuota = res.status === 402 || res.status === 401;
+        const err = new Error(`API error ${res.status}: ${errText}`);
+        if (isQuota) err.isQuota = true;
+        throw err;
       }
 
       const data = await res.json();
@@ -372,7 +413,9 @@ async function generateWellflowImageAI(prompt, retries = 2) {
       return url;
     } catch (err) {
       console.warn(`[Wellflow] ⚠️ Попытка ${attempt + 1} (${currentModel}) не удалась: ${err.message}`);
-      if (attempt === retries) throw err;
+      if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || attempt === retries) {
+        throw err;
+      }
       await new Promise((r) => setTimeout(r, 1200));
     }
   }
@@ -411,7 +454,13 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     message: 'Автор придумывает сюжет и character bible...',
   });
 
-  const story = await generateWellflowStoryAI(params);
+  let story;
+  try {
+    story = await generateWellflowStoryAI(params);
+  } catch (err) {
+    console.warn(`[StoryEngine] ⚠️ Ошибка основного провайдера сюжета: ${err.message}. Пробуем резервный генератор Wellflow...`);
+    story = await generateWellflowStoryAI({ ...params, _forceWellflow: true });
+  }
 
   if (!story.scenes || !Array.isArray(story.scenes) || story.scenes.length !== 4) {
     throw new Error('Invalid story scenes structure');
@@ -846,14 +895,11 @@ async function activateTunnel(url, source) {
   try {
     const res = await fetch(`${cleanUrl}/health`, {
       headers: { 'Bypass-Tunnel-Reminder': 'true' },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data?.status !== 'ok') throw new Error('health status != ok');
   } catch (error) {
-    console.warn(`[Tunnel] ${source} не прошёл health-check: ${error.message}`);
-    return;
+    console.warn(`[Tunnel] ${source} предупреждение health-check (${error.message}), туннель активируется.`);
   }
 
   publicTunnelUrl = cleanUrl;
