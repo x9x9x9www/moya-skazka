@@ -21,7 +21,7 @@ export const Screen11_Referrals: React.FC<Screen11ReferralsProps> = ({
   };
 
   const handleShare = () => {
-    const text = 'Создай волшебную персонализированную сказку для своего ребёнка в приложении «Моя сказка»! Первая история бесплатно:';
+    const text = 'Привет! В приложении «Моя сказка» можно оживить вечернюю историю с твоим малышом в главной роли. Первая сказка в подарок: ';
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`;
     window.open(tgUrl, '_blank');
   };
@@ -42,7 +42,7 @@ export const Screen11_Referrals: React.FC<Screen11ReferralsProps> = ({
         </h2>
 
         <p className="text-xs text-stone-600 max-w-xs leading-relaxed">
-          Пригласите друга. Когда он впервые оплатит сказку или набор, вы получите одну иллюстрированную книгу бесплатно.
+          Поделитесь с близкими: когда друг откроет для себя сказки, вы получите одну подарочную иллюстрированную книгу для своего малыша.
         </p>
       </div>
 

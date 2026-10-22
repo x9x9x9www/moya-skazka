@@ -337,7 +337,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           ) : (
             <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-[11px] font-bold">
               <Sparkles className="w-3.5 h-3.5 text-brand-600 fill-brand-500" />
-              <span>{isSecondChild ? 'Второй ребёнок' : 'Регистрация профиля'}</span>
+              <span>{isSecondChild ? 'Второй герой' : 'Давайте знакомиться'}</span>
             </div>
           )}
 
@@ -374,8 +374,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           </h1>
           <p className="text-xs text-stone-600 mt-1">
             {step === 1
-              ? 'Заполните за 15 секунд, чтобы сказки оживали именно для вашего ребёнка'
-              : 'Чтобы история была по-настоящему душевной и бережно поддерживала ребёнка'}
+              ? 'Расскажите немного о малыше, и сказка оживёт специально для него'
+              : 'Чтобы сказка получилась тёплой, уютной и по-настоящему близкой малышу'}
           </p>
         </div>
       </div>
@@ -959,7 +959,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
             onClick={handleNextStep}
             className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
           >
-            <span>Далее: Характер и увлечения</span>
+            <span>Дальше: Что любит малыш</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         ) : (
@@ -981,7 +981,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5 fill-white text-white" />
-              <span>{isSecondChild ? 'Сохранить героя' : 'Готово! Открыть сказки'}</span>
+              <span>{isSecondChild ? 'Сохранить героя' : 'В добрую сказку!'}</span>
               <FairyStarIcon className="w-4 h-4 text-amber-200" />
             </button>
           </div>

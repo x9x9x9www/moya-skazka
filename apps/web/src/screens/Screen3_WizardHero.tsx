@@ -478,7 +478,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               onClick={() => setShowManualAppearance(!showManualAppearance)}
               className="w-full py-2 px-3 text-xs font-bold text-brand-700 hover:text-brand-800 flex items-center justify-center gap-1.5 transition-colors"
             >
-              <span>Или настройте внешность вручную</span>
+              <span>Выбрать внешность в деталях</span>
               {showManualAppearance ? (
                 <ChevronUp className="w-3.5 h-3.5 text-brand-500" />
               ) : (
@@ -995,7 +995,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           disabled={!data.childName.trim() || data.interests.length === 0}
           className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
-          <span>Далее к деталям</span>
+          <span>Дальше к сказке</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>
