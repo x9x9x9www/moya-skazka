@@ -180,7 +180,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           <span className="text-[11px] text-brand-700 font-medium">Волшебный мир</span>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 -mx-4 px-4 scrollbar-none snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-1.5 pt-0.5 -mx-4 px-4 no-scrollbar scrollbar-none snap-x">
           {/* Закладка 1: Полка сказок */}
           <button
             onClick={() => onNavigateTab('books')}

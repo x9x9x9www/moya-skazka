@@ -16,17 +16,32 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Стилизация скроллбара */
+/* Полное скрытие всех нативных скроллбаров (ползунков) во всем приложении для чистого мобильного интерфейса */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+*::-webkit-scrollbar,
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  display: none !important; /* Chrome, Safari, Opera, WebKit, Telegram WebApp */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.no-scrollbar,
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
-::-webkit-scrollbar-thumb {
-  background: #EADFCF;
-  border-radius: 9999px;
+
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* Темы для читалки (Экран 12) */
