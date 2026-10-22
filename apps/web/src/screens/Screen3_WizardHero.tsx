@@ -414,7 +414,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           <p className="text-[11px] text-stone-600 mt-1.5 leading-relaxed flex items-start gap-1.5 bg-white/70 p-2.5 rounded-xl border border-amber-100">
             <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
             <span>
-              <strong className="font-semibold text-stone-700">🔒 Мы заботимся о безопасности:</strong> фото обрабатывается нейросетью за пару секунд и сразу навсегда удаляется. Мы не храним снимки детей.
+              <strong className="font-semibold text-stone-700">🔒 Мы заботимся о безопасности:</strong> снимок анализируется мгновенно в оперативной памяти и сразу навсегда удаляется. Мы никогда не храним фото детей.
             </span>
           </p>
         </div>

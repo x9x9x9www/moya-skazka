@@ -398,7 +398,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-stone-500 leading-tight mt-0.5">
-                    AI подберёт причёску и глазки. Вы сможете всё скорректировать. Фото не сохраняется.
+                    Волшебное зеркало определит причёску и глазки. Вы сможете всё скорректировать. Фото не сохраняется.
                   </div>
                 </div>
               </div>
@@ -408,7 +408,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
             {isAnalyzingPhoto && (
               <div className="flex items-center justify-center gap-2.5 py-3.5 px-3 rounded-2xl bg-white/90 border border-amber-200 text-amber-900 text-xs font-semibold animate-pulse">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
-                <span>AI бережно анализирует черты лица малыша...</span>
+                <span>Волшебное зеркало бережно изучает снимок...</span>
               </div>
             )}
 

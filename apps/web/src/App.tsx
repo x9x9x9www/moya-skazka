@@ -643,7 +643,7 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>2. Обложка + 4 иллюстрации (Nano-Banana-2)</span>
+                  <span>2. Живая обложка + 4 сказочные иллюстрации</span>
                 </span>
                 <span className="text-[11px] text-stone-500">
                   {creationStage === 'writing'
@@ -670,7 +670,7 @@ export const App: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-stone-500 leading-tight">
-              Каждая сказка и все 4 иллюстрации создаются нейросетью с нуля специально для вашего ребёнка. Никаких шаблонов!
+              Каждая сказка и все 4 иллюстрации создаются с чистого листа специально для вашего ребёнка. Настоящее волшебство без шаблонов!
             </p>
           </div>
         </div>

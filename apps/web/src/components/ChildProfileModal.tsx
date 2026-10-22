@@ -258,7 +258,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-stone-500 leading-tight mt-0.5">
-                    AI подберёт параметры внешности. Фото не сохраняется (152-ФЗ).
+                    Волшебное зеркало определит параметры внешности. Фото не сохраняется (152-ФЗ).
                   </div>
                 </div>
               </div>
@@ -266,7 +266,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               {isAnalyzingPhoto && (
                 <div className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/90 border border-amber-200 text-amber-900 text-xs font-semibold animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
-                  <span>AI определяет черты лица малыша...</span>
+                  <span>Определяем черты лица малыша...</span>
                 </div>
               )}
 

@@ -464,7 +464,7 @@ export async function generateDynamicStory(
     onProgress?.({
       stage: 'drawing',
       progress: 65,
-      message: 'Художник создаёт 3D Pixar-иллюстрации...',
+      message: 'Сказочный художник рисует живые иллюстрации...',
     });
     await new Promise((r) => setTimeout(r, 700));
 
@@ -499,7 +499,7 @@ export async function generateDynamicStory(
         onProgress?.({
           stage: 'writing',
           progress: 25,
-          message: 'Повторное подключение к ИИ-мосту...',
+          message: 'Связываемся со сказочной мастерской...',
         });
       }
       storyData = await callWellflowStory(params, 120000, onProgress);
@@ -559,7 +559,7 @@ export async function generateDynamicStory(
       onProgress?.({
         stage: 'drawing',
         progress: 55,
-        message: 'Создаём 3D Pixar-иллюстрации в Nano-Banana-2...',
+        message: 'Волшебная мастерская раскрашивает акварельные сцены...',
       });
 
       let completedCount = scenes.length - missingScenes.length;
