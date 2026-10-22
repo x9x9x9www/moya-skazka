@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Plus, Settings, Sparkles, Bell } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { BoyAvatar, GirlAvatar, FairyStarIcon } from './FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 
@@ -9,7 +9,7 @@ interface HeaderProps {
   balance: number;
   onBack?: () => void;
   onOpenChildModal: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,14 +18,13 @@ export const Header: React.FC<HeaderProps> = ({
   balance,
   onBack,
   onOpenChildModal,
-  onOpenSettings,
 }) => {
   const showBackButton = onBack && currentScreen !== 'home' && currentScreen !== 'onboarding';
 
   return (
-    <header className="sticky top-0 z-40 bg-cream-100/90 backdrop-blur-md px-4 pt-3 pb-2 border-b border-cream-300/60">
+    <header className="sticky top-0 z-40 bg-cream-100/60 backdrop-blur-md px-4 py-2.5 border-b border-cream-200/40 transition-all">
       <div className="flex items-center justify-between">
-        {/* Левая часть: кнопка Назад или Профиль ребёнка */}
+        {/* Левая часть: кнопка Назад или Крупный круглый аватар ребенка с мягкой золотой каймой и именем */}
         <div className="flex items-center gap-2">
           {showBackButton ? (
             <button
@@ -38,9 +37,10 @@ export const Header: React.FC<HeaderProps> = ({
           ) : activeChild ? (
             <button
               onClick={onOpenChildModal}
-              className="flex items-center gap-2 bg-cream-200/90 hover:bg-cream-300/80 active:scale-95 transition-all px-2.5 py-1.5 rounded-full border border-cream-300 shadow-sm"
+              className="flex items-center gap-2.5 bg-white/75 hover:bg-white/90 active:scale-95 transition-all pl-1.5 pr-3 py-1 rounded-full border border-cream-300/80 shadow-xs backdrop-blur-sm group"
+              title="Переключить профиль ребёнка или открыть настройки"
             >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden border border-amber-300 shadow-sm shrink-0">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-amber-400/80 shadow-sm shrink-0 bg-cream-50 group-hover:ring-amber-500 transition-all">
                 {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? (
                   <GirlAvatar className="w-full h-full" />
                 ) : (
@@ -55,53 +55,23 @@ export const Header: React.FC<HeaderProps> = ({
                   {activeChild.age} года
                 </div>
               </div>
-              <Plus className="w-3.5 h-3.5 text-stone-400 ml-0.5" />
             </button>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center border border-amber-300/60 shadow-inner">
-              <FairyStarIcon className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center ring-2 ring-amber-300/60 shadow-inner">
+              <FairyStarIcon className="w-4 h-4 text-amber-600" />
             </div>
           )}
         </div>
 
-        {/* Центр: строго одна надпись «Моя Сказка» */}
-        <div className="text-center">
-          <div className="font-serif font-bold text-base text-stone-900 tracking-tight">
-            Моя Сказка
-          </div>
-        </div>
-
-        {/* Правая часть: Баланс кредитов, колокольчик и настройки */}
-        <div className="flex items-center gap-1.5">
+        {/* Правая часть: Статус-пилюля с балансом кредитов (золотая звезда + цифра) с эффектом стекла */}
+        <div className="flex items-center gap-2">
           <div
-            className="flex items-center gap-1 bg-amber-100/90 text-amber-900 border border-amber-200/80 px-2 py-1 rounded-full text-xs font-bold shadow-sm"
+            className="flex items-center gap-1.5 bg-white/70 text-amber-900 border border-amber-300/60 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold shadow-xs transition-all hover:bg-white/90"
             title="Доступные книжные кредиты"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-            <span>{balance}</span>
+            <FairyStarIcon className="w-4 h-4 text-amber-500" />
+            <span className="font-mono text-xs">{balance}</span>
           </div>
-
-          <button
-            onClick={() =>
-              alert(
-                '✨ Добро пожаловать в «Моя сказка»!\n\nПервая история для вашего малыша доступна совершенно бесплатно. Приятного чтения!'
-              )
-            }
-            className="relative p-1.5 text-stone-600 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
-            aria-label="Уведомления"
-            title="Уведомления"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-          </button>
-
-          <button
-            onClick={onOpenSettings}
-            className="p-1.5 text-stone-600 hover:text-stone-900 active:scale-95 transition-transform rounded-full hover:bg-cream-200"
-            aria-label="Настройки"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>

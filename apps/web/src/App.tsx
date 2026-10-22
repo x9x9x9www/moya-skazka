@@ -1071,6 +1071,7 @@ export const App: React.FC = () => {
         childrenList={children}
         activeChildId={activeChildId}
         onClose={() => setChildModalOpen(false)}
+        onOpenSettings={() => setCurrentScreen('settings')}
         onAddNewChild={() => {
           setChildModalOpen(false);
           setIsRegisteringSecondChild(true);

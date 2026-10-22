@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload, Scissors } from 'lucide-react';
+import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload, Scissors, Settings } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 import { api } from '../api/client';
 import {
@@ -20,6 +20,7 @@ interface ChildProfileModalProps {
   onSelectChild: (childId: string) => void;
   onCreateChild: (data: { name: string; age: number; interests: string[]; appearance: any }) => Promise<void>;
   onAddNewChild?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
@@ -30,6 +31,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   onSelectChild,
   onCreateChild,
   onAddNewChild,
+  onOpenSettings,
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -225,6 +227,20 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               <UserPlus className="w-4 h-4" />
               <span>Добавить ещё одного ребёнка</span>
             </button>
+
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenSettings();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-cream-200/80 hover:bg-cream-300 text-stone-700 font-bold text-xs transition-colors mt-2"
+              >
+                <Settings className="w-4 h-4 text-stone-500" />
+                <span>Настройки приложения и чтения</span>
+              </button>
+            )}
           </div>
         ) : (
           <form onSubmit={handleCreate} className="py-4 space-y-4">
