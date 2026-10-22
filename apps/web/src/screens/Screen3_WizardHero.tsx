@@ -541,7 +541,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <BoyAvatar className="w-4 h-4" />
+                      <BoyAvatar className="w-4 h-4 shrink-0" />
                       <span>Мальчик</span>
                     </button>
                     <button
@@ -553,7 +553,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <GirlAvatar className="w-4 h-4" />
+                      <GirlAvatar className="w-4 h-4 shrink-0" />
                       <span>Девочка</span>
                     </button>
                   </div>
@@ -789,14 +789,14 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   key={sug.text}
                   type="button"
                   onClick={() => updateAppearance({ clothingItem: sug.text })}
-                  className={`py-1.5 px-3 rounded-full text-xs font-medium border transition-all ${
+                  className={`inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium border text-left whitespace-nowrap transition-all ${
                     isSelected
                       ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
                       : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 hover:border-brand-300 active:scale-95'
                   }`}
                 >
-                  <span className="mr-1">{sug.icon}</span>
-                  <span>{sug.text}</span>
+                  <span className="shrink-0 flex items-center justify-center">{sug.icon}</span>
+                  <span className="leading-tight">{sug.text}</span>
                 </button>
               );
             })}
@@ -808,7 +808,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-            <TeddyBearIcon className="w-4 h-4 text-amber-700" />
+            <TeddyBearIcon className="w-4 h-4 text-amber-700 shrink-0" />
             <span>Любимая игрушка-спутник</span>
           </label>
           <span className="text-[11px] font-medium text-brand-700">впишите любую</span>
@@ -848,14 +848,14 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   key={toy.id}
                   type="button"
                   onClick={() => updateAppearance({ toy: toy.id })}
-                  className={`py-1.5 px-3 rounded-full text-xs font-medium border transition-all ${
+                  className={`inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium border text-left whitespace-nowrap transition-all ${
                     isSelected
                       ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
                       : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 hover:border-brand-300 active:scale-95'
                   }`}
                 >
-                  <span className="mr-1">{toy.icon}</span>
-                  <span>{toy.label}</span>
+                  <span className="shrink-0 flex items-center justify-center">{toy.icon}</span>
+                  <span className="leading-tight">{toy.label}</span>
                 </button>
               );
             })}
@@ -966,7 +966,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => onChange({ ...data, theme: item.id })}
-                className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
+                className={`inline-flex items-center justify-center px-3.5 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
                   isSelected
                     ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
                     : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'

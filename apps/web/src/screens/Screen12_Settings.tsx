@@ -171,7 +171,7 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
                 className="w-full p-3.5 flex items-center justify-between text-stone-800 hover:bg-cream-50 transition-colors text-left"
               >
                 <div className="flex items-center gap-2.5 font-medium">
-                  <span className="text-base">{item.icon}</span>
+                  <span className="text-base shrink-0">{item.icon}</span>
                   <span>{item.label}</span>
                 </div>
                 {isSelected ? (

@@ -649,15 +649,15 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => setHairLength(item.id)}
-                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                         isSelected
                           ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 text-brand-800 shadow-sm'
                           : 'border-cream-300 bg-cream-50 hover:bg-cream-100 text-stone-700'
                       }`}
                     >
-                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-sm shrink-0 flex items-center justify-center">{item.icon}</span>
                       <span className="text-xs font-bold">{item.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto shrink-0" />}
                     </button>
                   );
                 })}
@@ -675,15 +675,15 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => setHairStructure(item.id)}
-                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                      className={`py-2 px-3 rounded-2xl border transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                         isSelected
                           ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 text-brand-800 shadow-sm'
                           : 'border-cream-300 bg-cream-50 hover:bg-cream-100 text-stone-700'
                       }`}
                     >
-                      <span className="text-sm">{item.icon}</span>
+                      <span className="text-sm shrink-0 flex items-center justify-center">{item.icon}</span>
                       <span className="text-xs font-bold">{item.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 ml-auto shrink-0" />}
                     </button>
                   );
                 })}
@@ -882,13 +882,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       setIsCustomToy(false);
                       setToy(t.id);
                     }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
                       isSelected
                         ? 'bg-amber-500 text-white shadow-sm'
                         : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                     }`}
                   >
-                    <span>{t.icon}</span>
+                    <span className="shrink-0 flex items-center justify-center">{t.icon}</span>
                     <span>{t.label}</span>
                   </button>
                 );
@@ -896,13 +896,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCustomToy(true)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
                   isCustomToy
                     ? 'bg-amber-500 text-white shadow-sm'
                     : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                 }`}
               >
-                <Pencil className="w-3.5 h-3.5 text-stone-500" />
+                <Pencil className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                 <span>Своя игрушка...</span>
               </button>
             </div>

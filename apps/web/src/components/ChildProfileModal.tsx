@@ -430,14 +430,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     key={t.id}
                     type="button"
                     onClick={() => setHairType(t.id)}
-                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 whitespace-nowrap ${
                       hairType === t.id
                         ? 'bg-brand-50 border-brand-500 text-brand-800'
                         : 'bg-white border-cream-300 text-stone-600'
                     }`}
                   >
-                    <span>{t.icon}</span>
-                    <span>{t.label}</span>
+                    <span className="shrink-0 flex items-center justify-center">{t.icon}</span>
+                    <span className="truncate">{t.label}</span>
                   </button>
                 ))}
               </div>
