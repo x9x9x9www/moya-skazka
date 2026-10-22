@@ -62,7 +62,8 @@ if (!BOT_TOKEN) {
 }
 
 const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.4';
-const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'google'; // 'google' | 'wellflow'
+const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
+const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow'; // 'wellflow' | 'google'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
 const GOOGLE_AI_URL = process.env.GOOGLE_AI_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
 const GOOGLE_TEXT_MODELS = (process.env.GOOGLE_TEXT_MODELS || 'gemini-3.6-flash,gemini-3.5-flash,gemini-3.8-flash,gemini-flash-latest')
@@ -448,6 +449,100 @@ async function saveGeneratedImage(remoteUrl, jobId, name) {
  * Картинки сохраняются локально в bot/generated/<jobId>/ и отдаются по /media/...
  */
 async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
+  if (AI_MOCK_MODE) {
+    console.log(`[StoryEngine] ⚡️ Режим тестирования (AI_MOCK_MODE): генерация без затрат API для «${params.childName || 'Малыш'}»`);
+    onProgress?.({
+      stage: 'writing',
+      progress: 25,
+      message: 'Сочиняем уникальный сюжет и character bible...',
+    });
+    await new Promise((r) => setTimeout(r, 600));
+
+    onProgress?.({
+      stage: 'drawing',
+      progress: 65,
+      message: 'Художник создаёт 3D Pixar-иллюстрации...',
+    });
+    await new Promise((r) => setTimeout(r, 700));
+
+    onProgress?.({
+      stage: 'drawing',
+      progress: 90,
+      message: 'Создаём иллюстрации (4 из 5 готовы)...',
+    });
+    await new Promise((r) => setTimeout(r, 500));
+
+    const child = params.childName || 'Малыш';
+    const age = params.age || 4;
+    const theme = params.theme || 'Космос и дружба';
+    const interest = params.interests?.[0] || 'волшебные звёзды';
+    const wishes = params.customWishes ? ` Любимая вещь и верный спутник — ${params.customWishes}.` : '';
+    const hair = params.appearance?.hairColor
+      ? `${params.appearance.hairLength || ''} ${params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
+      : 'аккуратные волосы';
+    const clothes = params.appearance?.clothingDescription
+      ? `${params.appearance.clothingDescription} (${params.appearance.clothingColor || 'любимого цвета'})`
+      : 'уютная одежда';
+
+    const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';
+    const mockStory = {
+      title: `${child} и тайна «${theme}»`,
+      cover_url: `${baseUrl}/illustrations/demo/cover.jpg`,
+      metrics: { total_words: 420 },
+      characters: [child, 'Пушистый спутник'],
+      scenes: [
+        {
+          index: 1,
+          text: `Однажды тёплым вечером ${child} (${age} лет) сидел в уютной комнате. На герое была ${clothes}, а ${hair} забавно блестели в лучах заката. Вдруг за окном вспыхнул загадочный огонёк!${wishes} Это начиналось самое удивительное путешествие, полное открытий и чудес.`,
+          image_url: `${baseUrl}/illustrations/demo/scene_1.jpg`,
+          visual: `3D Pixar style scene 1 for ${child}`,
+        },
+        {
+          index: 2,
+          text: `Шагнув навстречу приключениям, ${child} очутился в волшебном месте, где вокруг летали ${interest}. Навстречу вышел добрый пушистый спутник с лучистыми глазами. Он подмигнул и прошептал: «Я ждал тебя, ${child}! Только тот, у кого доброе и смелое сердце, сможет разгадать главную тайну!»`,
+          image_url: `${baseUrl}/illustrations/demo/scene_2.jpg`,
+          visual: `3D Pixar style scene 2 for ${child}`,
+        },
+        {
+          index: 3,
+          text: `Впереди возникло испытание: тропинка вела через мерцающий лабиринт, где нужно было проявить терпение и смекалку. ${child} улыбнулся, вспомнил свои самые любимые увлечения и помог новому другу перебраться через искрящийся ручей. Доброта всегда освещает самый тёмный путь!`,
+          image_url: `${baseUrl}/illustrations/demo/scene_3.jpg`,
+          visual: `3D Pixar style scene 3 for ${child}`,
+        },
+        {
+          index: 4,
+          text: `Тайна была открыта: над головой зажглось целое созвездие дружбы! Уставший, но бесконечно счастливый, ${child} вернулся в свою уютную кроватку. Звёзды тихо шептали за окном колыбельную, обещая, что завтра будет ещё более прекрасный и радостный день. Спокойной ночи, маленький герой!`,
+          image_url: `${baseUrl}/illustrations/demo/scene_4.jpg`,
+          visual: `3D Pixar style scene 4 for ${child}`,
+        },
+      ],
+      questions: params.includeQuestions
+        ? [
+            {
+              after_scene: 2,
+              question: `Как ты думаешь, что почувствовал ${child}, когда встретил нового пушистого друга?`,
+              parent_hint: 'Спросите ребёнка о доверии и о том, как приятно находить новых друзей.',
+              skill_tag: 'empathy',
+            },
+            {
+              after_scene: 4,
+              question: `А какой поступок ${child} помог друзьям справиться с препятствием?`,
+              parent_hint: 'Подчеркните ценность доброты, терпения и взаимовыручки перед сном.',
+              skill_tag: 'emotions',
+            },
+          ]
+        : [],
+    };
+
+    onProgress?.({
+      stage: 'finishing',
+      progress: 100,
+      message: 'Сказка готова!',
+    });
+
+    return mockStory;
+  }
+
   onProgress?.({
     stage: 'writing',
     progress: 20,
@@ -649,6 +744,32 @@ const server = http.createServer(async (req, res) => {
           'Access-Control-Allow-Origin': '*',
         });
         res.end(JSON.stringify({ error: 'imageBase64 is required' }));
+        return;
+      }
+
+      if (AI_MOCK_MODE) {
+        console.log('[PhotoVision] ⚡️ Режим тестирования (AI_MOCK_MODE): мгновенный возврат тестового профиля');
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(
+          JSON.stringify({
+            status: 'ok',
+            analysis: {
+              gender: 'boy',
+              estimatedAge: 4,
+              hairColor: 'русые',
+              hairLength: 'короткие',
+              hairStructure: 'прямые',
+              eyeColor: 'карие',
+              skinTone: 'персиковая',
+              clothingDescription: 'уютная футболка',
+              clothingColor: 'небесно-голубой',
+              confidenceTip: 'Внешность малыша определена (режим тестирования без затрат API)!',
+            },
+          })
+        );
         return;
       }
 

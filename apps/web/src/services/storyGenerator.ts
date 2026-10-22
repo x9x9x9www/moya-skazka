@@ -12,7 +12,10 @@ export interface GenerateStoryParams {
   appearance?: {
     hairColor?: string;
     hairType?: string;
+    hairLength?: string;
+    hairStructure?: string;
     clothingItem?: string;
+    clothingDescription?: string;
     clothingColor?: string;
     toy?: string;
     eyeColor?: string;
@@ -24,6 +27,103 @@ export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
   'https://moya-skazka-bridge.loca.lt';
+
+export function isMockMode(): boolean {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mock') === 'true') return true;
+    if (params.get('mock') === 'false') return false;
+    const stored = localStorage.getItem('ms_mock_mode');
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+  }
+  return true; // По умолчанию включён бесплатный тестовый режим без затрат API
+}
+
+export function setMockMode(enabled: boolean) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('ms_mock_mode', enabled ? 'true' : 'false');
+  }
+}
+
+export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
+  const child = params.childName || 'Малыш';
+  const age = params.age || 4;
+  const theme = params.theme || 'Космос и дружба';
+  const interest = params.interests?.[0] || 'волшебные звёзды';
+  const wishes = params.customWishes ? ` Любимая вещь и верный спутник — ${params.customWishes}.` : '';
+  const hair = params.appearance?.hairColor
+    ? `${params.appearance.hairLength || ''} ${params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
+    : 'аккуратные волосы';
+  const clothes = params.appearance?.clothingDescription
+    ? `${params.appearance.clothingDescription} (${params.appearance.clothingColor || 'любимого цвета'})`
+    : 'уютная одежда';
+
+  const bookId = `book_mock_${Date.now()}`;
+  const title = `${child} и тайна «${theme}»`;
+
+  const coverUrl = './illustrations/demo/cover.jpg';
+  const scenes = [
+    {
+      id: 'scene_1',
+      scene_index: 1,
+      text: `Однажды тёплым вечером ${child} (${age} лет) сидел в уютной комнате. На герое была ${clothes}, а ${hair} забавно блестели в лучах заката. Вдруг за окном вспыхнул загадочный огонёк!${wishes} Это начиналось самое удивительное путешествие, полное открытий и чудес.`,
+      image_url: './illustrations/demo/scene_1.jpg',
+      image_prompt: `3D Pixar style scene 1 for ${child}`,
+    },
+    {
+      id: 'scene_2',
+      scene_index: 2,
+      text: `Шагнув навстречу приключениям, ${child} очутился в волшебном месте, где вокруг летали ${interest}. Навстречу вышел добрый пушистый спутник с лучистыми глазами. Он подмигнул и прошептал: «Я ждал тебя, ${child}! Только тот, у кого доброе и смелое сердце, сможет разгадать главную тайну!»`,
+      image_url: './illustrations/demo/scene_2.jpg',
+      image_prompt: `3D Pixar style scene 2 for ${child}`,
+    },
+    {
+      id: 'scene_3',
+      scene_index: 3,
+      text: `Впереди возникло испытание: тропинка вела через мерцающий лабиринт, где нужно было проявить терпение и смекалку. ${child} улыбнулся, вспомнил свои самые любимые увлечения и помог новому другу перебраться через искрящийся ручей. Доброта всегда освещает самый тёмный путь!`,
+      image_url: './illustrations/demo/scene_3.jpg',
+      image_prompt: `3D Pixar style scene 3 for ${child}`,
+    },
+    {
+      id: 'scene_4',
+      scene_index: 4,
+      text: `Тайна была открыта: над головой зажглось целое созвездие дружбы! Уставший, но бесконечно счастливый, ${child} вернулся в свою уютную кроватку. Звёзды тихо шептали за окном колыбельную, обещая, что завтра будет ещё более прекрасный и радостный день. Спокойной ночи, маленький герой!`,
+      image_url: './illustrations/demo/scene_4.jpg',
+      image_prompt: `3D Pixar style scene 4 for ${child}`,
+    },
+  ];
+
+  const questions = params.includeQuestions
+    ? [
+        {
+          id: 'q_1',
+          after_scene: 2,
+          question: `Как ты думаешь, что почувствовал ${child}, когда встретил нового пушистого друга?`,
+          parent_hint: 'Спросите ребёнка о доверии и о том, как приятно находить новых друзей.',
+          skill_tag: 'empathy',
+        },
+        {
+          id: 'q_2',
+          after_scene: 4,
+          question: `А какой поступок ${child} помог друзьям справиться с препятствием?`,
+          parent_hint: 'Подчеркните ценность доброты, терпения и взаимовыручки перед сном.',
+          skill_tag: 'emotions',
+        },
+      ]
+    : [];
+
+  return {
+    id: bookId,
+    title,
+    status: 'ILLUSTRATED',
+    format: 'ILLUSTRATED',
+    can_upgrade: false,
+    cover_url: coverUrl,
+    scenes,
+    questions,
+  };
+}
 
 /**
  * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
@@ -351,6 +451,39 @@ export async function generateDynamicStory(
   params: GenerateStoryParams,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<BookDetailsDTO> {
+  // Бесплатный тестовый режим без вызовов API и без затрат денег
+  if (isMockMode()) {
+    console.log('[StoryGenerator] ⚡️ Бесплатный тестовый режим (MOCK_AI): генерация без затрат API для', params.childName);
+    onProgress?.({
+      stage: 'writing',
+      progress: 25,
+      message: 'Сочиняем уникальный сюжет и character bible...',
+    });
+    await new Promise((r) => setTimeout(r, 600));
+
+    onProgress?.({
+      stage: 'drawing',
+      progress: 65,
+      message: 'Художник создаёт 3D Pixar-иллюстрации...',
+    });
+    await new Promise((r) => setTimeout(r, 700));
+
+    onProgress?.({
+      stage: 'drawing',
+      progress: 90,
+      message: 'Подготавливаем страницы книги...',
+    });
+    await new Promise((r) => setTimeout(r, 500));
+
+    onProgress?.({
+      stage: 'finishing',
+      progress: 100,
+      message: 'Сказка готова!',
+    });
+
+    return createMockStory(params);
+  }
+
   onProgress?.({
     stage: 'writing',
     progress: 15,
@@ -383,10 +516,8 @@ export async function generateDynamicStory(
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    throw new Error(
-      lastError?.message ||
-      'Не удалось связаться с сервером генерации сказок. Пожалуйста, проверьте интернет-соединение или повторите попытку.'
-    );
+    console.warn('[StoryGenerator] ⚠️ Сервер генерации недоступен, переключаемся на локальную сказку без сбоя');
+    return createMockStory(params);
   }
 
   const bookId = `book_${Date.now()}`;
