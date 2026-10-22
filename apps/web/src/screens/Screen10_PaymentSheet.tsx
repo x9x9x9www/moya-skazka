@@ -23,7 +23,7 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
 
   const isSingle = sku === 'single_book_1';
   const title = isSingle ? 'Одна сказка' : 'Пять сказок';
-  const subtitle = isSingle ? 'Для одного волшебного вечера' : 'Создавайте истории, когда захотите';
+  const subtitle = isSingle ? 'Для одной волшебной сказки' : 'Создавайте истории, когда захотите';
   const credits = isSingle ? 1 : 5;
   const rubPrice = isSingle ? 199 : 799;
   const starsPrice = isSingle ? 400 : 1600;

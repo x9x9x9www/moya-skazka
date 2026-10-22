@@ -184,7 +184,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const BEDTIME_RITUALS = [
     { id: 'Чтение в тёплых объятиях', label: 'Чтение в обнимку', icon: <BookOpen className="w-4 h-4 text-brand-600" /> },
     { id: 'Сказка с любимой игрушкой', label: 'Сказка с игрушкой', icon: <TeddyBearIcon className="w-4 h-4 text-amber-600" /> },
-    { id: 'Тихий разговор перед сном', label: 'Разговор по душам', icon: <Moon className="w-4 h-4 text-indigo-500 fill-indigo-100" /> },
+    { id: 'Разговор по душам', label: 'Разговор по душам', icon: <Heart className="w-4 h-4 text-rose-500 fill-rose-100" /> },
   ];
 
   const TOYS = [
@@ -831,11 +831,11 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
             </div>
           </div>
 
-          {/* Вопрос 3: Ритуал перед сном */}
+          {/* Вопрос 3: Любимый момент для чтения */}
           <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
             <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-              <Moon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span>Любимый ритуал перед сном</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>Любимый момент для чтения</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               {BEDTIME_RITUALS.map((item) => {

@@ -185,7 +185,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           )}
         </div>
 
-        {/* 3. Педагогическая врезка-вопрос: «Свиток вечерней беседы» */}
+        {/* 3. Педагогическая врезка-вопрос: «Свиток доброй беседы» */}
         {questionForThisScene && (
           <div className="rounded-3xl p-5 bg-[#FAF4E8] dark:bg-stone-800/95 border border-[#EADBC8] dark:border-stone-700 shadow-sm space-y-2.5 relative overflow-hidden">
             {/* Декоративная искорка на фоне свитка */}
@@ -198,7 +198,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
                 <MessageSquareQuote className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-amber-950 dark:text-amber-200 tracking-wide uppercase">
-                Свиток вечерней беседы
+                Свиток доброй беседы
               </span>
             </div>
 

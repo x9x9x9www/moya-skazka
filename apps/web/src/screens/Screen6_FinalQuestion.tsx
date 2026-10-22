@@ -65,7 +65,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
           <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-100/90 to-amber-50/90 dark:from-stone-800 dark:to-stone-800/60 border border-amber-300/70 dark:border-stone-700 shadow-sm space-y-2.5">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-300">
               <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <span>Уютный разговор перед сном</span>
+              <span>Вопрос для тёплой беседы</span>
             </div>
 
             <h3 className="font-serif font-bold text-base text-stone-900 dark:text-stone-100 leading-snug">

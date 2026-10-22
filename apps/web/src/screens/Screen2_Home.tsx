@@ -58,6 +58,13 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const childName = activeChild ? activeChild.name : 'малыша';
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Доброе утро! Готовы к новому приключению?';
+    if (hour >= 12 && hour < 18) return 'Добрый день! Какую сказку откроем сегодня?';
+    return 'Добрый вечер! Время для волшебной сказки';
+  };
+
   // Получаем реальное число книг из пропса или локального хранилища
   const storiesCount =
     typeof booksCount === 'number'
@@ -152,7 +159,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
 
           {/* Книжный заголовок */}
           <h2 className="font-serif font-bold text-2xl leading-snug mb-2 text-stone-50 drop-shadow-sm">
-            Добрый вечер! Готовы к новому приключению?
+            {getGreeting()}
           </h2>
 
           <p className="text-xs text-amber-100/80 mb-5 font-sans leading-relaxed">
@@ -165,7 +172,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
             className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#F5B955] via-[#F3B755] to-[#E39E2F] hover:brightness-105 active:scale-[0.98] spring-transition text-stone-950 font-bold text-sm glow-gold animate-glow-gold flex items-center justify-center gap-2 border border-amber-200/60 shadow-lg"
           >
             <Wand2 className="w-4 h-4 text-stone-900 fill-stone-900/30" />
-            <span className="tracking-wide">Открыть вечернюю сказку</span>
+            <span className="tracking-wide">Открыть волшебную сказку</span>
             <FairyStarIcon className="w-4 h-4" />
           </button>
         </div>
@@ -276,7 +283,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           </h3>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 shadow-inner-paper">
             <FairyBookIcon className="w-3.5 h-3.5" />
-            <span>Выбор вечера</span>
+            <span>Выбор дня</span>
           </span>
         </div>
 

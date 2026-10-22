@@ -21,7 +21,7 @@ export const Screen11_Referrals: React.FC<Screen11ReferralsProps> = ({
   };
 
   const handleShare = () => {
-    const text = 'Привет! В приложении «Моя сказка» можно оживить вечернюю историю с твоим малышом в главной роли. Первая сказка в подарок: ';
+    const text = 'Привет! В приложении «Моя сказка» можно создать волшебную историю, где твой малыш — главный герой. Первая сказка в подарок: ';
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`;
     window.open(tgUrl, '_blank');
   };

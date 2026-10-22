@@ -95,10 +95,10 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
           </div>
           <div>
             <div className="text-sm font-bold text-stone-900 leading-snug">
-              Беседы и вопросы перед сном
+              Вопросы для совместной беседы
             </div>
             <div className="text-xs text-stone-500 mt-0.5">
-              2–3 мягких вопроса с добрыми подсказками для вас
+              2–3 добрых вопроса, чтобы обсудить сюжет с ребёнком
             </div>
           </div>
         </div>

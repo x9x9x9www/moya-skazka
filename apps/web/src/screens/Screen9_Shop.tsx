@@ -13,7 +13,7 @@ export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
           Магазин сказок
         </h2>
         <p className="text-xs text-stone-500 mt-1">
-          Звёздочки для новых иллюстрированных историй и добрых вечеров
+          Звёздочки для новых иллюстрированных историй и волшебных открытий
         </p>
       </div>
 
@@ -25,10 +25,10 @@ export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
 
         <div className="flex-1 min-w-0">
           <h3 className="font-serif font-bold text-base text-stone-900">
-            Одна вечерняя сказка
+            Одна волшебная сказка
           </h3>
           <p className="text-xs text-stone-500 mb-1.5">
-            Идеально для тёплого чтения перед сном
+            Идеально для уютного совместного чтения
           </p>
           <div className="font-bold text-sm text-stone-900">
             199 ₽ <span className="text-xs text-stone-500 font-normal">(≈ 400 ⭐)</span>
@@ -97,7 +97,7 @@ export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
           <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
             <Check className="w-3.5 h-3.5" />
           </div>
-          <span>Звёздочки не сгорают и ждут нужного вечера</span>
+          <span>Звёздочки не сгорают и ждут нужного момента</span>
         </div>
 
         <div className="flex items-center gap-3 text-xs text-stone-700 font-semibold">
