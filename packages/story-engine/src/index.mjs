@@ -365,7 +365,12 @@ export function appearanceHints(appearance = {}) {
   const colorEn = CLOTHING_COLOR_EN[appearance.clothingColor] || translateClothingColor(appearance.clothingColor, itemClean);
   const clothes = `${colorEn} ${itemEn}`;
   const toy = TOY_EN[appearance.toy] || translateToyItem(appearance.toy);
-  return { hairColor, hairType, eyes, skin, clothes, toy };
+
+  const features = String(appearance.distinctiveFeatures || appearance.avatar_id || '').toLowerCase();
+  const hasGlasses = features.includes('очк') || features.includes('glasses');
+  const glasses = hasGlasses ? ', wearing cute round glasses' : '';
+
+  return { hairColor, hairType, eyes, skin, clothes, toy, glasses, hasGlasses };
 }
 
 // --------------------------------------------------------
@@ -664,7 +669,7 @@ export function buildStoryPrompt(params = {}, options = {}) {
 - Характер: ${params.personality || 'добрый, любознательный'}
 - Любимая игрушка-спутник: ${toy}
 - Внешность (русские значения): ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, одежда: ${params.appearance?.clothingItem || (params.appearance?.clothingColor ? `${params.appearance.clothingColor} одежда` : 'уютный свитер')}
-- Внешность (точные английские подсказки для character bible): ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}; favorite toy is ${hints.toy}
+- Внешность (точные английские подсказки для character bible): ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}${hints.glasses}; favorite toy is ${hints.toy}
 - Тема: ${params.theme || 'Дружба'}
 - Интересы: ${(params.interests || []).join(', ') || 'приключения'}
 ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (ВЫСШИЙ ПРИОРИТЕТ ДЛЯ СЮЖЕТА): «${params.customWishes}». Обязательно вплети это пожелание в сюжет как ключевое событие или кульминацию!` : '- Особые пожелания: нет'}
@@ -754,7 +759,7 @@ function defaultCharacterFromInput(params, role = 'companion') {
       role: 'hero',
       visual_description:
         `A ${Number(params.age) || 4}-year-old ${params.gender === 'girl' ? 'girl' : 'boy'} with ` +
-        `${hints.hairColor} ${hints.hairType} hair, ${hints.eyes}, ${hints.skin}, wearing ${hints.clothes}.`,
+        `${hints.hairColor} ${hints.hairType} hair, ${hints.eyes}, ${hints.skin}, wearing ${hints.clothes}${hints.glasses}.`,
     };
   }
   return {

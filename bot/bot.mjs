@@ -43,7 +43,10 @@ function loadEnv() {
 loadEnv();
 
 // Настройка прокси для стабильного доступа к Telegram API и AI провайдерам
-const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY || 'http://127.0.0.1:10809';
+const explicitProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
+const isProxyDisabled = process.env.DISABLE_PROXY === 'true' || process.env.NO_PROXY === '*';
+const proxyUrl = isProxyDisabled ? null : (explicitProxy || 'http://127.0.0.1:10809');
+
 if (proxyUrl) {
   try {
     setGlobalDispatcher(new ProxyAgent(proxyUrl));
@@ -51,6 +54,8 @@ if (proxyUrl) {
   } catch (err) {
     console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
   }
+} else {
+  console.log('[Proxy] ⚡️ Прокси отключен, используется прямое соединение');
 }
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -61,7 +66,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.5';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=2.6';
 const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow'; // 'wellflow' | 'google'
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY || process.env.GEMINI_API_KEY || '';
@@ -77,7 +82,8 @@ const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash
 const WELLFLOW_IMAGE_KEY = process.env.WELLFLOW_IMAGE_KEY || '';
 const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2';
 
-const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
+const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
 let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || '';
 let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : '';
@@ -363,7 +369,42 @@ async function generateWellflowStoryAI(params) {
   }
 }
 
-function getThemedFallbackIllustration(themeOrInterest, _sceneIndex = 0) {
+export function resolveChildAvatarKey(params) {
+  if (!params) return 'boy_brown';
+  const appearance = params.appearance || params;
+  const gender = (params.gender || appearance.gender) === 'girl' ? 'girl' : 'boy';
+  const hair = (appearance.hairColor || params.hairColor || '').toLowerCase();
+  const skin = (appearance.skinTone || params.skinTone || '').toLowerCase();
+  const features = (appearance.distinctiveFeatures || params.distinctiveFeatures || '').toLowerCase();
+  const avatarId = (appearance.avatar_id || params.avatar_id || '').toLowerCase();
+
+  // 1. Очки
+  if (features.includes('очк') || avatarId.includes('glasses')) {
+    return `${gender}_glasses`;
+  }
+  // 2. Смуглый тон кожи
+  if (skin.includes('смугл') || avatarId.includes('tan')) {
+    return `${gender}_tan`;
+  }
+  // 3. Цвет волос
+  if (hair.includes('светл') || hair.includes('блонд')) {
+    return `${gender}_blonde`;
+  }
+  if (hair.includes('рыж')) {
+    return `${gender}_ginger`;
+  }
+  if (hair.includes('тёмн') || hair.includes('темн') || hair.includes('черн') || hair.includes('брюнет')) {
+    return `${gender}_dark`;
+  }
+  // 4. По умолчанию для русых / шатенов
+  return `${gender}_brown`;
+}
+
+function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0, params = null) {
+  if (sceneIndex === 0 && params) {
+    const avatarKey = resolveChildAvatarKey(params);
+    return `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarKey}.webp`;
+  }
   const t = (themeOrInterest || '').toLowerCase();
   if (t.includes('дино')) {
     return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_dino.jpg';
@@ -485,9 +526,13 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       : 'уютная одежда';
 
     const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';
+    const avatarKey = resolveChildAvatarKey(params);
+    const avatarUrl = `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
     const mockStory = {
       title: `${child} и тайна «${theme}»`,
-      cover_url: `${baseUrl}/illustrations/demo/cover.jpg`,
+      cover_url: avatarUrl,
+      avatar_url: avatarUrl,
+      avatar_id: avatarKey,
       metrics: { total_words: 420 },
       characters: [child, 'Пушистый спутник'],
       scenes: [
@@ -568,13 +613,13 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   });
 
   const jobs = [
-    { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story), fallback: getThemedFallbackIllustration(params.theme, 0) },
+    { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story), fallback: getThemedFallbackIllustration(params.theme, 0, params) },
     ...story.scenes.map((scene) => ({
       name: `scene_${scene.index}`,
       kind: 'scene',
       sceneIndex: scene.index,
       prompt: buildScenePrompt(story, scene),
-      fallback: getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index),
+      fallback: getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index, params),
     })),
   ];
 
@@ -749,6 +794,20 @@ const server = http.createServer(async (req, res) => {
 
       if (AI_MOCK_MODE) {
         console.log('[PhotoVision] ⚡️ Режим тестирования (AI_MOCK_MODE): мгновенный возврат тестового профиля');
+        const mockAnalysis = {
+          gender: 'boy',
+          estimatedAge: 4,
+          hairColor: 'русые',
+          hairLength: 'короткие',
+          hairStructure: 'прямые',
+          eyeColor: 'карие',
+          skinTone: 'персиковая',
+          clothingDescription: 'уютная футболка',
+          clothingColor: 'небесно-голубой',
+          distinctiveFeatures: '',
+          avatar_id: 'boy_brown',
+          confidenceTip: 'Внешность малыша определена (3D Pixar аватар подобран)!',
+        };
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
@@ -756,18 +815,7 @@ const server = http.createServer(async (req, res) => {
         res.end(
           JSON.stringify({
             status: 'ok',
-            analysis: {
-              gender: 'boy',
-              estimatedAge: 4,
-              hairColor: 'русые',
-              hairLength: 'короткие',
-              hairStructure: 'прямые',
-              eyeColor: 'карие',
-              skinTone: 'персиковая',
-              clothingDescription: 'уютная футболка',
-              clothingColor: 'небесно-голубой',
-              confidenceTip: 'Внешность малыша определена (режим тестирования без затрат API)!',
-            },
+            analysis: mockAnalysis,
           })
         );
         return;
@@ -844,6 +892,7 @@ const server = http.createServer(async (req, res) => {
       const estimatedAge =
         Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6 ? Number(parsed.estimatedAge) : 4;
 
+      const avatarId = resolveChildAvatarKey({ gender, ...parsed });
       const result = {
         gender,
         estimatedAge,
@@ -852,6 +901,8 @@ const server = http.createServer(async (req, res) => {
         hairStructure,
         eyeColor,
         skinTone,
+        distinctiveFeatures: parsed.distinctiveFeatures || '',
+        avatar_id: avatarId,
         clothingDescription: parsed.clothingDescription || 'уютная футболка',
         clothingColor: parsed.clothingColor || 'небесно-голубой',
         confidenceTip: parsed.confidenceTip || 'Внешность малыша определена!',
@@ -1079,7 +1130,9 @@ async function callTelegram(method, params = {}) {
     });
     return await res.json();
   } catch (err) {
-    console.error(`[Bot] Ошибка вызова ${method}:`, err.message);
+    const causeMsg = err.cause?.message || err.cause?.code || '';
+    const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
+    console.error(`[Bot] Ошибка вызова ${method}:`, details);
     return null;
   }
 }
@@ -1154,10 +1207,13 @@ async function sendWelcome(chatId, firstName, startParam) {
 async function startPolling() {
   console.log(`[Bot] Инициализация подключения к Telegram...`);
 
-  const me = await callTelegram('getMe');
-  if (!me || !me.ok) {
-    console.error('[Bot Error] Не удалось авторизоваться в Telegram API:', me);
-    return;
+  let me = null;
+  while (!me || !me.ok) {
+    me = await callTelegram('getMe');
+    if (!me || !me.ok) {
+      console.warn('[Bot] Ожидание связи с Telegram API... (повтор через 5 сек)');
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
 
   console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);

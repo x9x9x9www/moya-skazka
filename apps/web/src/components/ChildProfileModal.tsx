@@ -134,13 +134,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
     if (!name.trim()) return;
 
     setIsSubmitting(true);
+    const avatarFileName = resolveChildAvatar({ gender, hairColor }).split('/').pop()?.replace('.webp', '') || `${gender}_brown`;
     try {
       await onCreateChild({
         name: name.trim(),
         age,
         interests: selectedInterests,
         appearance: {
-          avatar_id: 'hero_custom',
+          avatar_id: avatarFileName,
           gender,
           hairColor,
           hairType,

@@ -276,6 +276,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               hairType: res.hairType || appearance.hairType,
               eyeColor: res.eyeColor || appearance.eyeColor,
               skinTone: res.skinTone || appearance.skinTone,
+              distinctiveFeatures: res.distinctiveFeatures || appearance.distinctiveFeatures,
+              avatar_id: (res as any).avatar_id || appearance.avatar_id,
             };
 
             const patch: Partial<WizardHeroData> = {
