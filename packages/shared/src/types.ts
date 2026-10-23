@@ -138,12 +138,24 @@ export interface ChildProfileDTO {
   user_id: string;
   name: string;
   age: number;
+  gender?: 'boy' | 'girl' | string;
   interests: string[];
   appearance: {
     avatar_id: string;
+    gender?: string;
     hair?: string;
     clothing?: string;
     personality?: string;
+    hairColor?: string;
+    hairType?: string;
+    hairLength?: string;
+    hairStructure?: string;
+    skinTone?: string;
+    distinctiveFeatures?: string;
+    clothingItem?: string;
+    clothingColor?: string;
+    toy?: string;
+    eyeColor?: string;
   };
   is_active: boolean;
 }

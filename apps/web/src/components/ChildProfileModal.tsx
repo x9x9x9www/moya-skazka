@@ -11,6 +11,7 @@ import {
   CurlyHairIcon,
   PrincessCrownIcon,
 } from './FairytaleIcons';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 
 interface ChildProfileModalProps {
   isOpen: boolean;
@@ -198,8 +199,23 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-brand-500 text-white font-serif font-bold flex items-center justify-center text-sm shadow-inner">
-                      {child.name.charAt(0)}
+                    <div className="w-11 h-11 rounded-full overflow-hidden border border-amber-300 shadow-sm shrink-0 bg-cream-50">
+                      <img
+                        src={resolveChildAvatar({
+                          gender:
+                            (child as any).gender ||
+                            child.appearance?.gender ||
+                            (child.name.endsWith('а') || child.name.endsWith('я') ? 'girl' : 'boy'),
+                          hairColor: (child.appearance as any)?.hairColor,
+                          hairType: (child.appearance as any)?.hairType,
+                          hairStructure: (child.appearance as any)?.hairStructure,
+                          skinTone: (child.appearance as any)?.skinTone,
+                          distinctiveFeatures: (child.appearance as any)?.distinctiveFeatures,
+                          avatar_id: (child.appearance as any)?.avatar_id,
+                        })}
+                        alt={child.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div>
                       <div className="font-bold text-stone-800 text-sm">{child.name}</div>
@@ -316,6 +332,25 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               )}
             </div>
 
+            {/* Живое превью аватара при создании */}
+            <div className="flex items-center gap-3 p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-cream-50">
+                <img
+                  src={resolveChildAvatar({ gender, hairColor })}
+                  alt={name || 'Герой'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-stone-800 truncate">
+                  {name.trim() || (gender === 'girl' ? 'Новая героиня' : 'Новый герой')}
+                </div>
+                <div className="text-[11px] text-stone-500 truncate">
+                  {gender === 'girl' ? 'Девочка' : 'Мальчик'}, {age} {age < 5 ? 'года' : 'лет'} • {hairColor}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
                 Имя ребёнка
@@ -345,7 +380,9 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                       : 'bg-white text-stone-700 border-cream-300'
                   }`}
                 >
-                  <BoyAvatar className="w-4 h-4 shrink-0" />
+                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
+                    <img src={resolveChildAvatar({ gender: 'boy', hairColor })} alt="Мальчик" className="w-full h-full object-cover" />
+                  </div>
                   <span>Мальчик</span>
                 </button>
                 <button
@@ -357,7 +394,9 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                       : 'bg-white text-stone-700 border-cream-300'
                   }`}
                 >
-                  <GirlAvatar className="w-4 h-4 shrink-0" />
+                  <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
+                    <img src={resolveChildAvatar({ gender: 'girl', hairColor })} alt="Девочка" className="w-full h-full object-cover" />
+                  </div>
                   <span>Девочка</span>
                 </button>
               </div>

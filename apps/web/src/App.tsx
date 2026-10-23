@@ -270,7 +270,7 @@ export const App: React.FC = () => {
       age: data.age,
       interests: data.interests.length > 0 ? data.interests : ['Динозавры', 'Волшебство'],
       appearance: {
-        avatar_id: data.gender === 'girl' ? 'girl_custom' : 'boy_custom',
+        avatar_id: data.avatar_id || (data.gender === 'girl' ? 'girl_custom' : 'boy_custom'),
         gender: data.gender,
         hair: `${data.hairColor} волосы`,
         clothing: data.gender === 'girl' ? 'платьице' : 'уютный свитер',
@@ -284,6 +284,7 @@ export const App: React.FC = () => {
         toy: data.toy,
         eyeColor: data.eyeColor,
         skinTone: data.skinTone,
+        distinctiveFeatures: data.distinctiveFeatures,
         storyPreference: data.storyPreference,
         bedtimeRitual: data.bedtimeRitual,
       } as any,
@@ -327,6 +328,7 @@ export const App: React.FC = () => {
         toy: data.toy,
         eyeColor: data.eyeColor,
         skinTone: data.skinTone,
+        distinctiveFeatures: data.distinctiveFeatures,
       },
     }));
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, MessageCircleQuestion } from 'lucide-react';
 import { WizardHeroData } from './Screen3_WizardHero';
 import { FairytaleToyIcon, BoyAvatar, GirlAvatar } from '../components/FairytaleIcons';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 
 interface Screen4WizardDetailsProps {
   heroData: WizardHeroData;
@@ -117,16 +118,20 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
 
       {/* Карточка превью сгенерированного героя */}
       <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-4 flex items-center gap-3.5 shadow-sm">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-200 to-amber-100 shrink-0 border border-amber-300 shadow-inner flex flex-col items-center justify-center text-center p-1">
-          <FairytaleToyIcon toy={heroData.appearance?.toy} className="w-7 h-7" />
-          <div className="flex items-center gap-1 text-[10px] font-bold text-amber-900 mt-0.5">
-            {heroData.gender === 'girl' ? (
-              <GirlAvatar className="w-3.5 h-3.5 shrink-0" />
-            ) : (
-              <BoyAvatar className="w-3.5 h-3.5 shrink-0" />
-            )}
-            <span>Герой</span>
-          </div>
+        <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-cream-50">
+          <img
+            src={resolveChildAvatar({
+              gender: heroData.gender,
+              hairColor: heroData.appearance?.hairColor,
+              hairType: heroData.appearance?.hairType,
+              hairStructure: heroData.appearance?.hairStructure,
+              skinTone: heroData.appearance?.skinTone,
+              distinctiveFeatures: heroData.appearance?.distinctiveFeatures,
+              avatar_id: heroData.appearance?.avatar_id,
+            })}
+            alt={heroData.childName}
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-stone-900 truncate">

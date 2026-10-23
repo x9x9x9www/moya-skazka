@@ -13,6 +13,7 @@ import {
   FairyBookIcon,
 } from '../components/FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 
 interface Screen2HomeProps {
   activeChild: ChildProfileDTO | null;
@@ -57,6 +58,22 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
 }) => {
   const [isSaved, setIsSaved] = useState(false);
   const childName = activeChild ? activeChild.name : 'малыша';
+  const avatarSrc = resolveChildAvatar(
+    activeChild
+      ? {
+          gender:
+            (activeChild as any).gender ||
+            activeChild.appearance?.gender ||
+            (activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? 'girl' : 'boy'),
+          hairColor: (activeChild.appearance as any)?.hairColor,
+          hairType: (activeChild.appearance as any)?.hairType,
+          hairStructure: (activeChild.appearance as any)?.hairStructure,
+          skinTone: (activeChild.appearance as any)?.skinTone,
+          distinctiveFeatures: (activeChild.appearance as any)?.distinctiveFeatures,
+          avatar_id: (activeChild.appearance as any)?.avatar_id,
+        }
+      : null
+  );
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -147,13 +164,17 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
         <div className="relative z-10">
           {/* Верхний бейдж */}
           {canClaimFreeStory ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-xs font-bold mb-3.5 shadow-md border border-amber-300/60">
-              <FairyGiftIcon className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-xs font-bold mb-3.5 shadow-md border border-amber-300/60">
+              <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-700/20 shadow-xs shrink-0 bg-white/40">
+                <img src={avatarSrc} alt={childName} className="w-full h-full object-cover" />
+              </div>
               <span>Первая сказка бесплатно</span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-200 text-xs font-medium mb-3.5 border border-white/15 shadow-sm">
-              <FairyStarIcon className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-200 text-xs font-medium mb-3.5 border border-white/15 shadow-sm">
+              <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-300/60 shadow-xs shrink-0 bg-cream-50">
+                <img src={avatarSrc} alt={childName} className="w-full h-full object-cover" />
+              </div>
               <span>Сказка для {childName}</span>
             </div>
           )}

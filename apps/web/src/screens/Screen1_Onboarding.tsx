@@ -37,6 +37,7 @@ import {
   CurlyHairIcon,
 } from '../components/FairytaleIcons';
 import { api } from '../api/client';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 
 export interface ChildRegistrationData {
   name: string;
@@ -53,6 +54,8 @@ export interface ChildRegistrationData {
   bedtimeRitual: string;
   interests: string[];
   toy: string;
+  distinctiveFeatures?: string;
+  avatar_id?: string;
 }
 
 interface Screen1OnboardingProps {
@@ -80,6 +83,16 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const [hairStructure, setHairStructure] = useState<'прямые' | 'кудрявые'>('прямые');
   const [eyeColor, setEyeColor] = useState('карие');
   const [skinTone, setSkinTone] = useState('персиковая');
+  const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
+
+  const currentAvatarSrc = resolveChildAvatar({
+    gender,
+    hairColor,
+    hairType: `${hairLength} ${hairStructure}`,
+    hairStructure,
+    skinTone,
+    distinctiveFeatures,
+  });
 
   // Опциональная автонастройка по фото
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -263,13 +276,14 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       // Отправляем в AI Vision API
       const res = await api.analyzeChildPhoto(optimizedBase64);
       if (res && res.analysis) {
-        const a = res.analysis;
+        const a: any = res.analysis;
         if (a.hairColor) setHairColor(a.hairColor);
         if (a.hairLength) setHairLength(a.hairLength);
         if (a.hairStructure) setHairStructure(a.hairStructure);
         if (a.eyeColor) setEyeColor(a.eyeColor);
         if (a.skinTone) setSkinTone(a.skinTone);
         if (a.gender) setGender(a.gender);
+        if (a.distinctiveFeatures) setDistinctiveFeatures(a.distinctiveFeatures);
         if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
           setAge(Number(a.estimatedAge));
         }
@@ -313,6 +327,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       hairStructure,
       eyeColor,
       skinTone,
+      distinctiveFeatures,
+      avatar_id: currentAvatarSrc.split('/').pop()?.replace('.webp', '') || `${gender}_brown`,
       personality,
       storyPreference,
       bedtimeRitual,
@@ -466,36 +482,32 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
           {/* Интерактивная живая карточка героя с визуализацией выбора */}
           <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center gap-4">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner border border-cream-300 transition-all p-1.5"
-              style={{
-                backgroundColor:
-                  skinTone === 'светлая'
-                    ? '#FFF2E0'
-                    : skinTone === 'смуглая'
-                    ? '#F3DEC9'
-                    : '#FFE7D1',
-              }}
-            >
-              {gender === 'girl' ? (
-                <GirlAvatar className="w-13 h-13 drop-shadow-sm" />
-              ) : (
-                <BoyAvatar className="w-13 h-13 drop-shadow-sm" />
-              )}
+            <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-inner border-2 border-amber-300/80 shrink-0 bg-cream-50 ring-2 ring-amber-400/20">
+              <img
+                src={currentAvatarSrc}
+                alt={name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша')}
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              />
             </div>
-            <div className="flex-1">
-              <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
                 Будущий герой сказки
               </div>
-              <div className="font-serif font-bold text-lg text-stone-900 leading-tight">
+              <div className="font-serif font-bold text-lg text-stone-900 leading-tight truncate">
                 {name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша')}
               </div>
-              <div className="text-xs text-stone-600 flex items-center gap-2 mt-0.5">
-                <span>{age} года/лет</span>
+              <div className="text-xs text-stone-600 flex items-center gap-1.5 mt-0.5 truncate">
+                <span>{age} {age < 5 ? 'года' : 'лет'}</span>
                 <span>•</span>
-                <span>{hairColor} волосы</span>
+                <span>{hairColor}</span>
                 <span>•</span>
-                <span>{eyeColor} глаза</span>
+                <span>{skinTone} кожа</span>
+                {distinctiveFeatures.includes('очк') && (
+                  <>
+                    <span>•</span>
+                    <span className="text-brand-700 font-semibold">в очках 👓</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -546,7 +558,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                   }`}
                 >
-                  <BoyAvatar className="w-5 h-5 shrink-0" />
+                  <div className="w-5 h-5 rounded-full overflow-hidden border border-white/60 shrink-0 shadow-2xs bg-cream-50">
+                    <img
+                      src={resolveChildAvatar({ gender: 'boy', hairColor, skinTone, distinctiveFeatures })}
+                      alt="Мальчик"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <span>Мальчик</span>
                 </button>
                 <button
@@ -561,7 +579,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                       : 'bg-cream-100 text-stone-700 hover:bg-cream-200'
                   }`}
                 >
-                  <GirlAvatar className="w-5 h-5 shrink-0" />
+                  <div className="w-5 h-5 rounded-full overflow-hidden border border-white/60 shrink-0 shadow-2xs bg-cream-50">
+                    <img
+                      src={resolveChildAvatar({ gender: 'girl', hairColor, skinTone, distinctiveFeatures })}
+                      alt="Девочка"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <span>Девочка</span>
                 </button>
               </div>
@@ -757,6 +781,25 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Внешность: Наличие очков */}
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold text-stone-800">Герой носит очки?</div>
+              <div className="text-[11px] text-stone-500">Добавим красивые очочки к 3D-образу малыша</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDistinctiveFeatures(distinctiveFeatures.includes('очк') ? '' : 'очки')}
+              className={`py-2 px-3.5 rounded-xl text-xs font-bold border transition-all shrink-0 ${
+                distinctiveFeatures.includes('очк')
+                  ? 'bg-brand-500 text-white border-brand-500 shadow-sm ring-2 ring-brand-500/20'
+                  : 'bg-cream-100 text-stone-700 border-cream-300 hover:bg-cream-200'
+              }`}
+            >
+              {distinctiveFeatures.includes('очк') ? 'Да, в очках 👓' : 'Нет'}
+            </button>
           </div>
         </div>
       )}

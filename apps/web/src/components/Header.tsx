@@ -1,7 +1,7 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { BoyAvatar, GirlAvatar, FairyStarIcon } from './FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 
 interface HeaderProps {
   currentScreen: string;
@@ -41,11 +41,22 @@ export const Header: React.FC<HeaderProps> = ({
               title="Переключить профиль ребёнка или открыть настройки"
             >
               <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-amber-400/80 shadow-sm shrink-0 bg-cream-50 group-hover:ring-amber-500 transition-all">
-                {activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? (
-                  <GirlAvatar className="w-full h-full" />
-                ) : (
-                  <BoyAvatar className="w-full h-full" />
-                )}
+                <img
+                  src={resolveChildAvatar({
+                    gender:
+                      (activeChild as any).gender ||
+                      activeChild.appearance?.gender ||
+                      (activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? 'girl' : 'boy'),
+                    hairColor: activeChild.appearance?.hairColor,
+                    hairType: (activeChild.appearance as any)?.hairType,
+                    hairStructure: (activeChild.appearance as any)?.hairStructure,
+                    skinTone: (activeChild.appearance as any)?.skinTone,
+                    distinctiveFeatures: (activeChild.appearance as any)?.distinctiveFeatures,
+                    avatar_id: (activeChild.appearance as any)?.avatar_id,
+                  })}
+                  alt={activeChild.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-stone-800 leading-tight">

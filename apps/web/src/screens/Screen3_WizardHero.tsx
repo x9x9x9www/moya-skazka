@@ -33,6 +33,7 @@ import {
   SportBallIcon,
   PrincessCrownIcon,
 } from '../components/FairytaleIcons';
+import { resolveChildAvatar } from '../utils/avatarResolver';
 import { api } from '../api/client';
 
 export interface WizardHeroData {
@@ -50,6 +51,7 @@ export interface WizardHeroData {
     toy: string; // Свободный ввод: 'плюшевый жирафик Тоша', 'робот Боб', 'зайка'...
     eyeColor?: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
     skinTone?: string; // 'светлая' | 'персиковая' | 'смуглая'
+    distinctiveFeatures?: string;
     hairLength?: string;
     hairStructure?: string;
   };
@@ -541,7 +543,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <BoyAvatar className="w-4 h-4 shrink-0" />
+                      <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
+                        <img
+                          src={resolveChildAvatar({ gender: 'boy', hairColor: appearance.hairColor, skinTone: appearance.skinTone, distinctiveFeatures: appearance.distinctiveFeatures })}
+                          alt="Мальчик"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                       <span>Мальчик</span>
                     </button>
                     <button
@@ -553,7 +561,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                           : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
                       }`}
                     >
-                      <GirlAvatar className="w-4 h-4 shrink-0" />
+                      <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
+                        <img
+                          src={resolveChildAvatar({ gender: 'girl', hairColor: appearance.hairColor, skinTone: appearance.skinTone, distinctiveFeatures: appearance.distinctiveFeatures })}
+                          alt="Девочка"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                       <span>Девочка</span>
                     </button>
                   </div>
@@ -676,60 +690,49 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Очки в сказке */}
+                <div className="flex items-center justify-between pt-2 border-t border-cream-200">
+                  <span className="text-[11px] font-bold text-stone-700">Герой носит очки?</span>
+                  <button
+                    type="button"
+                    onClick={() => updateAppearance({
+                      distinctiveFeatures: appearance.distinctiveFeatures?.includes('очк') ? '' : 'очки'
+                    })}
+                    className={`py-1 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      appearance.distinctiveFeatures?.includes('очк')
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                        : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                    }`}
+                  >
+                    {appearance.distinctiveFeatures?.includes('очк') ? 'Да, в очках 👓' : 'Нет'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Интерактивный нарисованный аватар ребёнка по его параметрам */}
+      {/* Интерактивный 3D Pixar аватар ребёнка по его параметрам */}
       <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-amber-50/80 border border-amber-200 shadow-sm">
-        <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-gradient-to-tr from-amber-200 via-amber-100 to-amber-50 flex items-center justify-center">
-          {/* Нарисованный малыш */}
-          <div className="relative flex flex-col items-center">
-            {/* Голова */}
-            <div
-              className="relative w-12 h-12 rounded-full border-2 border-black/10 flex items-center justify-center transition-colors duration-300 shadow-inner"
-              style={{ backgroundColor: activeSkinHex }}
-            >
-              {/* Волосы по параметрам */}
-              <div
-                className={`absolute -top-1 inset-x-0 ${
-                  appearance.hairType?.includes('кудр')
-                    ? 'h-5 rounded-t-full border-t-2'
-                    : appearance.hairType?.includes('длин')
-                    ? 'h-7 rounded-t-xl'
-                    : 'h-4 rounded-t-full'
-                }`}
-                style={{ backgroundColor: activeColorHex }}
-              />
-              {data.gender === 'girl' && (
-                <div className="absolute -top-1.5 right-0">
-                  <PrincessCrownIcon className="w-3.5 h-3.5" />
-                </div>
-              )}
-              {/* Глазки с цветом */}
-              <div className="flex gap-2 mt-2">
-                <div
-                  className="w-1.5 h-1.5 rounded-full border border-black/20 shadow-xs transition-colors duration-300"
-                  style={{ backgroundColor: activeEyeHex }}
-                />
-                <div
-                  className="w-1.5 h-1.5 rounded-full border border-black/20 shadow-xs transition-colors duration-300"
-                  style={{ backgroundColor: activeEyeHex }}
-                />
-              </div>
-            </div>
-            {/* Одежда */}
-            <div
-              className="w-10 h-7 rounded-t-lg -mt-1 border border-black/10 relative flex items-center justify-center transition-colors duration-300"
-              style={{ backgroundColor: activeClothingHex }}
-            >
-              {/* Игрушка в ручках */}
-              <div className="absolute -right-2 bottom-0 text-sm">
-                {detectToyEmoji(appearance.toy)}
-              </div>
-            </div>
+        <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-cream-50 flex items-center justify-center ring-2 ring-amber-300">
+          <img
+            src={resolveChildAvatar({
+              gender: data.gender,
+              hairColor: appearance.hairColor,
+              hairType: appearance.hairType,
+              hairStructure: appearance.hairStructure,
+              skinTone: appearance.skinTone,
+              distinctiveFeatures: appearance.distinctiveFeatures,
+              avatar_id: appearance.avatar_id,
+            })}
+            alt={data.childName || 'Герой'}
+            className="w-full h-full object-cover transition-all duration-300"
+          />
+          {/* Игрушка-спутник внизу кружочка */}
+          <div className="absolute bottom-0 right-1 w-7 h-7 rounded-full bg-white/95 border border-amber-300 shadow-md flex items-center justify-center text-sm">
+            {detectToyEmoji(appearance.toy)}
           </div>
         </div>
         <div className="mt-2.5 text-center">
@@ -739,7 +742,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
             <FairyStarIcon className="w-3 h-3 text-amber-600" />
             <span>
-              {appearance.hairColor} {appearance.hairType} волосы • {appearance.eyeColor || 'карие'} глаза
+              {appearance.hairColor} • {appearance.skinTone || 'персиковая'} кожа
+              {appearance.distinctiveFeatures?.includes('очк') ? ' • в очках 👓' : ''}
             </span>
           </div>
         </div>
