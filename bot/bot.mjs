@@ -696,12 +696,20 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Анализ фото ребёнка для автоподбора параметров внешности (Опция А: фото НЕ сохраняется на диск/в БД)
-  if (url.pathname === '/api/v1/ai/analyze-photo' && req.method === 'POST') {
+  // Анализ фото ребёнка для автоподбора параметров внешности (Zero-Storage Vision: фото НЕ сохраняется на диск/в БД)
+  const isAnalyzePhoto =
+    (url.pathname === '/api/v1/ai/analyze-photo' ||
+      url.pathname === '/api/v1/character/analyze-photo' ||
+      url.pathname === '/api/character/analyze-photo' ||
+      url.pathname === '/character/analyze-photo') &&
+    req.method === 'POST';
+
+  if (isAnalyzePhoto) {
     try {
       let bodyStr = '';
       for await (const chunk of req) bodyStr += chunk;
-      const { imageBase64 } = JSON.parse(bodyStr || '{}');
+      const parsedBody = JSON.parse(bodyStr || '{}');
+      const imageBase64 = parsedBody.imageBase64 || parsedBody.image;
 
       if (!imageBase64) {
         res.writeHead(400, {
@@ -716,10 +724,12 @@ const server = http.createServer(async (req, res) => {
         console.log('[PhotoVision] ⚡️ Режим тестирования (AI_MOCK_MODE): мгновенный возврат тестового профиля');
         const mockAnalysis = {
           gender: 'boy',
+          approxAge: 4,
           estimatedAge: 4,
           hairColor: 'русые',
           hairLength: 'короткие',
           hairStructure: 'прямые',
+          hairType: 'короткие',
           eyeColor: 'карие',
           skinTone: 'персиковая',
           clothingDescription: 'уютная футболка',
@@ -736,6 +746,7 @@ const server = http.createServer(async (req, res) => {
           JSON.stringify({
             status: 'ok',
             analysis: mockAnalysis,
+            ...mockAnalysis,
           })
         );
         return;
@@ -813,12 +824,15 @@ const server = http.createServer(async (req, res) => {
         Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6 ? Number(parsed.estimatedAge) : 4;
 
       const avatarId = resolveChildAvatarKey({ gender, ...parsed });
+      const hairType = hairStructure === 'кудрявые' ? 'кудрявые' : (hairLength === 'длинные' ? 'длинные' : 'короткие');
       const result = {
         gender,
+        approxAge: estimatedAge,
         estimatedAge,
         hairColor,
         hairLength,
         hairStructure,
+        hairType,
         eyeColor,
         skinTone,
         distinctiveFeatures: parsed.distinctiveFeatures || '',
@@ -832,9 +846,25 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
       });
-      res.end(JSON.stringify({ status: 'ok', analysis: result }));
+      res.end(JSON.stringify({ status: 'ok', analysis: result, ...result }));
     } catch (err) {
       console.warn('[PhotoVision] Ошибка анализа фото:', err.message);
+      const fallbackResult = {
+        gender: 'boy',
+        approxAge: 4,
+        estimatedAge: 4,
+        hairColor: 'русые',
+        hairLength: 'короткие',
+        hairStructure: 'прямые',
+        hairType: 'короткие',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        distinctiveFeatures: '',
+        avatar_id: 'boy_brown',
+        clothingDescription: 'уютный свитер',
+        clothingColor: 'изумрудный',
+        confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+      };
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
@@ -842,18 +872,8 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({
           status: 'fallback',
-          analysis: {
-            gender: 'boy',
-            estimatedAge: 4,
-            hairColor: 'русые',
-            hairLength: 'короткие',
-            hairStructure: 'прямые',
-            eyeColor: 'карие',
-            skinTone: 'персиковая',
-            clothingDescription: 'уютный свитер',
-            clothingColor: 'изумрудный',
-            confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
-          },
+          analysis: fallbackResult,
+          ...fallbackResult,
         })
       );
     }

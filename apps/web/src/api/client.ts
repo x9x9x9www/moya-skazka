@@ -5,8 +5,24 @@ import {
   UserBalanceDTO,
   UserDTO,
 } from '@moya-skazka/shared';
+import { getActiveApiUrl } from '../services/storyGenerator';
 
 const API_BASE = '/api/v1';
+
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // Локальная разработка через Vite dev server
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const viteApi = (import.meta as any).env?.VITE_API_URL;
+      return viteApi ? viteApi.replace(/\/$/, '') : '';
+    }
+    // На продакшене (GitHub Pages, Telegram WebApp): используем переданный api_url или активный мост
+    const active = getActiveApiUrl();
+    if (active) return active.replace(/\/$/, '');
+  }
+  return '';
+}
 
 class ApiClient {
   private token: string | null = localStorage.getItem('auth_token');
@@ -27,6 +43,7 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Bypass-Tunnel-Reminder': 'true',
       ...(options.headers as Record<string, string>),
     };
 
@@ -34,8 +51,12 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
+    const baseUrl = getApiBaseUrl();
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = baseUrl ? `${baseUrl}${API_BASE}${cleanEndpoint}` : `${API_BASE}${cleanEndpoint}`;
+
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(url, {
         ...options,
         headers,
       });
@@ -208,17 +229,43 @@ class ApiClient {
       hairColor?: string;
       hairLength?: 'короткие' | 'длинные';
       hairStructure?: 'прямые' | 'кудрявые';
+      hairType?: string;
       eyeColor?: string;
       skinTone?: string;
       clothingDescription?: string;
       clothingColor?: string;
       confidenceTip?: string;
+      avatar_id?: string;
+      distinctiveFeatures?: string;
     };
   }> {
-    return await this.request('/ai/analyze-photo', {
-      method: 'POST',
-      body: JSON.stringify({ imageBase64 }),
-    });
+    try {
+      const res: any = await this.request('/ai/analyze-photo', {
+        method: 'POST',
+        body: JSON.stringify({ imageBase64 }),
+      });
+      if (res && res.analysis) return res;
+      return { status: 'ok', analysis: res };
+    } catch (err: any) {
+      console.warn('[ApiClient] Ошибка analyzeChildPhoto, возврат фоллбэка:', err.message);
+      return {
+        status: 'fallback',
+        analysis: {
+          gender: 'boy',
+          estimatedAge: 4,
+          hairColor: 'русые',
+          hairLength: 'короткие',
+          hairStructure: 'прямые',
+          hairType: 'короткие',
+          eyeColor: 'карие',
+          skinTone: 'персиковая',
+          avatar_id: 'boy_brown',
+          clothingDescription: 'уютный свитер',
+          clothingColor: 'изумрудный',
+          confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+        },
+      };
+    }
   }
 
   // 13. Безопасный анализ фото ребенка для автосоздания персонажа (Zero-Storage Vision)
@@ -233,13 +280,61 @@ class ApiClient {
     eyeColor?: 'карие' | 'голубые' | 'зелёные' | 'серые';
     skinTone?: 'светлая' | 'персиковая' | 'смуглая';
     distinctiveFeatures?: string;
+    avatar_id?: string;
     error?: 'FACE_NOT_DETECTED' | string;
     message?: string;
   }> {
-    return await this.request('/character/analyze-photo', {
-      method: 'POST',
-      body: JSON.stringify({ imageBase64, mimeType }),
-    });
+    try {
+      // 1. Пробуем маршрут /character/analyze-photo
+      const res: any = await this.request('/character/analyze-photo', {
+        method: 'POST',
+        body: JSON.stringify({ imageBase64, mimeType }),
+      });
+      const data = res?.analysis || res;
+      return {
+        gender: data.gender || 'boy',
+        approxAge: data.approxAge || data.estimatedAge || 4,
+        hairColor: data.hairColor || 'русые',
+        hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
+        eyeColor: data.eyeColor || 'карие',
+        skinTone: data.skinTone || 'персиковая',
+        distinctiveFeatures: data.distinctiveFeatures || '',
+        avatar_id: data.avatar_id,
+        error: data.error,
+        message: data.message,
+      };
+    } catch (err: any) {
+      // 2. Если первый маршрут дал сбой (например, в мосте зарегистрирован только /ai/analyze-photo)
+      try {
+        const alt: any = await this.request('/ai/analyze-photo', {
+          method: 'POST',
+          body: JSON.stringify({ imageBase64, mimeType }),
+        });
+        const data = alt?.analysis || alt;
+        return {
+          gender: data.gender || 'boy',
+          approxAge: data.approxAge || data.estimatedAge || 4,
+          hairColor: data.hairColor || 'русые',
+          hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
+          eyeColor: data.eyeColor || 'карие',
+          skinTone: data.skinTone || 'персиковая',
+          distinctiveFeatures: data.distinctiveFeatures || '',
+          avatar_id: data.avatar_id,
+        };
+      } catch (innerErr: any) {
+        console.warn('[ApiClient] Фоллбэк автоподбора персонажа при недоступности сети:', innerErr.message);
+        return {
+          gender: 'boy',
+          approxAge: 4,
+          hairColor: 'русые',
+          hairType: 'короткие',
+          eyeColor: 'карие',
+          skinTone: 'персиковая',
+          avatar_id: 'boy_brown',
+          distinctiveFeatures: 'милая открытая улыбка',
+        };
+      }
+    }
   }
 }
 

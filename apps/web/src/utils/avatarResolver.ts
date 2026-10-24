@@ -26,17 +26,8 @@ export const ALL_AVATAR_KEYS = [
   'girl_tan',
 ] as const;
 
-/**
- * Определяет подходящий 3D Pixar-аватар на основе параметров внешности ребёнка.
- * Возвращает путь к оптимизированному изображению (WEBP).
- */
-export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
-  // Для стабильной работы как на локальном сервере, так и на GitHub Pages (base: './')
-  const base = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.BASE_URL) || './';
-  const prefix = base.endsWith('/') ? base : `${base}/`;
-
-  if (!params) return `${prefix}illustrations/avatars/boy_brown.webp`;
-
+export function resolveChildAvatarKey(params?: ChildAvatarParams | null): string {
+  if (!params) return 'boy_brown';
   const gender = params.gender === 'girl' ? 'girl' : 'boy';
   const hair = (params.hairColor || '').toLowerCase();
   const skin = (params.skinTone || '').toLowerCase();
@@ -45,20 +36,20 @@ export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
 
   // 1. Приоритет: наличие очков
   if (features.includes('очк') || avatarId.includes('glasses')) {
-    return `${prefix}illustrations/avatars/${gender}_glasses.webp`;
+    return `${gender}_glasses`;
   }
 
   // 2. Смуглый тон кожи
   if (skin.includes('смугл') || avatarId.includes('tan')) {
-    return `${prefix}illustrations/avatars/${gender}_tan.webp`;
+    return `${gender}_tan`;
   }
 
   // 3. Цвет волос
   if (hair.includes('светл') || hair.includes('блонд')) {
-    return `${prefix}illustrations/avatars/${gender}_blonde.webp`;
+    return `${gender}_blonde`;
   }
   if (hair.includes('рыж')) {
-    return `${prefix}illustrations/avatars/${gender}_ginger.webp`;
+    return `${gender}_ginger`;
   }
   if (
     hair.includes('тёмн') ||
@@ -66,9 +57,20 @@ export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
     hair.includes('черн') ||
     hair.includes('брюнет')
   ) {
-    return `${prefix}illustrations/avatars/${gender}_dark.webp`;
+    return `${gender}_dark`;
   }
 
   // 4. По умолчанию для русых / шатенов и fallback
-  return `${prefix}illustrations/avatars/${gender}_brown.webp`;
+  return `${gender}_brown`;
 }
+
+/**
+ * Определяет подходящий 3D Pixar-аватар на основе параметров внешности ребёнка.
+ * Возвращает путь к оптимизированному изображению (WEBP).
+ */
+export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
+  const base = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.BASE_URL) || './';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${prefix}illustrations/avatars/${resolveChildAvatarKey(params)}.webp`;
+}
+

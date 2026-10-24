@@ -33,7 +33,7 @@ import {
   SportBallIcon,
   PrincessCrownIcon,
 } from '../components/FairytaleIcons';
-import { resolveChildAvatar } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { api } from '../api/client';
 
 export interface WizardHeroData {
@@ -270,14 +270,25 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             );
             setShowManualAppearance(true);
           } else {
+            const targetGender = res.gender || data.gender || 'boy';
+            const targetHair = res.hairColor || appearance.hairColor || 'русые';
+            const targetSkin = res.skinTone || appearance.skinTone || 'персиковая';
+            const targetFeatures = res.distinctiveFeatures || appearance.distinctiveFeatures || '';
+            const targetAvatarId = (res as any).avatar_id || resolveChildAvatarKey({
+              gender: targetGender,
+              hairColor: targetHair,
+              skinTone: targetSkin,
+              distinctiveFeatures: targetFeatures,
+            });
+
             const newAppearance = {
               ...appearance,
-              hairColor: res.hairColor || appearance.hairColor,
+              hairColor: targetHair,
               hairType: res.hairType || appearance.hairType,
               eyeColor: res.eyeColor || appearance.eyeColor,
-              skinTone: res.skinTone || appearance.skinTone,
-              distinctiveFeatures: res.distinctiveFeatures || appearance.distinctiveFeatures,
-              avatar_id: (res as any).avatar_id || appearance.avatar_id,
+              skinTone: targetSkin,
+              distinctiveFeatures: targetFeatures,
+              avatar_id: targetAvatarId,
             };
 
             const patch: Partial<WizardHeroData> = {
