@@ -45,7 +45,7 @@ loadEnv();
 // Настройка прокси для стабильного доступа к Telegram API и AI провайдерам
 const explicitProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
 const isProxyDisabled = process.env.DISABLE_PROXY === 'true' || process.env.NO_PROXY === '*';
-const proxyUrl = isProxyDisabled ? null : (explicitProxy || 'http://127.0.0.1:10809');
+const proxyUrl = isProxyDisabled ? null : (explicitProxy || null);
 
 if (proxyUrl) {
   try {
