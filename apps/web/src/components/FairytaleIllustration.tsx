@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FairyStarIcon, ArtPaletteIcon } from './FairytaleIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { getFairytaleFallbackIllustration } from '../services/storyGenerator';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -30,20 +31,27 @@ const MAGIC_CRAFT_MESSAGES = [
 
 export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   sceneIndex,
+  theme,
   interest,
   childName,
   imageUrl,
 }) => {
-  const fallbackSrc = `./illustrations/scene_${sceneIndex}.jpg`;
-  const [currentSrc, setCurrentSrc] = useState<string>(imageUrl || fallbackSrc);
+  const fallbackSrc = getFairytaleFallbackIllustration(theme || interest, sceneIndex);
+  const [currentSrc, setCurrentSrc] = useState<string>(imageUrl || '');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
-    setCurrentSrc(imageUrl || fallbackSrc);
-    setImageLoaded(false);
-    setImageFailed(false);
+    if (imageUrl) {
+      setCurrentSrc(imageUrl);
+      setImageLoaded(false);
+      setImageFailed(false);
+    } else {
+      setCurrentSrc('');
+      setImageLoaded(false);
+      setImageFailed(false);
+    }
   }, [imageUrl, sceneIndex]);
 
   // Ротация сказочных фраз во время создания иллюстрации
@@ -56,15 +64,17 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   }, [imageLoaded]);
 
   const handleImageError = () => {
-    if (currentSrc !== fallbackSrc) {
+    if (currentSrc && currentSrc !== fallbackSrc) {
       console.warn(`[FairytaleIllustration] Primary image failed, switching to local fallback: ${fallbackSrc}`);
       setCurrentSrc(fallbackSrc);
+      setImageLoaded(false);
     } else {
+      console.warn(`[FairytaleIllustration] Image load failed: ${currentSrc}`);
       setImageFailed(true);
     }
   };
 
-  // Проверяем, является ли ссылка настоящей картинкой
+  // Проверяем, есть ли ссылка на картинку и не завершилась ли она ошибкой
   const hasValidImage = Boolean(currentSrc) && !imageFailed;
 
   // Фон под тему истории

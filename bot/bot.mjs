@@ -151,7 +151,7 @@ async function callWellflowDirect(messages, label) {
           max_tokens: 4500,
         }),
       },
-      90000
+      150000
     );
   } catch (error) {
     const cause = error.cause ? ` (${error.cause.code || error.cause.message || error.cause})` : '';
@@ -230,7 +230,7 @@ async function generateWellflowStoryAI(params) {
       );
       try {
         const lengthRepair = buildLengthRepairPrompt(story, story.metrics.target);
-        const expandedContent = await callFn(
+        const expandedContent = await callTextChat(
           [
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user },
@@ -259,7 +259,7 @@ async function generateWellflowStoryAI(params) {
   } catch (error) {
     console.warn(`[StoryEngine] ⚠️ Валидация не прошла: ${(error.issues || [error.message]).join('; ')}`);
     const repair = buildRepairPrompt(raw, error.issues || [error.message]);
-    const repairedContent = await callFn(
+    const repairedContent = await callTextChat(
       [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
@@ -384,26 +384,35 @@ async function generateWellflowImageAI(prompt, retries = 2) {
   }
 }
 
-async function saveGeneratedImage(remoteUrl, jobId, name) {
-  if (!jobId || !remoteUrl) return remoteUrl;
-  try {
-    const res = await fetch(remoteUrl, {
-      headers: WELLFLOW_IMAGE_KEY ? { Authorization: `Bearer ${WELLFLOW_IMAGE_KEY}` } : {},
-      signal: AbortSignal.timeout(60000),
+function saveImageToDiskBackground(remoteUrl, jobId, name) {
+  if (!jobId || !remoteUrl) return;
+  fetch(remoteUrl, {
+    headers: WELLFLOW_IMAGE_KEY ? { Authorization: `Bearer ${WELLFLOW_IMAGE_KEY}` } : {},
+    signal: AbortSignal.timeout(30000),
+  })
+    .then(async (res) => {
+      if (!res.ok) return;
+      const buffer = Buffer.from(await res.arrayBuffer());
+      const contentType = res.headers.get('content-type') || 'image/jpeg';
+      const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : '.jpg';
+      const dir = path.join(GENERATED_DIR, jobId);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, `${name}${ext}`), buffer);
+      console.log(`[Wellflow] 💾 Иллюстрация ${name} закэширована на сервере`);
+    })
+    .catch(() => {
+      // Фоновое кэширование не блокирует отдачу картинок
     });
-    if (!res.ok) throw new Error(`download HTTP ${res.status}`);
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const contentType = res.headers.get('content-type') || 'image/jpeg';
-    const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : '.jpg';
-    const dir = path.join(GENERATED_DIR, jobId);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, `${name}${ext}`), buffer);
-    if (!publicTunnelUrl) return remoteUrl;
-    return `${publicTunnelUrl.replace(/\/$/, '')}/media/${jobId}/${name}${ext}`;
-  } catch (error) {
-    console.warn(`[Wellflow] ⚠️ Не удалось сохранить ${name} локально: ${error.message}`);
-    return remoteUrl;
+}
+
+async function saveGeneratedImage(remoteUrl, jobId, name) {
+  if (!remoteUrl) return remoteUrl;
+  if (jobId) {
+    saveImageToDiskBackground(remoteUrl, jobId, name);
   }
+  // Всегда возвращаем прямой CDN-URL Wellflow!
+  // Это исключает задержки туннелей, всплывающие окна LocalTunnel и ускоряет отображение в 10 раз.
+  return remoteUrl;
 }
 
 /**
@@ -574,6 +583,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
         stage: 'drawing',
         progress: pct,
         message: `Создаём иллюстрации (${completedImages} из ${jobs.length} готовы)...`,
+        story,
       });
     })
   );

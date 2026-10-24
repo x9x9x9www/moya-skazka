@@ -180,7 +180,7 @@ export function getActiveApiUrl(): string {
 async function pollJob<T>(
   activeApi: string,
   jobId: string,
-  maxWaitMs = 120000,
+  maxWaitMs = 180000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<T> {
   const start = Date.now();
@@ -316,7 +316,7 @@ export function getRecentBooksBlacklist(): string[] {
  */
 export async function callWellflowStory(
   params: GenerateStoryParams,
-  timeoutMs = 120000,
+  timeoutMs = 180000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<any> {
   const controller = new AbortController();
@@ -502,7 +502,7 @@ export async function generateDynamicStory(
           message: 'Связываемся со сказочной мастерской...',
         });
       }
-      storyData = await callWellflowStory(params, 120000, onProgress);
+      storyData = await callWellflowStory(params, 180000, onProgress);
       if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
         break;
       }
@@ -611,7 +611,7 @@ export async function generateDynamicStory(
               return;
             }
             const img = new Image();
-            const timer = setTimeout(resolve, 5000);
+            const timer = setTimeout(resolve, 3000);
             img.onload = () => {
               clearTimeout(timer);
               resolve();
