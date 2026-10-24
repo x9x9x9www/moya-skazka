@@ -1404,134 +1404,45 @@ async function updateChatMenuWithApi(apiUrl) {
   }
 }
 
-// Хранилище ID единственного активного сообщения на чат (Single Living Message)
-const livingMessages = new Map();
+async function sendWelcome(chatId, firstName, startParam) {
+  const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
+  let message = `Привет, ${firstName || 'дорогой родитель'}! ✨\n\n` +
+    `Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.\n\n`;
 
-const ARTICLE_URL = 'https://x9x9x9www.github.io/moya-skazka/article.html?v=1';
+  if (startParam && startParam.startsWith('ref_')) {
+    message += `🎁 **Вы перешли по приглашению друга!**\nВаша первая иллюстрированная история уже ждёт вас.\n\n`;
+  }
 
-const EMOJI = {
-  MAGIC: '<tg-emoji emoji-id="5465465412345678902">✨</tg-emoji>',
-  BOOK: '<tg-emoji emoji-id="5465465412345678901">📖</tg-emoji>',
-  STAR: '<tg-emoji emoji-id="5424987654321098765">⭐️</tg-emoji>',
-  STATUS: '<tg-emoji emoji-id="5370894023471049281">⚡️</tg-emoji>',
-  FIRE: '<tg-emoji emoji-id="5368324170671202286">🔥</tg-emoji>',
-  HEART: '<tg-emoji emoji-id="5368324170671202287">💖</tg-emoji>',
-  GIFT: '<tg-emoji emoji-id="5465465412345678903">🎁</tg-emoji>',
-};
+  message += `🌟 **Создание сказок через ИИ:**\n` +
+    `• Текст генерируется нейросетью специально под характер ребёнка\n` +
+    `• Обложку и 4 иллюстрации в 3D Pixar-стиле рисует **Nano-Banana-2**\n` +
+    `• 4 сцены + вопросы для тёплой беседы перед сном\n` +
+    `• Первая персональная история — бесплатно!\n\n` +
+    `Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
 
-function getMainScreenText(userName) {
-  return (
-    `<u><i><b>МОЯ СКАЗКА // ПЕРСОНАЛЬНЫЕ ИИ-КНИГИ</b></i></u>\n` +
-    `<b>••• ━━━━━━━━━━━━━━━━━━━━ •••</b>\n\n` +
-    `Привет, <b>${userName}</b>! ${EMOJI.MAGIC}\n\n` +
-    `Добро пожаловать в волшебную мастерскую персонализированных терапевтических сказок на ночь для детей 2–6 лет.\n\n` +
-    `${EMOJI.STATUS} <b>Статус ИИ-мастерской:</b> <code>ONLINE (Готова к созданию)</code>\n` +
-    `${EMOJI.BOOK} <b>Сюжет:</b> <code>Story DNA Engine (gpt-6-luna)</code>\n` +
-    `${EMOJI.STAR} <b>Иллюстрации:</b> <code>3D Pixar Portals (nano-banana-2)</code>\n` +
-    `${EMOJI.FIRE} <b>Спецэффект:</b> 3D-аватарка ребёнка по фото + выбор наряда\n\n` +
-    `${EMOJI.GIFT} <i>Первая персональная сказка для вашего малыша — в подарок!</i>`
-  );
-}
-
-function getAboutScreenText() {
-  return (
-    `<u><i><b>О СКАЗКАХ И ТЕРАПИИ // МОЯ СКАЗКА</b></i></u>\n` +
-    `<b>••• ━━━━━━━━━━━━━━━━━━━━ •••</b>\n\n` +
-    `${EMOJI.MAGIC} <b>Как создаётся чудо:</b>\n` +
-    `• Вы загружаете фото малыша — зрение ИИ считывает черты лица и цвет волос.\n` +
-    `• Сервер создаёт 3D Pixar портрет-аватарку в сказочном наряде.\n` +
-    `• Автор сочиняет историю под характер, возраст и любимые игрушки ребёнка.\n` +
-    `• Художник рисует 4 сюжетные иллюстрации и обложку книги.\n\n` +
-    `${EMOJI.HEART} <b>Вопросы перед сном:</b> каждая сказка развивает эмпатию, смелость и доброту.`
-  );
-}
-
-function getGiftScreenText() {
-  return (
-    `<u><i><b>ВАШ ПОДАРОК // ПЕРВАЯ СКАЗКА</b></i></u>\n` +
-    `<b>••• ━━━━━━━━━━━━━━━━━━━━ •••</b>\n\n` +
-    `${EMOJI.GIFT} <b>Бесплатная первая книга активирована!</b>\n\n` +
-    `Вам доступно:\n` +
-    `• Генерация персональной иллюстрированной книги (4 сцены)\n` +
-    `• Озвучка и вопросы для тёплой беседы перед сном\n` +
-    `• Создание 3D-аватарки ребёнка по фото\n\n` +
-    `<i>Нажмите кнопку ниже, чтобы запустить сказочный визард!</i>`
-  );
-}
-
-function getMainKeyboard(appUrl) {
-  return {
+  const keyboard = {
     inline_keyboard: [
       [
         {
           text: '✨ Открыть «Моя сказка»',
-          web_app: { url: appUrl },
+          web_app: { url: currentAppUrl },
         },
       ],
-      [
-        { text: '📖 Как это работает', callback_data: 'screen_about' },
-        { text: '🎁 Мой подарок', callback_data: 'screen_gift' },
-      ],
-      [
-        { text: '🔄 Обновить статус', callback_data: 'screen_refresh' },
-      ],
-    ],
-  };
-}
-
-function getBackKeyboard(appUrl) {
-  return {
-    inline_keyboard: [
       [
         {
-          text: '✨ Создать сказку сейчас',
-          web_app: { url: appUrl },
+          text: '💬 Поддержка',
+          url: 'https://t.me/x9x9x9www',
         },
-      ],
-      [
-        { text: '◀️ Назад в меню', callback_data: 'screen_main' },
       ],
     ],
   };
-}
 
-async function renderLivingScreen(chatId, text, keyboard) {
-  const hiddenLink = `<a href="${ARTICLE_URL}">&#8203;</a>`;
-  const fullText = `${hiddenLink}${text}`;
-
-  // 1. Удаление старого живого сообщения
-  const oldMsgId = livingMessages.get(chatId);
-  if (oldMsgId) {
-    try {
-      await callTelegram('deleteMessage', { chat_id: chatId, message_id: oldMsgId });
-    } catch {}
-  }
-
-  // 2. Отправка нового экрана в формате «Статьи» (Single Bubble)
-  const res = await callTelegram('sendMessage', {
+  return await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: fullText,
-    parse_mode: 'HTML',
-    link_preview_options: {
-      url: ARTICLE_URL,
-      is_disabled: false,
-      prefer_large_media: true,
-      show_above_text: true,
-    },
+    text: message,
+    parse_mode: 'Markdown',
     reply_markup: keyboard,
   });
-
-  if (res && res.result) {
-    livingMessages.set(chatId, res.result.message_id);
-  }
-  return res;
-}
-
-async function sendWelcome(chatId, firstName, startParam) {
-  const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
-  const text = getMainScreenText(firstName || 'Заботливый родитель');
-  const keyboard = getMainKeyboard(currentAppUrl);
-  return await renderLivingScreen(chatId, text, keyboard);
 }
 
 // ========================================================
@@ -1550,15 +1461,6 @@ async function startPolling() {
   }
 
   console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);
-  
-  // Очистка системного меню слэш-команд
-  try {
-    await callTelegram('deleteMyCommands', {});
-    console.log('[Bot] 🧹 Меню системных команд успешно скрыто (deleteMyCommands)');
-  } catch (err) {
-    console.warn('[Bot] Ошибка deleteMyCommands:', err.message);
-  }
-
   await updateChatMenuWithApi(publicTunnelUrl);
 
   let offset = 0;
@@ -1581,33 +1483,6 @@ async function startPolling() {
         for (const update of updates.result) {
           offset = update.update_id + 1;
 
-          // Обработка инлайн-нажатий (кнопки меню)
-          if (update.callback_query) {
-            const cb = update.callback_query;
-            const chatId = cb.message?.chat?.id;
-            const data = cb.data;
-            const firstName = cb.from?.first_name || 'Заботливый родитель';
-            const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
-
-            try {
-              await callTelegram('answerCallbackQuery', { callback_query_id: cb.id });
-            } catch {}
-
-            if (chatId) {
-              if (data === 'screen_main') {
-                await renderLivingScreen(chatId, getMainScreenText(firstName), getMainKeyboard(currentAppUrl));
-              } else if (data === 'screen_about') {
-                await renderLivingScreen(chatId, getAboutScreenText(), getBackKeyboard(currentAppUrl));
-              } else if (data === 'screen_gift') {
-                await renderLivingScreen(chatId, getGiftScreenText(), getBackKeyboard(currentAppUrl));
-              } else if (data === 'screen_refresh') {
-                await renderLivingScreen(chatId, getMainScreenText(firstName), getMainKeyboard(currentAppUrl));
-              }
-            }
-            continue;
-          }
-
-          // Обработка текстовых сообщений
           if (update.message && update.message.text) {
             const chatId = update.message.chat.id;
             const text = update.message.text;
@@ -1620,11 +1495,36 @@ async function startPolling() {
               const startParam = parts.length > 1 ? parts[1] : null;
               const res = await sendWelcome(chatId, firstName, startParam);
               console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
+            } else if (text === '/app') {
+              const appUrl = getAppUrlWithApi(publicTunnelUrl);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: 'Нажмите кнопку ниже, чтобы открыть визард сказок:',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '✨ Открыть сказки', web_app: { url: appUrl } }],
+                  ],
+                },
+              });
+            } else if (text === '/reset' || text.startsWith('/start reset') || text === 'сброс' || text === '/clear') {
+              const resetAppUrl = `${getAppUrlWithApi(publicTunnelUrl)}&reset=1`;
+              console.log(`[Bot] 🔄 Запрос сброса аккаунта от ${firstName} (${chatId})`);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: `🔄 **Профиль сброшен!**\n\nВсе сохранённые данные (профиль ребёнка, созданные сказки и настройки) будут очищены.\n\nНажмите кнопку ниже, чтобы открыть приложение **с чистого листа как новый пользователь**:\n• Приветственный онбординг\n• Быстрая регистрация малыша\n• Чистая библиотека\n• Бесплатная первая сказка! 🎁`,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '✨ Начать как новый пользователь', web_app: { url: resetAppUrl } }],
+                  ],
+                },
+              });
+            } else if (text === '/help') {
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: '«Моя сказка» создаёт персонализированные иллюстрированные сказки на ночь для детей 2–6 лет.\n\nНажмите кнопку «Моя сказка ✨» внизу экрана для запуска!',
+              });
             } else {
-              // Автоочистка входящих пользовательских сообщений (кроме /start)
-              try {
-                await callTelegram('deleteMessage', { chat_id: chatId, message_id: update.message.message_id });
-              } catch {}
               await sendWelcome(chatId, firstName, null);
             }
           }

@@ -13,7 +13,3 @@ yarn-error.log*
 .tunnel_url
 out/
 bot/generated/
-__pycache__/
-*.pyc
-*.pyo
-Magical_storybook_opening_by_itself*.gif
