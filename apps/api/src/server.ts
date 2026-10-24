@@ -864,12 +864,32 @@ app.register(
       }
     };
 
+    const handleCharacterGenerateAvatar = async (req: FastifyRequest, reply: FastifyReply) => {
+      const { imageBase64, mimeType, outfit } = (req.body as any) || {};
+      if (!imageBase64) {
+        return reply.status(400).send({
+          error: 'VALIDATION_ERROR',
+          message: 'Поле imageBase64 обязательно',
+        });
+      }
+      try {
+        const result = await characterVision.generateAvatar({ imageBase64, mimeType, outfit });
+        return reply.status(200).send(result);
+      } catch (err: any) {
+        return reply.status(400).send({
+          error: 'AVATAR_ERROR',
+          message: err?.message || 'Не удалось сгенерировать 3D аватар',
+        });
+      }
+    };
+
     api.post('/character/analyze-photo', handleCharacterAnalyzePhoto);
+    api.post('/character/generate-avatar', handleCharacterGenerateAvatar);
   },
   { prefix: '/api/v1' }
 );
 
-// Прямой роут /api/character/analyze-photo без префикса /v1
+// Прямой роут /api/character/analyze-photo и /api/character/generate-avatar без префикса /v1
 const rootCharacterVision = new CharacterVisionService();
 app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: FastifyReply) => {
   const { imageBase64, mimeType } = (req.body as any) || {};
@@ -886,6 +906,25 @@ app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: Fast
     return reply.status(400).send({
       error: 'VISION_ERROR',
       message: err?.message || 'Не удалось проанализировать фото',
+    });
+  }
+});
+
+app.post('/api/character/generate-avatar', async (req: FastifyRequest, reply: FastifyReply) => {
+  const { imageBase64, mimeType, outfit } = (req.body as any) || {};
+  if (!imageBase64) {
+    return reply.status(400).send({
+      error: 'VALIDATION_ERROR',
+      message: 'Поле imageBase64 обязательно',
+    });
+  }
+  try {
+    const result = await rootCharacterVision.generateAvatar({ imageBase64, mimeType, outfit });
+    return reply.status(200).send(result);
+  } catch (err: any) {
+    return reply.status(400).send({
+      error: 'AVATAR_ERROR',
+      message: err?.message || 'Не удалось сгенерировать 3D аватар',
     });
   }
 });

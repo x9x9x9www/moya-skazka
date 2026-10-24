@@ -203,4 +203,190 @@ export class CharacterVisionService {
       throw new Error('Не удалось проанализировать фото через Vision API. Попробуйте ещё раз или укажите параметры вручную.');
     }
   }
+
+  /**
+   * Мгновенная генерация 3D-аватарки по фото ребенка + блокировка черт + сказочный наряд.
+   * Шаг А (Vision): извлечение черт лица
+   * Шаг Б: буфер фото немедленно обнуляется (Zero-Storage)
+   * Шаг В: генерация 3D Pixar портрета крупным планом (Nano-Banana-2)
+   */
+  public async generateAvatar(input: GenerateCharacterAvatarInput): Promise<GenerateCharacterAvatarResult> {
+    const rawPhoto = input.imageBase64;
+    const traitsResult = await this.analyzePhoto({
+      imageBase64: rawPhoto,
+      mimeType: input.mimeType,
+    });
+    // Шаг Б: обнуляем буфер
+    input.imageBase64 = '';
+
+    const traits = {
+      gender: traitsResult.gender || 'boy',
+      approxAge: traitsResult.approxAge || 4,
+      hairColor: traitsResult.hairColor || 'русые',
+      hairType: traitsResult.hairType || 'короткие',
+      eyeColor: traitsResult.eyeColor || 'карие',
+      skinTone: traitsResult.skinTone || 'персиковая',
+      distinctiveFeatures: traitsResult.distinctiveFeatures || '',
+    };
+
+    const avatarId = resolveChildAvatarKey(traits);
+
+    // Шаг В: формирование промпта
+    const genderEn = traits.gender === 'girl' ? 'girl' : 'boy';
+    const approxAge = traits.approxAge;
+    const hairColorEn = {
+      светлые: 'blonde',
+      русые: 'light brown',
+      тёмные: 'dark brown',
+      рыжие: 'ginger red',
+    }[traits.hairColor] || 'light brown';
+
+    const hairTypeEn = {
+      кудрявые: 'curly',
+      короткие: 'short neat',
+      длинные: 'long wavy',
+      прямые: 'straight',
+    }[traits.hairType] || 'curly';
+
+    const eyeColorEn = {
+      карие: 'warm hazel brown',
+      голубые: 'bright expressive blue',
+      зелёные: 'vibrant emerald green',
+      серые: 'gentle grey',
+    }[traits.eyeColor] || 'bright expressive blue';
+
+    const skinToneEn = {
+      светлая: 'fair',
+      персиковая: 'warm peach',
+      смуглая: 'golden tan',
+    }[traits.skinTone] || 'fair';
+
+    let distinctiveEn = '';
+    if (traits.distinctiveFeatures) {
+      const feat = traits.distinctiveFeatures.toLowerCase();
+      if (feat.includes('очк')) distinctiveEn = 'cute round glasses';
+      else if (feat.includes('веснуш')) distinctiveEn = 'cute freckles on cheeks';
+      else distinctiveEn = traits.distinctiveFeatures;
+    }
+
+    let outfitEn = 'cozy fairytale outfit';
+    if (input.outfit) {
+      const o = String(input.outfit).toLowerCase();
+      if (o.includes('супергер')) outfitEn = 'superhero costume with cape';
+      else if (o.includes('космонавт') || o.includes('скафандр')) outfitEn = 'white astronaut space suit';
+      else if (o.includes('динозавр') || o.includes('кигуруми')) outfitEn = 'cozy dinosaur kigurumi onesie';
+      else if (o.includes('маг') || o.includes('манти')) outfitEn = 'little starry wizard robe';
+      else if (o.includes('плать')) outfitEn = 'festive fairytale ball gown';
+      else if (o.includes('дождевик')) outfitEn = 'yellow raincoat and boots';
+      else if (o.includes('пижам')) outfitEn = 'soft pajamas with stars';
+      else outfitEn = input.outfit;
+    }
+
+    const avatarPrompt = `Close-up 3D animated Pixar-style character avatar portrait of a cute ${approxAge}-year-old ${genderEn}, ${hairColorEn} ${hairTypeEn} hair, bright expressive ${eyeColorEn} eyes, ${skinToneEn} skin${distinctiveEn ? ', ' + distinctiveEn : ''}, wearing ${outfitEn || 'cozy fairytale outfit'}, warm gentle smile looking at camera, soft cinematic studio lighting, magical blurry background with warm bokeh, square 1:1, ultra-detailed, 8k, no text, no watermark.`;
+
+    const isTestEnv = process.env.NODE_ENV === 'test' && process.env.RUN_LIVE_AI_TESTS !== 'true';
+    const imageKey = config.WELLFLOW_IMAGE_KEY || process.env.WELLFLOW_IMAGE_KEY;
+
+    if (isTestEnv || !imageKey) {
+      return {
+        status: 'ok',
+        avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`,
+        avatar_id: avatarId,
+        traits,
+      };
+    }
+
+    try {
+      const res = await fetch(`${config.WELLFLOW_API_URL}/images/generations`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${imageKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.WELLFLOW_IMAGE_MODEL || 'nano-banana-2',
+          prompt: avatarPrompt,
+          n: 1,
+          size: '1024x1024',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Wellflow Image HTTP ${res.status}`);
+      }
+
+      const json = (await res.json()) as any;
+      const avatarUrl = json.imageUrl || json.data?.[0]?.url;
+      if (!avatarUrl) {
+        throw new Error('No image URL in response');
+      }
+
+      return {
+        status: 'ok',
+        avatarUrl,
+        avatar_id: avatarId,
+        traits,
+      };
+    } catch (err: any) {
+      console.warn('[CharacterVisionService] Ошибка генерации аватара через Wellflow, возврат пресета:', err?.message || err);
+      return {
+        status: 'ok',
+        avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`,
+        avatar_id: avatarId,
+        traits,
+      };
+    }
+  }
+}
+
+export interface GenerateCharacterAvatarInput {
+  imageBase64: string;
+  mimeType?: string;
+  outfit?: string;
+}
+
+export interface GenerateCharacterAvatarResult {
+  status: 'ok';
+  avatarUrl: string;
+  avatar_id: string;
+  traits: {
+    gender: 'boy' | 'girl';
+    approxAge: number;
+    hairColor: 'светлые' | 'русые' | 'тёмные' | 'рыжие';
+    hairType: 'кудрявые' | 'короткие' | 'длинные' | 'прямые';
+    eyeColor: 'карие' | 'голубые' | 'зелёные' | 'серые';
+    skinTone: 'светлая' | 'персиковая' | 'смуглая';
+    distinctiveFeatures: string;
+  };
+}
+
+export function resolveChildAvatarKey(params: {
+  gender?: string;
+  hairColor?: string;
+  skinTone?: string;
+  distinctiveFeatures?: string;
+  avatar_id?: string;
+}): string {
+  const gender = params.gender === 'girl' ? 'girl' : 'boy';
+  const hair = (params.hairColor || '').toLowerCase();
+  const skin = (params.skinTone || '').toLowerCase();
+  const features = (params.distinctiveFeatures || '').toLowerCase();
+  const avatarId = (params.avatar_id || '').toLowerCase();
+
+  if (features.includes('очк') || avatarId.includes('glasses')) {
+    return `${gender}_glasses`;
+  }
+  if (skin.includes('смугл') || avatarId.includes('tan')) {
+    return `${gender}_tan`;
+  }
+  if (hair.includes('светл') || hair.includes('блонд')) {
+    return `${gender}_blonde`;
+  }
+  if (hair.includes('рыж')) {
+    return `${gender}_ginger`;
+  }
+  if (hair.includes('тёмн') || hair.includes('темн') || hair.includes('черн') || hair.includes('брюнет')) {
+    return `${gender}_dark`;
+  }
+  return `${gender}_brown`;
 }

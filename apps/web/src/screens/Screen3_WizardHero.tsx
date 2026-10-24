@@ -13,6 +13,7 @@ import {
   CloudRain,
   Shirt,
   Scissors,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BoyAvatar,
@@ -33,7 +34,7 @@ import {
   SportBallIcon,
   PrincessCrownIcon,
 } from '../components/FairytaleIcons';
-import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey, ALL_AVATAR_KEYS } from '../utils/avatarResolver';
 import { api } from '../api/client';
 
 export interface WizardHeroData {
@@ -44,11 +45,12 @@ export interface WizardHeroData {
   theme: string;
   appearance: {
     avatar_id: string;
+    avatar_url?: string;
     hairColor: string; // 'светлые' | 'русые' | 'тёмные' | 'рыжие'
     hairType: string; // 'кудрявые' | 'короткие' | 'длинные' | 'прямые'
-    clothingItem: string; // Свободный ввод: 'жёлтый дождевик и резиновые сапожки', 'уютная пижамка...'
+    clothingItem: string; // 'костюм супергероя', 'скафандр космонавта', 'жёлтый дождевик и сапожки'...
     clothingColor: string; // акцентный цвет или автоопределённый
-    toy: string; // Свободный ввод: 'плюшевый жирафик Тоша', 'робот Боб', 'зайка'...
+    toy: string; // 'плюшевый динозаврик', 'робот Боб', 'зайка'...
     eyeColor?: string; // 'карие' | 'голубые' | 'зелёные' | 'серые'
     skinTone?: string; // 'светлая' | 'персиковая' | 'смуглая'
     distinctiveFeatures?: string;
@@ -64,6 +66,49 @@ interface Screen3WizardHeroProps {
   onBack?: () => void;
 }
 
+interface FairytaleOutfitOption {
+  id: string;
+  title: string;
+  icon: string;
+  clothingValue: string;
+}
+
+const FAIRYTALE_OUTFITS: FairytaleOutfitOption[] = [
+  { id: 'superhero', title: 'Костюм супергероя', icon: '🦸‍♂️', clothingValue: 'костюм супергероя' },
+  { id: 'astronaut', title: 'Скафандр космонавта', icon: '🚀', clothingValue: 'скафандр космонавта' },
+  { id: 'dinosaur', title: 'Уютный кигуруми динозаврика', icon: '🦖', clothingValue: 'уютный кигуруми динозаврика' },
+  { id: 'wizard', title: 'Мантия маленького мага', icon: '🪄', clothingValue: 'мантия маленького мага' },
+  { id: 'dress', title: 'Праздничное бальное платье', icon: '👑', clothingValue: 'праздничное бальное платье' },
+  { id: 'raincoat', title: 'Жёлтый дождевик и сапожки', icon: '🌧️', clothingValue: 'жёлтый дождевик и сапожки' },
+  { id: 'pajama', title: 'Мягкая пижамка со звёздами', icon: '🧸', clothingValue: 'мягкая пижамка со звёздами' },
+  { id: 'custom', title: 'Свой вариант', icon: '✏️', clothingValue: '' },
+];
+
+interface AvatarPresetItem {
+  id: string;
+  gender: 'boy' | 'girl';
+  title: string;
+  hairColor: string;
+  hairType: string;
+  skinTone: string;
+  distinctiveFeatures: string;
+}
+
+const PRESET_AVATARS: AvatarPresetItem[] = [
+  { id: 'boy_blonde', gender: 'boy', title: 'Светлые', hairColor: 'светлые', hairType: 'короткие', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'boy_brown', gender: 'boy', title: 'Русые', hairColor: 'русые', hairType: 'короткие', skinTone: 'персиковая', distinctiveFeatures: '' },
+  { id: 'boy_dark', gender: 'boy', title: 'Тёмные', hairColor: 'тёмные', hairType: 'короткие', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'boy_ginger', gender: 'boy', title: 'Рыжие', hairColor: 'рыжие', hairType: 'кудрявые', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'boy_glasses', gender: 'boy', title: 'В очках 👓', hairColor: 'русые', hairType: 'короткие', skinTone: 'светлая', distinctiveFeatures: 'очки' },
+  { id: 'boy_tan', gender: 'boy', title: 'Смуглый', hairColor: 'тёмные', hairType: 'короткие', skinTone: 'смуглая', distinctiveFeatures: '' },
+  { id: 'girl_blonde', gender: 'girl', title: 'Светлые', hairColor: 'светлые', hairType: 'длинные', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'girl_brown', gender: 'girl', title: 'Русые', hairColor: 'русые', hairType: 'кудрявые', skinTone: 'персиковая', distinctiveFeatures: '' },
+  { id: 'girl_dark', gender: 'girl', title: 'Тёмные', hairColor: 'тёмные', hairType: 'длинные', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'girl_ginger', gender: 'girl', title: 'Рыжие', hairColor: 'рыжие', hairType: 'кудрявые', skinTone: 'светлая', distinctiveFeatures: '' },
+  { id: 'girl_glasses', gender: 'girl', title: 'В очках 👓', hairColor: 'русые', hairType: 'длинные', skinTone: 'светлая', distinctiveFeatures: 'очки' },
+  { id: 'girl_tan', gender: 'girl', title: 'Смуглый', hairColor: 'тёмные', hairType: 'длинные', skinTone: 'смуглая', distinctiveFeatures: '' },
+];
+
 export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   data,
   onChange,
@@ -74,6 +119,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   const [visionError, setVisionError] = useState<string | null>(null);
   const [visionSuccess, setVisionSuccess] = useState<string | null>(null);
   const [showManualAppearance, setShowManualAppearance] = useState(false);
+  const [isPhotoBased, setIsPhotoBased] = useState<boolean>(() => {
+    return Boolean(
+      data.appearance?.avatar_url &&
+      !data.appearance.avatar_url.includes('illustrations/avatars/')
+    );
+  });
+  const [isCustomOutfitSelected, setIsCustomOutfitSelected] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Популярные интересы для быстрого выбора с векторными сказочными иконками
@@ -115,20 +167,6 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'Смелый поход к врачу', label: 'Поход к врачу' },
     { id: 'Появление братика или сестрёнки', label: 'Братик или сестрёнка' },
     { id: 'Бережное отношение к природе', label: 'Забота о природе' },
-  ];
-
-  // Быстрые подсказки-идеи для одежды с векторными иконками
-  const clothingSuggestions = [
-    { icon: <CloudRain className="w-3.5 h-3.5 text-sky-500" />, text: 'Жёлтый дождевик и сапожки' },
-    { icon: <FairyStarIcon className="w-3.5 h-3.5" />, text: 'Уютная пижамка со звёздочками' },
-    { icon: <Shirt className="w-3.5 h-3.5 text-amber-700" />, text: 'Тёплый вязаный свитер' },
-    { icon: <PrincessCrownIcon className="w-3.5 h-3.5" />, text: 'Сказочное пышное платьице' },
-    { icon: <Shirt className="w-3.5 h-3.5 text-blue-600" />, text: 'Джинсовый комбинезончик' },
-    { icon: <SpaceRocketIcon className="w-3.5 h-3.5" />, text: 'Костюм юного космонавта' },
-    { icon: <DinoIcon className="w-3.5 h-3.5" />, text: 'Футболка с динозавриком' },
-    { icon: <MagicWandIcon className="w-3.5 h-3.5" />, text: 'Бархатная мантия волшебника' },
-    { icon: <WoodlandFoxIcon className="w-3.5 h-3.5" />, text: 'Толстовка с рыжей лисичкой' },
-    { icon: <FairyStarIcon className="w-3.5 h-3.5 text-amber-500" />, text: 'Костюм доброго супергероя' },
   ];
 
   // Быстрые подсказки-идеи для игрушки-спутника с векторными иконками
@@ -235,7 +273,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     setCustomInterest('');
   };
 
-  // Zero-Storage Vision: Обработка загруженного фото ребенка исключительно в оперативной памяти
+  // Мгновенная генерация 3D-аватарки по фото ребенка (Zero-Storage Vision + Nano-Banana-2)
   const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -259,66 +297,62 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       reader.onload = async () => {
         let base64String = reader.result as string;
         try {
-          const res = await api.analyzeCharacterPhoto(base64String, file.type);
+          // Запуск серверного конвейера: Vision анализ + Zero-Storage + 3D Pixar аватар
+          const res = await api.generateCharacterAvatar(
+            base64String,
+            appearance.clothingItem,
+            file.type
+          );
           // Zero-Storage: немедленно зануляем ссылку на base64
           base64String = '';
 
-          if (res.error === 'FACE_NOT_DETECTED') {
-            setVisionError(
-              res.message ||
-                'Не удалось чётко разглядеть личико. Попробуйте другое фото или просто выберите параметры вручную ниже.'
-            );
-            setShowManualAppearance(true);
-          } else {
-            const targetGender = res.gender || data.gender || 'boy';
-            const targetHair = res.hairColor || appearance.hairColor || 'русые';
-            const targetSkin = res.skinTone || appearance.skinTone || 'персиковая';
-            const targetFeatures = res.distinctiveFeatures || appearance.distinctiveFeatures || '';
-            const targetAvatarId = (res as any).avatar_id || resolveChildAvatarKey({
-              gender: targetGender,
-              hairColor: targetHair,
-              skinTone: targetSkin,
-              distinctiveFeatures: targetFeatures,
-            });
+          const traits = res.traits || {};
+          const targetGender = (traits.gender as 'boy' | 'girl') || data.gender || 'boy';
+          const targetHair = traits.hairColor || appearance.hairColor || 'русые';
+          const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
+          const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';
+          const targetEye = traits.eyeColor || appearance.eyeColor || 'голубые';
+          const targetFeatures = traits.distinctiveFeatures || appearance.distinctiveFeatures || '';
+          const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
+            gender: targetGender,
+            hairColor: targetHair,
+            skinTone: targetSkin,
+            distinctiveFeatures: targetFeatures,
+          });
 
-            const newAppearance = {
-              ...appearance,
-              hairColor: targetHair,
-              hairType: res.hairType || appearance.hairType,
-              eyeColor: res.eyeColor || appearance.eyeColor,
-              skinTone: targetSkin,
-              distinctiveFeatures: targetFeatures,
-              avatar_id: targetAvatarId,
-            };
+          const newAppearance = {
+            ...appearance,
+            avatar_url: res.avatarUrl,
+            avatar_id: targetAvatarId,
+            hairColor: targetHair,
+            hairType: targetHairType,
+            eyeColor: targetEye,
+            skinTone: targetSkin,
+            distinctiveFeatures: targetFeatures,
+          };
 
-            const patch: Partial<WizardHeroData> = {
-              appearance: newAppearance,
-            };
-            if (res.gender) {
-              patch.gender = res.gender;
-            }
-            if (res.approxAge && res.approxAge >= 1 && res.approxAge <= 12) {
-              patch.age = res.approxAge;
-            }
-
-            onChange({
-              ...data,
-              ...patch,
-            });
-
-            setVisionSuccess(
-              res.distinctiveFeatures
-                ? `Мы увидели героя! Особенность: «${res.distinctiveFeatures}». Проверьте, всё ли верно — при желании вы можете поправить любую деталь ниже.`
-                : 'Мы увидели героя! Проверьте, всё ли верно — при желании вы можете поправить любую деталь ниже.'
-            );
+          const patch: Partial<WizardHeroData> = {
+            appearance: newAppearance,
+            gender: targetGender,
+          };
+          if (traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
+            patch.age = traits.approxAge;
           }
+
+          onChange({
+            ...data,
+            ...patch,
+          });
+
+          setIsPhotoBased(true);
+          setShowManualAppearance(false);
+          setVisionSuccess('✨ Герой ожил по фото!');
         } catch (err: any) {
           base64String = '';
           setVisionError(
             err?.message ||
-              'Не удалось чётко разглядеть личико. Попробуйте другое фото или просто выберите параметры вручную ниже.'
+              'Не удалось создать аватар по фото. Попробуйте другой снимок или настройте героя вручную.'
           );
-          setShowManualAppearance(true);
         } finally {
           setIsAnalyzing(false);
         }
@@ -334,49 +368,38 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     }
   };
 
-  // Цвет волос для превью
-  const hairColorsMap: Record<string, string> = {
-    светлые: '#F7DC6F',
-    русые: '#C49A45',
-    тёмные: '#3E2723',
-    рыжие: '#E65100',
+  // Кнопка [ 🔄 Сделать другое фото ]
+  const handleRetakePhoto = () => {
+    setIsPhotoBased(false);
+    setVisionSuccess(null);
+    setVisionError(null);
+    updateAppearance({
+      avatar_url: undefined,
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
   };
-  const activeColorHex = hairColorsMap[appearance.hairColor] || '#C49A45';
 
-  // Тон кожи для превью
-  const skinTonesMap: Record<string, string> = {
-    светлая: '#FFE0BD',
-    персиковая: '#FAD0B3',
-    смуглая: '#D7A173',
+  // Переключение на готовые 3D-пресеты
+  const handleApplyPreset = (preset: AvatarPresetItem) => {
+    const updatedAppearance = {
+      ...appearance,
+      avatar_id: preset.id,
+      avatar_url: undefined, // сбрасываем AI URL для отображения локального 3D аватара
+      hairColor: preset.hairColor,
+      hairType: preset.hairType,
+      skinTone: preset.skinTone,
+      distinctiveFeatures: preset.distinctiveFeatures,
+    };
+    setIsPhotoBased(false);
+    onChange({
+      ...data,
+      gender: preset.gender,
+      appearance: updatedAppearance,
+    });
   };
-  const activeSkinHex = skinTonesMap[appearance.skinTone || 'светлая'] || '#FFE0BD';
-
-  // Цвет глаз для превью
-  const eyeColorsMap: Record<string, string> = {
-    карие: '#4E342E',
-    голубые: '#29B6F6',
-    зелёные: '#43A047',
-    серые: '#78909C',
-  };
-  const activeEyeHex = eyeColorsMap[appearance.eyeColor || 'карие'] || '#2D3436';
-
-  // Автоматическое определение цвета одежды по тексту для превью аватара
-  const detectClothingHex = (clothingText: string = '', fallbackColor: string = '') => {
-    const text = (clothingText + ' ' + fallbackColor).toLowerCase();
-    if (text.includes('жёлт')) return '#F5B041';
-    if (text.includes('голуб')) return '#5DADE2';
-    if (text.includes('син')) return '#2980B9';
-    if (text.includes('розов')) return '#F1948A';
-    if (text.includes('зелён') || text.includes('изумруд')) return '#2E6F5E';
-    if (text.includes('красн')) return '#E74C3C';
-    if (text.includes('терракот')) return '#D35400';
-    if (text.includes('фиолет') || text.includes('сирен')) return '#8E44AD';
-    if (text.includes('оранж')) return '#E67E22';
-    if (text.includes('бел')) return '#F4F6F6';
-    if (text.includes('сер')) return '#95A5A6';
-    return '#2E6F5E';
-  };
-  const activeClothingHex = detectClothingHex(appearance.clothingItem, appearance.clothingColor);
 
   // Динамическое определение эмодзи для игрушки героя
   const detectToyEmoji = (toyText: string = ''): string => {
@@ -400,12 +423,50 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     return '🧸';
   };
 
+  // Текст кратких черт лица для заблокированной плашки
+  const traitsSummaryText = [
+    `${appearance.hairColor || 'русые'} ${appearance.hairType || 'кудрявые'} волосы`,
+    `${appearance.eyeColor || 'голубые'} глаза`,
+    appearance.distinctiveFeatures?.includes('очк')
+      ? 'очки 👓'
+      : appearance.distinctiveFeatures || '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  // Проверка, выбран ли наряд из стандартного списка чипсов
+  const isOutfitChipActive = (outfit: FairytaleOutfitOption) => {
+    if (outfit.id === 'custom') {
+      return (
+        isCustomOutfitSelected ||
+        (Boolean(appearance.clothingItem) &&
+          !FAIRYTALE_OUTFITS.filter((o) => o.id !== 'custom').some(
+            (o) => (appearance.clothingItem || '').toLowerCase() === o.clothingValue.toLowerCase()
+          ))
+      );
+    }
+    return (appearance.clothingItem || '').toLowerCase() === outfit.clothingValue.toLowerCase();
+  };
+
   // Список кастомных интересов (которые не входят в базовый список)
   const standardInterestIds = interestsList.map((i) => i.id);
   const customInterestsList = data.interests.filter((i) => !standardInterestIds.includes(i));
 
+  // Пресеты аватаров, отфильтрованные по выбранному полу
+  const currentGenderPresets = PRESET_AVATARS.filter((p) => p.gender === (data.gender || 'boy'));
+
   return (
     <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
+      {/* Скрытый инпут загрузки фото */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handlePhotoSelected}
+        className="hidden"
+        id="hero-photo-upload"
+      />
+
       {/* Индикатор прогресса */}
       <div className="text-center">
         <span className="text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
@@ -415,45 +476,121 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           Кто станет главным героем?
         </h2>
         <p className="text-xs text-stone-500 mt-1">
-          Настройте внешность, одежду и спутника — малыш оживёт на иллюстрациях сказки
+          {isPhotoBased
+            ? '3D Pixar герой ожил по фото! Выберите наряд и спутника'
+            : 'Загрузите фото для мгновенной 3D-аватарки или выберите готовый образ'}
         </p>
       </div>
 
-      {/* 🔒 Блок Zero-Storage: Создать героя по фото (по желанию) */}
-      <div className="rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-amber-50/50 border border-amber-200/90 p-4 shadow-sm space-y-3">
-        <div>
-          <div className="font-serif font-bold text-base text-stone-900 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
-            <span>✨ Создать героя по фото (по желанию)</span>
+      {/* ========================================================================= */}
+      {/* Состояние А: Процесс генерации 3D-аватара (10-15 сек) */}
+      {/* ========================================================================= */}
+      {isAnalyzing && (
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-100 via-amber-50 to-orange-50 border-2 border-amber-300 shadow-md text-center space-y-3 animate-pulse">
+          <div className="relative mx-auto w-16 h-16 rounded-full border-4 border-amber-500 border-t-transparent animate-spin flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-amber-600 animate-bounce" />
           </div>
-          <p className="text-[11px] text-stone-600 mt-1.5 leading-relaxed flex items-start gap-1.5 bg-white/70 p-2.5 rounded-xl border border-amber-100">
-            <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-            <span>
-              <strong className="font-semibold text-stone-700">🔒 Мы заботимся о безопасности:</strong> снимок анализируется мгновенно в оперативной памяти и сразу навсегда удаляется. Мы никогда не храним фото детей.
-            </span>
-          </p>
+          <div>
+            <h3 className="font-serif font-bold text-base text-amber-950">
+              Волшебная кисть рисует 3D Pixar портрет... 🎨
+            </h3>
+            <p className="text-xs text-amber-800 mt-1 max-w-xs mx-auto leading-relaxed">
+              Считываем черты лица (Zero-Storage: фото сразу удаляется) → Создаём сияющий 3D-образ (~10–15 сек)
+            </p>
+          </div>
         </div>
+      )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handlePhotoSelected}
-          className="hidden"
-          id="hero-photo-upload"
-        />
+      {/* ========================================================================= */}
+      {/* Состояние Б: Готовый 3D-портрет по фото ребенка */}
+      {/* ========================================================================= */}
+      {!isAnalyzing && isPhotoBased && (
+        <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+          {/* Круглая карточка с 3D-портретом в сияющей золотой рамке */}
+          <div className="flex flex-col items-center justify-center p-5 rounded-3xl bg-gradient-to-b from-amber-50/90 via-white to-amber-50/60 border border-amber-200/90 shadow-md relative overflow-hidden">
+            {/* Бейдж: ✨ Герой ожил по фото! */}
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-xs font-bold shadow-sm mb-3.5">
+              <Sparkles className="w-3.5 h-3.5 fill-amber-200 text-white animate-spin-slow" />
+              <span>✨ Герой ожил по фото!</span>
+            </div>
 
-        {/* Состояние 1: Загрузка / Анализ фото */}
-        {isAnalyzing ? (
-          <div className="p-4 rounded-2xl bg-amber-100/80 border border-amber-300 flex items-center gap-3 animate-pulse shadow-inner">
-            <div className="w-8 h-8 rounded-full border-3 border-amber-600 border-t-transparent animate-spin shrink-0" />
-            <div className="text-xs font-semibold text-amber-900 leading-snug">
-              Художник изучает черты лица и подбирает краски... 🎨
+            {/* Сияющая золотая рамка вокруг портрета крупным планом */}
+            <div className="relative w-36 h-36 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-[0_0_28px_rgba(245,158,11,0.5)] ring-4 ring-amber-300/70">
+              <div className="w-full h-full rounded-full overflow-hidden bg-cream-50 border-2 border-white shadow-inner flex items-center justify-center">
+                <img
+                  src={resolveChildAvatar(appearance)}
+                  alt={data.childName || 'Герой'}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                />
+              </div>
+              {/* Игрушка-спутник на бейдже */}
+              <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-white/95 border border-amber-300 shadow-md flex items-center justify-center text-base">
+                {detectToyEmoji(appearance.toy)}
+              </div>
+            </div>
+
+            {/* Имя и возраст */}
+            <div className="mt-3.5 text-center">
+              <div className="font-serif font-bold text-lg text-stone-900">
+                {data.childName || 'Главный герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} {data.age === 1 ? 'год' : data.age < 5 ? 'года' : 'лет'}
+              </div>
+            </div>
+
+            {/* Кнопка под портретом: [ 🔄 Сделать другое фото ] */}
+            <button
+              type="button"
+              onClick={handleRetakePhoto}
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+              <span>🔄 Сделать другое фото</span>
+            </button>
+          </div>
+
+          {/* 🔒 Блокировка анатомических переключателей */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-200 shadow-xs flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5 text-amber-700">
+              <Lock className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex-1 text-xs">
+              <div className="font-bold text-stone-900 flex items-center gap-2">
+                <span>Черты лица определены по фото</span>
+                <span className="text-[10px] font-semibold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-md">
+                  🔒 Заблокировано
+                </span>
+              </div>
+              <p className="text-stone-700 mt-0.5 leading-snug">
+                🔒 Черты лица определены по фото: <strong className="font-semibold text-stone-900">{traitsSummaryText}</strong>.
+              </p>
+              <p className="text-[11px] text-stone-500 mt-1">
+                Ручные переключатели причёски и глаз скрыты, чтобы сохранить портретное сходство с фото малыша.
+              </p>
             </div>
           </div>
-        ) : (
-          <div className="space-y-2.5">
-            {/* Кнопка выбора файла */}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* Состояние В: Без фото / Ручной режим со свободными 3D-пресетами */}
+      {/* ========================================================================= */}
+      {!isAnalyzing && !isPhotoBased && (
+        <div className="space-y-4 animate-in fade-in">
+          {/* Карточка загрузки фото с защитой Zero-Storage */}
+          <div className="rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-amber-50/50 border border-amber-200/90 p-4 shadow-sm space-y-3">
+            <div>
+              <div className="font-serif font-bold text-base text-stone-900 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+                <span>Мгновенная 3D-аватарка по фото</span>
+              </div>
+              <p className="text-[11px] text-stone-600 mt-1 leading-relaxed flex items-start gap-1.5 bg-white/70 p-2.5 rounded-xl border border-amber-100">
+                <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong className="font-semibold text-stone-700">🔒 Zero-Storage безопасность:</strong> фото анализируется за пару секунд в памяти и тут же навсегда удаляется.
+                </span>
+              </p>
+            </div>
+
+            {/* Большая кнопка загрузки фото */}
             <label
               htmlFor="hero-photo-upload"
               className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-amber-300 hover:border-amber-400 bg-white hover:bg-amber-50/60 cursor-pointer transition-all flex items-center justify-center gap-3 shadow-xs active:scale-[0.99]"
@@ -463,37 +600,127 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-stone-800">
-                  {visionSuccess ? 'Выбрать другое фото' : 'Загрузить портрет малыша'}
+                  Загрузить портрет малыша 📸
                 </div>
                 <div className="text-[10px] text-stone-500">
-                  JPG, PNG или WEBP до 5 МБ • Мгновенный анализ
+                  Создаст персональный 3D Pixar портрет за 10–15 секунд
                 </div>
               </div>
             </label>
 
-            {/* Состояние 2: Успех автоподбора */}
-            {visionSuccess && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2 animate-in fade-in">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="flex-1 leading-snug">{visionSuccess}</div>
-              </div>
-            )}
-
-            {/* Состояние 3: Ошибка / Нечеткое фото */}
+            {/* Ошибка если была */}
             {visionError && (
               <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div className="flex-1 leading-snug">{visionError}</div>
               </div>
             )}
+          </div>
 
-            {/* Кнопка-альтернатива «Или настройте внешность вручную» */}
+          {/* Превью текущего 3D Pixar аватара */}
+          <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-amber-50/80 border border-amber-200 shadow-sm">
+            <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-cream-50 flex items-center justify-center ring-2 ring-amber-300">
+              <img
+                src={resolveChildAvatar({
+                  gender: data.gender,
+                  hairColor: appearance.hairColor,
+                  hairType: appearance.hairType,
+                  hairStructure: appearance.hairStructure,
+                  skinTone: appearance.skinTone,
+                  distinctiveFeatures: appearance.distinctiveFeatures,
+                  avatar_id: appearance.avatar_id,
+                })}
+                alt={data.childName || 'Герой'}
+                className="w-full h-full object-cover transition-all duration-300"
+              />
+              <div className="absolute bottom-0 right-1 w-7 h-7 rounded-full bg-white/95 border border-amber-300 shadow-md flex items-center justify-center text-sm">
+                {detectToyEmoji(appearance.toy)}
+              </div>
+            </div>
+            <div className="mt-2.5 text-center">
+              <div className="font-serif font-bold text-base text-stone-900">
+                {data.childName || 'Герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} года
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
+                <FairyStarIcon className="w-3 h-3 text-amber-600" />
+                <span>
+                  {appearance.hairColor} • {appearance.skinTone || 'персиковая'} кожа
+                  {appearance.distinctiveFeatures?.includes('очк') ? ' • в очках 👓' : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Сетка готовых локальных 3D-пресетов из /illustrations/avatars/ */}
+          <div className="p-4 rounded-3xl bg-white border border-cream-300 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Быстрые 3D-образы (нажмите для выбора)</span>
+              </label>
+              <div className="flex gap-1 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...data, gender: 'boy' })}
+                  className={`px-2 py-0.5 rounded-lg border transition-all ${
+                    data.gender === 'boy'
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'bg-stone-50 text-stone-600 border-stone-200'
+                  }`}
+                >
+                  Мальчик
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...data, gender: 'girl' })}
+                  className={`px-2 py-0.5 rounded-lg border transition-all ${
+                    data.gender === 'girl'
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'bg-stone-50 text-stone-600 border-stone-200'
+                  }`}
+                >
+                  Девочка
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {currentGenderPresets.map((preset) => {
+                const isSelected = appearance.avatar_id === preset.id;
+                const avatarImg = resolveChildAvatar({ avatar_id: preset.id });
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    className={`p-2 rounded-2xl border flex flex-col items-center justify-center text-center transition-all ${
+                      isSelected
+                        ? 'bg-amber-50 border-amber-500 shadow-sm ring-2 ring-amber-400 scale-[1.02]'
+                        : 'bg-stone-50/70 border-stone-200 hover:bg-stone-100 hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full overflow-hidden border border-white shadow-xs mb-1">
+                      <img
+                        src={avatarImg}
+                        alt={preset.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="text-[11px] font-bold text-stone-800 leading-tight">
+                      {preset.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Переключатель разворота детальных селекторов */}
             <button
               type="button"
               onClick={() => setShowManualAppearance(!showManualAppearance)}
-              className="w-full py-2 px-3 text-xs font-bold text-brand-700 hover:text-brand-800 flex items-center justify-center gap-1.5 transition-colors"
+              className="w-full py-1.5 px-3 text-xs font-bold text-brand-700 hover:text-brand-800 flex items-center justify-center gap-1.5 transition-colors pt-2 border-t border-cream-200"
             >
-              <span>Выбрать внешность в деталях</span>
+              <span>{showManualAppearance ? 'Скрыть детальные настройки' : 'Точная настройка волос и глаз'}</span>
               {showManualAppearance ? (
                 <ChevronUp className="w-3.5 h-3.5 text-brand-500" />
               ) : (
@@ -501,9 +728,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               )}
             </button>
 
-            {/* Разворачивающийся блок ручной настройки параметров внешности */}
+            {/* Детальные ручные селекторы (волосы, глаза, кожа) */}
             {showManualAppearance && (
-              <div className="p-3.5 rounded-2xl bg-cream-50 border border-cream-300 space-y-4 animate-in fade-in">
+              <div className="space-y-4 pt-2 border-t border-cream-200 animate-in fade-in">
                 {/* Имя и возраст */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -541,51 +768,6 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   </div>
                 </div>
 
-                {/* Пол */}
-                <div>
-                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
-                    Пол героя
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onChange({ ...data, gender: 'boy' })}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-2 transition-all ${
-                        data.gender === 'boy'
-                          ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
-                          : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
-                      }`}
-                    >
-                      <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
-                        <img
-                          src={resolveChildAvatar({ gender: 'boy', hairColor: appearance.hairColor, skinTone: appearance.skinTone, distinctiveFeatures: appearance.distinctiveFeatures })}
-                          alt="Мальчик"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span>Мальчик</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onChange({ ...data, gender: 'girl' })}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-2 transition-all ${
-                        data.gender === 'girl'
-                          ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
-                          : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
-                      }`}
-                    >
-                      <div className="w-4 h-4 rounded-full overflow-hidden border border-white/60 shrink-0">
-                        <img
-                          src={resolveChildAvatar({ gender: 'girl', hairColor: appearance.hairColor, skinTone: appearance.skinTone, distinctiveFeatures: appearance.distinctiveFeatures })}
-                          alt="Девочка"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span>Девочка</span>
-                    </button>
-                  </div>
-                </div>
-
                 {/* Цвет волос */}
                 <div>
                   <label className="text-[11px] font-bold text-stone-700 block mb-1">
@@ -616,7 +798,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   </div>
                 </div>
 
-                {/* Тип волос */}
+                {/* Причёска */}
                 <div>
                   <label className="text-[11px] font-bold text-stone-700 block mb-1">
                     Причёска
@@ -709,9 +891,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   <span className="text-[11px] font-bold text-stone-700">Герой носит очки?</span>
                   <button
                     type="button"
-                    onClick={() => updateAppearance({
-                      distinctiveFeatures: appearance.distinctiveFeatures?.includes('очк') ? '' : 'очки'
-                    })}
+                    onClick={() =>
+                      updateAppearance({
+                        distinctiveFeatures: appearance.distinctiveFeatures?.includes('очк')
+                          ? ''
+                          : 'очки',
+                      })
+                    }
                     className={`py-1 px-3 rounded-lg text-xs font-bold border transition-all ${
                       appearance.distinctiveFeatures?.includes('очк')
                         ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
@@ -724,104 +910,92 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* Блок выбора «Сказочного наряда» («В чём отправимся в сказку?») */}
+      {/* ========================================================================= */}
+      <div className="space-y-3 p-4 rounded-3xl bg-white border border-amber-200/90 shadow-sm">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+            <span className="font-serif font-bold text-sm text-stone-900">В чём отправимся в сказку?</span>
+          </label>
+          <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+            Сказочный наряд
+          </span>
+        </div>
+        <p className="text-[11px] text-stone-500">
+          Выберите костюм для приключений — в нём герой будет путешествовать во всех сценах сказки:
+        </p>
+
+        {/* Сетка чипсов нарядов */}
+        <div className="grid grid-cols-2 gap-2">
+          {FAIRYTALE_OUTFITS.map((outfit) => {
+            const isSelected = isOutfitChipActive(outfit);
+            const isCustom = outfit.id === 'custom';
+
+            return (
+              <button
+                key={outfit.id}
+                type="button"
+                onClick={() => {
+                  if (isCustom) {
+                    setIsCustomOutfitSelected(true);
+                  } else {
+                    setIsCustomOutfitSelected(false);
+                    updateAppearance({ clothingItem: outfit.clothingValue });
+                  }
+                }}
+                className={`p-2.5 rounded-2xl text-xs font-semibold border flex items-center gap-2 text-left transition-all ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-amber-500 shadow-sm scale-[1.02] font-bold'
+                    : 'bg-stone-50 hover:bg-amber-50/60 text-stone-800 border-stone-200'
+                }`}
+              >
+                <span className="text-lg shrink-0">{outfit.icon}</span>
+                <span className="leading-snug">{outfit.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Поле свободного ввода (Свой вариант) */}
+        {(isCustomOutfitSelected ||
+          (appearance.clothingItem &&
+            !FAIRYTALE_OUTFITS.filter((o) => o.id !== 'custom').some(
+              (o) => (appearance.clothingItem || '').toLowerCase() === o.clothingValue.toLowerCase()
+            ))) && (
+          <div className="space-y-1.5 pt-2 animate-in fade-in">
+            <label className="text-[11px] font-bold text-stone-700 block">
+              ✏️ Опишите свой особенный наряд:
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={appearance.clothingItem || ''}
+                onChange={(e) => updateAppearance({ clothingItem: e.target.value })}
+                placeholder="Например: костюм маленького пирата, рыцарские доспехи, крылышки бабочки..."
+                className="w-full px-3.5 py-2.5 pr-8 rounded-xl bg-amber-50/50 border border-amber-300 text-xs font-semibold text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+              />
+              {appearance.clothingItem && (
+                <button
+                  type="button"
+                  onClick={() => updateAppearance({ clothingItem: '' })}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-stone-200 text-stone-500 hover:bg-stone-300 flex items-center justify-center text-[10px]"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Интерактивный 3D Pixar аватар ребёнка по его параметрам */}
-      <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-amber-50/80 border border-amber-200 shadow-sm">
-        <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-cream-50 flex items-center justify-center ring-2 ring-amber-300">
-          <img
-            src={resolveChildAvatar({
-              gender: data.gender,
-              hairColor: appearance.hairColor,
-              hairType: appearance.hairType,
-              hairStructure: appearance.hairStructure,
-              skinTone: appearance.skinTone,
-              distinctiveFeatures: appearance.distinctiveFeatures,
-              avatar_id: appearance.avatar_id,
-            })}
-            alt={data.childName || 'Герой'}
-            className="w-full h-full object-cover transition-all duration-300"
-          />
-          {/* Игрушка-спутник внизу кружочка */}
-          <div className="absolute bottom-0 right-1 w-7 h-7 rounded-full bg-white/95 border border-amber-300 shadow-md flex items-center justify-center text-sm">
-            {detectToyEmoji(appearance.toy)}
-          </div>
-        </div>
-        <div className="mt-2.5 text-center">
-          <div className="font-serif font-bold text-base text-stone-900">
-            {data.childName || 'Герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} года
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-300/60 text-[11px] font-medium text-amber-900 mt-1.5 shadow-xs">
-            <FairyStarIcon className="w-3 h-3 text-amber-600" />
-            <span>
-              {appearance.hairColor} • {appearance.skinTone || 'персиковая'} кожа
-              {appearance.distinctiveFeatures?.includes('очк') ? ' • в очках 👓' : ''}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Одежда героя (Свободный ввод + подсказки) */}
-      <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-            <Shirt className="w-3.5 h-3.5 text-brand-700" />
-            <span>Во что одет герой в сказке?</span>
-          </label>
-          <span className="text-[11px] font-medium text-brand-700">впишите любое</span>
-        </div>
-
-        {/* Текстовое поле ввода одежды */}
-        <div className="relative">
-          <input
-            type="text"
-            value={appearance.clothingItem || ''}
-            onChange={(e) => updateAppearance({ clothingItem: e.target.value })}
-            placeholder="Например: жёлтый дождевик и резиновые сапожки, пижамка с динозавриками, нарядное платьице..."
-            className="w-full px-4 py-3.5 pr-9 rounded-2xl bg-cream-50/70 border border-cream-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-stone-800 text-sm shadow-inner transition-all placeholder:text-stone-400 placeholder:font-normal"
-          />
-          {appearance.clothingItem && (
-            <button
-              type="button"
-              onClick={() => updateAppearance({ clothingItem: '' })}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-stone-200 text-stone-500 hover:bg-stone-300 flex items-center justify-center text-xs transition-colors"
-              title="Очистить"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Быстрые идеи для вдохновения */}
-        <div className="space-y-1.5 pt-1">
-          <div className="text-[11px] font-semibold text-stone-500">
-            Идеи для быстрого выбора:
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {clothingSuggestions.map((sug) => {
-              const isSelected = appearance.clothingItem === sug.text;
-              return (
-                <button
-                  key={sug.text}
-                  type="button"
-                  onClick={() => updateAppearance({ clothingItem: sug.text })}
-                  className={`inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-medium border text-left whitespace-nowrap transition-all ${
-                    isSelected
-                      ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
-                      : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 hover:border-brand-300 active:scale-95'
-                  }`}
-                >
-                  <span className="shrink-0 flex items-center justify-center">{sug.icon}</span>
-                  <span className="leading-tight">{sug.text}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
+      {/* ========================================================================= */}
       {/* Любимая игрушка-спутник (Свободный ввод + быстрые подсказки) */}
+      {/* ========================================================================= */}
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
@@ -880,7 +1054,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
+      {/* ========================================================================= */}
       {/* Что любит ребёнок? (Популярные карточки + свободный ввод увлечений) */}
+      {/* ========================================================================= */}
       <div className="space-y-3 p-4 rounded-3xl bg-white border border-cream-300 shadow-sm">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
@@ -969,7 +1145,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
-      {/* Теги «Главная тема» (Расширенный список + свободный ввод) */}
+      {/* ========================================================================= */}
+      {/* Главная тема сказки */}
+      {/* ========================================================================= */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-stone-700">Главная тема сказки</label>
@@ -1005,7 +1183,9 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
+      {/* ========================================================================= */}
       {/* Кнопка Далее */}
+      {/* ========================================================================= */}
       <div className="pt-2">
         <button
           onClick={onNext}

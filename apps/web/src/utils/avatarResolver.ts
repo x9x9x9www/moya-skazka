@@ -6,6 +6,9 @@ export interface ChildAvatarParams {
   skinTone?: string;
   distinctiveFeatures?: string;
   avatar_id?: string;
+  avatar_url?: string;
+  avatarUrl?: string;
+  appearance?: any;
 }
 
 /**
@@ -28,11 +31,12 @@ export const ALL_AVATAR_KEYS = [
 
 export function resolveChildAvatarKey(params?: ChildAvatarParams | null): string {
   if (!params) return 'boy_brown';
-  const gender = params.gender === 'girl' ? 'girl' : 'boy';
-  const hair = (params.hairColor || '').toLowerCase();
-  const skin = (params.skinTone || '').toLowerCase();
-  const features = (params.distinctiveFeatures || '').toLowerCase();
-  const avatarId = (params.avatar_id || '').toLowerCase();
+  const appearance = params.appearance || params;
+  const gender = (params.gender || appearance.gender) === 'girl' ? 'girl' : 'boy';
+  const hair = (appearance.hairColor || params.hairColor || '').toLowerCase();
+  const skin = (appearance.skinTone || params.skinTone || '').toLowerCase();
+  const features = (appearance.distinctiveFeatures || params.distinctiveFeatures || '').toLowerCase();
+  const avatarId = (appearance.avatar_id || params.avatar_id || '').toLowerCase();
 
   // 1. Приоритет: наличие очков
   if (features.includes('очк') || avatarId.includes('glasses')) {
@@ -66,11 +70,17 @@ export function resolveChildAvatarKey(params?: ChildAvatarParams | null): string
 
 /**
  * Определяет подходящий 3D Pixar-аватар на основе параметров внешности ребёнка.
- * Возвращает путь к оптимизированному изображению (WEBP).
+ * Если передан avatar_url (например, сгенерированный нейросетью AI портрет), возвращает его.
+ * Иначе возвращает путь к оптимизированному локальному 3D Pixar аватару (WEBP).
  */
 export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
+  const directUrl = params?.avatar_url || params?.avatarUrl || params?.appearance?.avatar_url;
+  if (directUrl && (directUrl.startsWith('http') || directUrl.startsWith('data:') || directUrl.startsWith('/'))) {
+    return directUrl;
+  }
   const base = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.BASE_URL) || './';
   const prefix = base.endsWith('/') ? base : `${base}/`;
   return `${prefix}illustrations/avatars/${resolveChildAvatarKey(params)}.webp`;
 }
+
 

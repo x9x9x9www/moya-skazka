@@ -696,6 +696,254 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Мгновенная генерация 3D-аватарки по фото ребенка + наряд (Zero-Storage: фото удаляется сразу после Vision)
+  const isGenerateAvatar =
+    (url.pathname === '/api/v1/character/generate-avatar' ||
+      url.pathname === '/api/character/generate-avatar' ||
+      url.pathname === '/character/generate-avatar') &&
+    req.method === 'POST';
+
+  if (isGenerateAvatar) {
+    try {
+      let bodyStr = '';
+      for await (const chunk of req) bodyStr += chunk;
+      const parsedBody = JSON.parse(bodyStr || '{}');
+      let imageBase64 = parsedBody.imageBase64 || parsedBody.image;
+      const outfit = parsedBody.outfit || '';
+
+      if (!imageBase64) {
+        res.writeHead(400, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(JSON.stringify({ error: 'imageBase64 is required' }));
+        return;
+      }
+
+      if (AI_MOCK_MODE) {
+        console.log('[AvatarGen] ⚡️ Режим тестирования (AI_MOCK_MODE): возврат мок 3D аватара');
+        const mockTraits = {
+          gender: 'boy',
+          approxAge: 4,
+          hairColor: 'русые',
+          hairType: 'кудрявые',
+          eyeColor: 'голубые',
+          skinTone: 'светлая',
+          distinctiveFeatures: 'милые круглые очки',
+        };
+        const mockKey = resolveChildAvatarKey(mockTraits);
+        const mockUrl = `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${mockKey}.webp`;
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(
+          JSON.stringify({
+            status: 'ok',
+            avatarUrl: mockUrl,
+            avatar_id: mockKey,
+            traits: mockTraits,
+          })
+        );
+        return;
+      }
+
+      // Шаг А (Vision): Gemini Flash / gpt-6-luna извлекает JSON с чертами лица
+      const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
+Внимательно посмотри на фото ребёнка и определи его анатомические и визуальные черты для мультяшного 3D Pixar персонажа.
+Выбирай строго из указанных вариантов:
+- gender: "boy" или "girl"
+- approxAge: число от 1 до 12 (приблизительный возраст)
+- hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
+- hairType: строго один из: "кудрявые" | "короткие" | "длинные" | "прямые"
+- eyeColor: строго один из: "карие" | "голубые" | "зелёные" | "серые"
+- skinTone: строго один из: "светлая" | "персиковая" | "смуглая"
+- distinctiveFeatures: особенности внешности на русском (например: "милые круглые очки", "веснушки на щёчках" или "")
+
+Ответь ИСКЛЮЧИТЕЛЬНО валидным JSON-объектом:
+{
+  "gender": "boy",
+  "approxAge": 4,
+  "hairColor": "русые",
+  "hairType": "кудрявые",
+  "eyeColor": "голубые",
+  "skinTone": "светлая",
+  "distinctiveFeatures": "милые круглые очки"
+}`;
+
+      let dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: visionPrompt },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ];
+
+      const raw = await callWellflowChat(messages, '[AvatarVision]');
+
+      // Шаг Б (Zero-Storage): Буфер imageBase64 немедленно обнуляется из памяти
+      dataUrl = null;
+      imageBase64 = null;
+      parsedBody.imageBase64 = null;
+      parsedBody.image = null;
+
+      let parsed = {};
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+      }
+
+      const hairColorMap = {
+        'светлые': 'светлые',
+        'блонд': 'светлые',
+        'русые': 'русые',
+        'шатен': 'русые',
+        'тёмные': 'тёмные',
+        'черные': 'тёмные',
+        'чёрные': 'тёмные',
+        'брюнет': 'тёмные',
+        'рыжие': 'рыжие',
+      };
+      const hairColor = hairColorMap[String(parsed.hairColor || '').toLowerCase()] || 'русые';
+      const hairType = ['кудрявые', 'короткие', 'длинные', 'прямые'].includes(parsed.hairType)
+        ? parsed.hairType
+        : String(parsed.hairType || '').includes('кудр')
+        ? 'кудрявые'
+        : 'короткие';
+      const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'голубые';
+      const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'светлая';
+      const gender = parsed.gender === 'girl' ? 'girl' : 'boy';
+      const approxAge =
+        Number(parsed.approxAge || parsed.estimatedAge) >= 1 && Number(parsed.approxAge || parsed.estimatedAge) <= 12
+          ? Number(parsed.approxAge || parsed.estimatedAge)
+          : 4;
+      const distinctiveFeatures = parsed.distinctiveFeatures || '';
+
+      const traits = {
+        gender,
+        approxAge,
+        hairColor,
+        hairType,
+        eyeColor,
+        skinTone,
+        distinctiveFeatures,
+      };
+
+      const avatarId = resolveChildAvatarKey(traits);
+
+      // Шаг В (Image Generation): Формирование промпта для Nano-Banana-2
+      const genderEn = gender === 'girl' ? 'girl' : 'boy';
+      const hairColorEn = {
+        'светлые': 'blonde',
+        'русые': 'light brown',
+        'тёмные': 'dark brown',
+        'рыжие': 'ginger red',
+      }[hairColor] || 'light brown';
+
+      const hairTypeEn = {
+        'кудрявые': 'curly',
+        'короткие': 'short neat',
+        'длинные': 'long wavy',
+        'прямые': 'straight',
+      }[hairType] || 'curly';
+
+      const eyeColorEn = {
+        'карие': 'warm hazel brown',
+        'голубые': 'bright expressive blue',
+        'зелёные': 'vibrant emerald green',
+        'серые': 'gentle grey',
+      }[eyeColor] || 'bright expressive blue';
+
+      const skinToneEn = {
+        'светлая': 'fair',
+        'персиковая': 'warm peach',
+        'смуглая': 'golden tan',
+      }[skinTone] || 'fair';
+
+      let distinctiveEn = '';
+      if (distinctiveFeatures) {
+        const feat = distinctiveFeatures.toLowerCase();
+        if (feat.includes('очк')) distinctiveEn = 'cute round glasses';
+        else if (feat.includes('веснуш')) distinctiveEn = 'cute freckles on cheeks';
+        else distinctiveEn = distinctiveFeatures;
+      }
+
+      let outfitEn = 'cozy fairytale outfit';
+      if (outfit) {
+        const o = String(outfit).toLowerCase();
+        if (o.includes('супергер')) outfitEn = 'superhero costume with cape';
+        else if (o.includes('космонавт') || o.includes('скафандр')) outfitEn = 'white astronaut space suit';
+        else if (o.includes('динозавр') || o.includes('кигуруми')) outfitEn = 'cozy dinosaur kigurumi onesie';
+        else if (o.includes('маг') || o.includes('манти')) outfitEn = 'little starry wizard robe';
+        else if (o.includes('плать')) outfitEn = 'festive fairytale ball gown';
+        else if (o.includes('дождевик')) outfitEn = 'yellow raincoat and boots';
+        else if (o.includes('пижам')) outfitEn = 'soft pajamas with stars';
+        else outfitEn = outfit;
+      }
+
+      const avatarPrompt = `Close-up 3D animated Pixar-style character avatar portrait of a cute ${approxAge}-year-old ${genderEn}, ${hairColorEn} ${hairTypeEn} hair, bright expressive ${eyeColorEn} eyes, ${skinToneEn} skin${distinctiveEn ? ', ' + distinctiveEn : ''}, wearing ${outfitEn || 'cozy fairytale outfit'}, warm gentle smile looking at camera, soft cinematic studio lighting, magical blurry background with warm bokeh, square 1:1, ultra-detailed, 8k, no text, no watermark.`;
+
+      console.log(`[AvatarGen] 🎨 Запуск генерации 3D аватара: ${avatarPrompt.slice(0, 100)}...`);
+
+      let avatarUrl = '';
+      try {
+        const remoteUrl = await generateWellflowImageAI(avatarPrompt);
+        if (remoteUrl) {
+          avatarUrl = await saveGeneratedImage(remoteUrl, 'avatars', 'avatar_' + Date.now());
+        }
+      } catch (genErr) {
+        console.warn('[AvatarGen] ⚠️ Ошибка генерации Nano-Banana-2, fallback к локальному пресету:', genErr.message);
+      }
+
+      if (!avatarUrl) {
+        avatarUrl = `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`;
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          avatarUrl,
+          avatar_id: avatarId,
+          traits,
+        })
+      );
+    } catch (err) {
+      console.warn('[AvatarGen] Ошибка:', err.message);
+      const fallbackTraits = {
+        gender: 'boy',
+        approxAge: 4,
+        hairColor: 'русые',
+        hairType: 'короткие',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        distinctiveFeatures: '',
+      };
+      const fallbackId = 'boy_brown';
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      });
+      res.end(
+        JSON.stringify({
+          status: 'fallback',
+          avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${fallbackId}.webp`,
+          avatar_id: fallbackId,
+          traits: fallbackTraits,
+        })
+      );
+    }
+    return;
+  }
+
   // Анализ фото ребёнка для автоподбора параметров внешности (Zero-Storage Vision: фото НЕ сохраняется на диск/в БД)
   const isAnalyzePhoto =
     (url.pathname === '/api/v1/ai/analyze-photo' ||

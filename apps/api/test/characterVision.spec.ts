@@ -93,3 +93,43 @@ describe('POST /api/character/analyze-photo (Endpoint Zero-Storage)', () => {
     expect(json.gender).toBeDefined();
   });
 });
+
+describe('POST /api/character/generate-avatar (Zero-Storage 3D Pixar Avatar)', () => {
+  it('возвращает 400 при отсутствии imageBase64', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/character/generate-avatar',
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(400);
+    const json = JSON.parse(res.payload);
+    expect(json.error).toBe('VALIDATION_ERROR');
+  });
+
+  it('генерирует 3D Pixar аватар и возвращает status ok, avatarUrl и traits', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/character/generate-avatar',
+      payload: {
+        imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        mimeType: 'image/png',
+        outfit: 'костюм супергероя',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.payload);
+    expect(json.status).toBe('ok');
+    expect(json.avatarUrl).toBeDefined();
+    expect(json.avatar_id).toBeDefined();
+    expect(json.traits).toBeDefined();
+    expect(json.traits.gender).toBeDefined();
+    expect(json.traits.approxAge).toBeDefined();
+    expect(json.traits.hairColor).toBeDefined();
+    expect(json.traits.hairType).toBeDefined();
+    expect(json.traits.eyeColor).toBeDefined();
+    expect(json.traits.skinTone).toBeDefined();
+  });
+});
+

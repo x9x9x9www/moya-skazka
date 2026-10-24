@@ -6,6 +6,7 @@ import {
   UserDTO,
 } from '@moya-skazka/shared';
 import { getActiveApiUrl } from '../services/storyGenerator';
+import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 
 const API_BASE = '/api/v1';
 
@@ -336,6 +337,68 @@ class ApiClient {
       }
     }
   }
+
+  // 14. Мгновенная генерация 3D-аватарки по фото ребенка + наряд (Zero-Storage Vision + Nano-Banana-2)
+  public async generateCharacterAvatar(
+    imageBase64: string,
+    outfit?: string,
+    mimeType: string = 'image/jpeg'
+  ): Promise<{
+    status: 'ok' | 'fallback';
+    avatarUrl: string;
+    avatar_id?: string;
+    traits: {
+      gender?: 'boy' | 'girl';
+      approxAge?: number;
+      hairColor?: string;
+      hairType?: string;
+      eyeColor?: string;
+      skinTone?: string;
+      distinctiveFeatures?: string;
+    };
+  }> {
+    try {
+      const res: any = await this.request('/character/generate-avatar', {
+        method: 'POST',
+        body: JSON.stringify({ imageBase64, outfit, mimeType }),
+      });
+      if (res && res.avatarUrl) {
+        return {
+          status: 'ok',
+          avatarUrl: res.avatarUrl,
+          avatar_id: res.avatar_id,
+          traits: res.traits || {},
+        };
+      }
+      throw new Error('Ответ сервера не содержит avatarUrl');
+    } catch (err: any) {
+      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка, fallback к автоанализу:', err.message);
+      // Fallback: анализируем черты через Vision и подбираем локальный 3D аватар
+      const visionRes = await this.analyzeCharacterPhoto(imageBase64, mimeType);
+      const traits = {
+        gender: visionRes.gender || 'boy',
+        approxAge: visionRes.approxAge || 4,
+        hairColor: visionRes.hairColor || 'русые',
+        hairType: visionRes.hairType || 'кудрявые',
+        eyeColor: visionRes.eyeColor || 'голубые',
+        skinTone: visionRes.skinTone || 'светлая',
+        distinctiveFeatures: visionRes.distinctiveFeatures || '',
+      };
+      const avatarId = resolveChildAvatarKey({
+        gender: traits.gender,
+        hairColor: traits.hairColor,
+        skinTone: traits.skinTone,
+        distinctiveFeatures: traits.distinctiveFeatures,
+      });
+      return {
+        status: 'fallback',
+        avatarUrl: resolveChildAvatar({ avatar_id: avatarId }),
+        avatar_id: avatarId,
+        traits,
+      };
+    }
+  }
 }
 
 export const api = new ApiClient();
+
