@@ -458,44 +458,71 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';
     const avatarKey = resolveChildAvatarKey(params);
     const avatarUrl = `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
+    const t = theme.toLowerCase();
+    let worldName = 'Волшебная страна';
+    let companionName = 'Светлячок Лучик';
+    let trialText = 'дорога через сверкающий лабиринт с загадками';
+    let climaxText = 'древний кристалл озарил небо сотнями разноцветных огней';
+    let coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
+
+    if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
+      worldName = 'Звёздная Галактика';
+      companionName = 'Звёздный Лисёнок Спарки';
+      trialText = 'пояс мерцающих астероидов, где нужно было найти золотистую тропу';
+      climaxText = 'созвездие Доброты вспыхнуло на небесном своде, открыв путь к тайне';
+      coverImg = `${baseUrl}/illustrations/cover_star.jpg`;
+    } else if (t.includes('мор') || t.includes('океан') || t.includes('подвод') || t.includes('дельфин')) {
+      worldName = 'Лазурные Глубины';
+      companionName = 'Дельфинёнок Флип';
+      trialText = 'подводное течение с танцующими кораллами и лабиринтом жемчужин';
+      climaxText = 'гигантская раковина раскрылась и наполнила океан мягким изумрудным сиянием';
+      coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
+    } else if (t.includes('дино') || t.includes('древн') || t.includes('джунгл')) {
+      worldName = 'Долина Исполинов';
+      companionName = 'Маленький Трикки';
+      trialText = 'древний подвесной мостик над шепчущим водопадом';
+      climaxText = 'цветок папоротника распустился золотым сиянием дружбы';
+      coverImg = `${baseUrl}/illustrations/cover_dino.jpg`;
+    }
+
     const mockStory = {
-      title: `${child} и тайна «${theme}»`,
-      cover_url: avatarUrl,
+      title: `${child} и тайна: «${theme}»`,
+      cover_url: avatarUrl || coverImg,
       avatar_url: avatarUrl,
       avatar_id: avatarKey,
       metrics: { total_words: 420 },
-      characters: [child, 'Пушистый спутник'],
+      characters: [child, companionName],
       scenes: [
         {
           index: 1,
-          text: `Однажды тёплым вечером ${child} (${age} лет) сидел в уютной комнате. На герое была ${clothes}, а ${hair} забавно блестели в лучах заката. Вдруг за окном вспыхнул загадочный огонёк!${wishes} Это начиналось самое удивительное путешествие, полное открытий и чудес.`,
-          image_url: `${baseUrl}/illustrations/demo/scene_1.jpg`,
-          visual: `3D Pixar style scene 1 for ${child}`,
+          text: `Однажды солнечным утром ${child} (${age} лет) почувствовал, что день готовит нечто необыкновенное. На герое была ${clothes}, а ${hair} искрились в тёплых лучах света.${wishes} Вдруг прямо на ладонь опустилась волшебная светящаяся пылинка, приглашая за собой в ${worldName}!`,
+          image_url: coverImg,
+          visual: `3D Pixar style scene 1 of ${child} discovering a magic portal`,
         },
         {
           index: 2,
-          text: `Шагнув навстречу приключениям, ${child} очутился в волшебном месте, где вокруг летали ${interest}. Навстречу вышел добрый пушистый спутник с лучистыми глазами. Он подмигнул и прошептал: «Я ждал тебя, ${child}! Только тот, у кого доброе и смелое сердце, сможет разгадать главную тайну!»`,
-          image_url: `${baseUrl}/illustrations/demo/scene_2.jpg`,
-          visual: `3D Pixar style scene 2 for ${child}`,
+          text: `Сделав смелый шаг, ${child} очутился в удивительном краю, где повсюду оживали ${interest}. Навстречу выбежал ${companionName} с сияющими добрыми глазами. «Здравствуй, ${child}! — радостно воскликнул спутник. — Только твоё чуткое сердце поможет нам разгадать великую тайну!»`,
+          image_url: coverImg,
+          visual: `3D Pixar style scene 2 with ${child} and ${companionName}`,
         },
         {
           index: 3,
-          text: `Впереди возникло испытание: тропинка вела через мерцающий лабиринт, где нужно было проявить терпение и смекалку. ${child} улыбнулся, вспомнил свои самые любимые увлечения и помог новому другу перебраться через искрящийся ручей. Доброта всегда освещает самый тёмный путь!`,
-          image_url: `${baseUrl}/illustrations/demo/scene_3.jpg`,
-          visual: `3D Pixar style scene 3 for ${child}`,
+          text: `Впереди возникло непростое испытание: перед друзьями раскинулся ${trialText}. ${child} не испугался, улыбнулся и крепко взял друга за руку. Проявив смекалку и взаимовыручку, герои дружно справились с препятствием, доказав, что вместе им по плечу любые чудеса!`,
+          image_url: coverImg,
+          visual: `3D Pixar style scene 3 showing ${child} overcoming challenge`,
         },
         {
           index: 4,
-          text: `Тайна была открыта: над головой зажглось целое созвездие дружбы! Уставший, но бесконечно счастливый, ${child} вернулся в свою уютную кроватку. Звёзды тихо шептали за окном колыбельную, обещая, что завтра будет ещё более прекрасный и радостный день. Спокойной ночи, маленький герой!`,
-          image_url: `${baseUrl}/illustrations/demo/scene_4.jpg`,
-          visual: `3D Pixar style scene 4 for ${child}`,
+          text: `И вот тайна была разгадана: ${climaxText}! Сердце ${child} наполнилось радостью и гордостью за совершённый подвиг. Это удивительное приключение доказало: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
+          image_url: coverImg,
+          visual: `3D Pixar style scene 4 triumphant finale with ${child}`,
         },
       ],
       questions: params.includeQuestions
         ? [
             {
               after_scene: 2,
-              question: `Как ты думаешь, что почувствовал ${child}, когда встретил нового пушистого друга?`,
+              question: `Что почувствовал ${child}, когда встретил нового пушистого друга?`,
               parent_hint: 'Спросите ребёнка о доверии и о том, как приятно находить новых друзей.',
               skill_tag: 'empathy',
             },
@@ -683,7 +710,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Проверка статуса фоновой задачи (быстрый GET 5мс)
-  if (url.pathname === '/api/v1/ai/job-status' && req.method === 'GET') {
+  const isJobStatus =
+    (url.pathname === '/api/v1/ai/job-status' ||
+      url.pathname === '/api/ai/job-status' ||
+      url.pathname === '/ai/job-status' ||
+      url.pathname === '/job-status') &&
+    req.method === 'GET';
+  if (isJobStatus) {
     const jobId = url.searchParams.get('id');
     const job = jobs.get(jobId);
     if (!job) {
@@ -1144,7 +1177,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Полная генерация сказки + всех 4 иллюстраций на сервере (мгновенный 202 ответ + опрос)
-  if (url.pathname === '/api/v1/ai/generate-story' && req.method === 'POST') {
+  const isGenerateStory =
+    (url.pathname === '/api/v1/ai/generate-story' ||
+      url.pathname === '/api/ai/generate-story' ||
+      url.pathname === '/ai/generate-story' ||
+      url.pathname === '/api/v1/story/generate' ||
+      url.pathname === '/api/story/generate' ||
+      url.pathname === '/generate-story') &&
+    req.method === 'POST';
+  if (isGenerateStory) {
     try {
       let bodyStr = '';
       for await (const chunk of req) bodyStr += chunk;

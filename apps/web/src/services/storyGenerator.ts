@@ -33,25 +33,34 @@ export function isMockMode(): boolean {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mock') === 'true') return true;
     if (params.get('mock') === 'false') return false;
-    const stored = localStorage.getItem('ms_mock_mode');
-    if (stored === 'true') return true;
-    if (stored === 'false') return false;
+    // Очищаем старые тестовые флаги, чтобы у пользователя всегда генерировалась уникальная сказка через ИИ
+    try {
+      localStorage.removeItem('ms_mock_mode');
+    } catch {}
   }
   return false; // По умолчанию включена реальная генерация через Wellflow API
 }
 
 export function setMockMode(enabled: boolean) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('ms_mock_mode', enabled ? 'true' : 'false');
+    if (enabled) {
+      localStorage.setItem('ms_mock_mode', 'true');
+    } else {
+      localStorage.removeItem('ms_mock_mode');
+    }
   }
 }
 
+/**
+ * Процедурный генератор уникальных сказок для оффлайн/тестового режима:
+ * Каждая создаваемая сказка уникальна, подстраивается под имя, возраст, тему, интересы и пожелания ребёнка.
+ */
 export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   const child = params.childName || 'Малыш';
   const age = params.age || 4;
   const theme = params.theme || 'Космос и дружба';
-  const interest = params.interests?.[0] || 'волшебные звёзды';
-  const wishes = params.customWishes ? ` Любимая вещь и верный спутник — ${params.customWishes}.` : '';
+  const interest = params.interests?.[0] || 'удивительные открытия';
+  const wishes = params.customWishes ? ` В руках у героя был заветный спутник — ${params.customWishes}.` : '';
   const hair = params.appearance?.hairColor
     ? `${params.appearance.hairLength || ''} ${params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
     : 'аккуратные волосы';
@@ -59,38 +68,66 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
     ? `${params.appearance.clothingDescription} (${params.appearance.clothingColor || 'любимого цвета'})`
     : 'уютная одежда';
 
-  const bookId = `book_mock_${Date.now()}`;
-  const title = `${child} и тайна «${theme}»`;
+  const bookId = `book_story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  
+  // Тематические миры и заголовки
+  const t = theme.toLowerCase();
+  let worldName = 'Волшебная страна';
+  let companionName = 'Светлячок Лучик';
+  let trialText = 'дорога через сверкающий лабиринт с загадками';
+  let climaxText = 'древний кристалл озарил небо сотнями разноцветных огней';
+  let coverImg = './illustrations/cover_forest.jpg';
 
-  const coverUrl = './illustrations/demo/cover.jpg';
+  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
+    worldName = 'Звёздная Галактика';
+    companionName = 'Звёздный Лисёнок Спарки';
+    trialText = 'пояс мерцающих астероидов, где нужно было найти золотистую тропу';
+    climaxText = 'созвездие Доброты вспыхнуло на небесном своде, открыв путь к тайне';
+    coverImg = './illustrations/cover_star.jpg';
+  } else if (t.includes('мор') || t.includes('океан') || t.includes('подвод') || t.includes('дельфин')) {
+    worldName = 'Лазурные Глубины';
+    companionName = 'Дельфинёнок Флип';
+    trialText = 'подводное течение с танцующими кораллами и лабиринтом жемчужин';
+    climaxText = 'гигантская раковина раскрылась и наполнила океан мягким изумрудным сиянием';
+    coverImg = './illustrations/cover_forest.jpg';
+  } else if (t.includes('дино') || t.includes('древн') || t.includes('джунгл')) {
+    worldName = 'Долина Исполинов';
+    companionName = 'Маленький Трикки';
+    trialText = 'древний подвесной мостик над шепчущим водопадом';
+    climaxText = 'цветок папоротника распустился золотым сиянием дружбы';
+    coverImg = './illustrations/cover_dino.jpg';
+  }
+
+  const title = `${child} и тайна: «${theme}»`;
+
   const scenes = [
     {
       id: 'scene_1',
       scene_index: 1,
-      text: `Однажды ${child} (${age} лет) сидел в своей уютной комнате. На герое была ${clothes}, а ${hair} забавно блестели на свету. Вдруг прямо в воздухе закружился загадочный золотистый огонёк!${wishes} Это начиналось самое удивительное путешествие, полное открытий и чудес.`,
-      image_url: './illustrations/demo/scene_1.jpg',
-      image_prompt: `3D Pixar style scene 1 for ${child}`,
+      text: `Однажды солнечным утром ${child} (${age} лет) почувствовал, что день готовит нечто необыкновенное. На герое была ${clothes}, а ${hair} искрились в тёплых лучах света.${wishes} Вдруг прямо на ладонь опустилась волшебная светящаяся пылинка, приглашая за собой в ${worldName}!`,
+      image_url: coverImg,
+      image_prompt: `3D Pixar style scene 1 of ${child} discovering a magic portal`,
     },
     {
       id: 'scene_2',
       scene_index: 2,
-      text: `Шагнув навстречу приключениям, ${child} очутился в волшебном месте, где вокруг летали ${interest}. Навстречу вышел добрый пушистый спутник с лучистыми глазами. Он подмигнул и прошептал: «Я ждал тебя, ${child}! Только тот, у кого доброе и смелое сердце, сможет разгадать главную тайну!»`,
-      image_url: './illustrations/demo/scene_2.jpg',
-      image_prompt: `3D Pixar style scene 2 for ${child}`,
+      text: `Сделав смелый шаг, ${child} очутился в удивительном краю, где повсюду оживали ${interest}. Навстречу выбежал ${companionName} с сияющими добрыми глазами. «Здравствуй, ${child}! — радостно воскликнул спутник. — Только твоё чуткое сердце поможет нам разгадать великую тайну!»`,
+      image_url: coverImg,
+      image_prompt: `3D Pixar style scene 2 with ${child} and ${companionName}`,
     },
     {
       id: 'scene_3',
       scene_index: 3,
-      text: `Впереди возникло испытание: тропинка вела через мерцающий лабиринт, где нужно было проявить терпение и смекалку. ${child} улыбнулся, вспомнил свои самые любимые увлечения и помог новому другу перебраться через искрящийся ручей. Доброта всегда освещает самый сложный путь!`,
-      image_url: './illustrations/demo/scene_3.jpg',
-      image_prompt: `3D Pixar style scene 3 for ${child}`,
+      text: `Впереди возникло непростое испытание: перед друзьями раскинулся ${trialText}. ${child} не испугался, улыбнулся и крепко взял друга за руку. Проявив смекалку и взаимовыручку, герои дружно справились с препятствием, доказав, что вместе им по плечу любые чудеса!`,
+      image_url: coverImg,
+      image_prompt: `3D Pixar style scene 3 showing ${child} overcoming challenge`,
     },
     {
       id: 'scene_4',
       scene_index: 4,
-      text: `Тайна была открыта: над головой зажглось целое созвездие дружбы! Наполнившись теплом и радостью, ${child} вернулся в свою уютную комнату, бережно сохраняя в сердце свет этого приключения. Ведь самые чудесные истории случаются с теми, кто верит в доброту!`,
-      image_url: './illustrations/demo/scene_4.jpg',
-      image_prompt: `3D Pixar style scene 4 for ${child}`,
+      text: `И вот тайна была разгадана: ${climaxText}! Сердце ${child} наполнилось радостью и гордостью за совершённый подвиг. Это удивительное приключение доказало: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
+      image_url: coverImg,
+      image_prompt: `3D Pixar style scene 4 triumphant finale with ${child}`,
     },
   ];
 
@@ -99,15 +136,15 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
         {
           id: 'q_1',
           after_scene: 2,
-          question: `Как ты думаешь, что почувствовал ${child}, когда встретил нового пушистого друга?`,
-          parent_hint: 'Спросите ребёнка о доверии и о том, как приятно находить новых друзей.',
+          question: `Что почувствовал ${child}, когда повстречал верного друга ${companionName}?`,
+          parent_hint: 'Обсудите с ребёнком радость знакомства и ценность взаимного доверия.',
           skill_tag: 'empathy',
         },
         {
           id: 'q_2',
           after_scene: 4,
-          question: `А какой поступок ${child} помог друзьям справиться с препятствием?`,
-          parent_hint: 'Подчеркните ценность доброты, терпения и искренней взаимовыручки.',
+          question: `Какая черта помогла ${child} и ${companionName} справиться с испытанием?`,
+          parent_hint: 'Подчеркните важность поддержки, смелости и дружбы.',
           skill_tag: 'emotions',
         },
       ]
@@ -119,7 +156,7 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
     status: 'ILLUSTRATED',
     format: 'ILLUSTRATED',
     can_upgrade: false,
-    cover_url: coverUrl,
+    cover_url: coverImg,
     scenes,
     questions,
   };
@@ -127,11 +164,14 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
 
 /**
  * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
- * Если туннель перезапустился, абсолютный origin устарел — подменяем его
- * на текущий API-адрес, а путь /media/... сохраняем.
+ * Прямые CDN-ссылки Wellflow (https://api.wellflow.dev) защищены и отдаются напрямую!
  */
 export function resolveMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
+  // Прямые CDN-ссылки Wellflow не трогаем — они отдаются напрямую и быстро
+  if (url.startsWith('https://api.wellflow.dev') || url.startsWith('http://api.wellflow.dev')) {
+    return url;
+  }
   const mediaIndex = url.indexOf('/media/');
   if (mediaIndex === -1) return url;
   const base = getActiveApiUrl();
@@ -319,12 +359,8 @@ export async function callWellflowStory(
   timeoutMs = 180000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<any> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
+  const overallStart = Date.now();
   const recentBlacklist = getRecentBooksBlacklist();
-  // AI-ключи живут только на сервере. Клиент умеет обращаться к мосту
-  // (bot.mjs) или к тому же origin, если web и API развёрнуты вместе.
   const body = {
     childName: params.childName,
     age: params.age,
@@ -339,88 +375,73 @@ export async function callWellflowStory(
   };
 
   const activeApi = getActiveApiUrl();
-  const endpoints: Array<{
-    url: string;
-    headers: Record<string, string>;
-    body: any;
-    pollBase: string;
-  }> = [];
+  const candidates: Array<{ url: string; pollBase: string }> = [];
 
-  if (activeApi) {
-    endpoints.push({
-      url: `${activeApi}/api/v1/ai/generate-story`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Bypass-Tunnel-Reminder': 'true',
-      },
-      body,
-      pollBase: activeApi,
-    });
-  }
-
-  if (activeApi !== 'https://moya-skazka-bridge.loca.lt') {
-    endpoints.push({
-      url: 'https://moya-skazka-bridge.loca.lt/api/v1/ai/generate-story',
-      headers: {
-        'Content-Type': 'application/json',
-        'Bypass-Tunnel-Reminder': 'true',
-      },
-      body,
-      pollBase: 'https://moya-skazka-bridge.loca.lt',
-    });
-  }
-
-  endpoints.push({
-    url: '/api/v1/ai/generate-story',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-    pollBase: '',
-  });
-
-  try {
-    for (const ep of endpoints) {
-      try {
-        const response = await fetch(ep.url, {
-          method: 'POST',
-          headers: ep.headers as HeadersInit,
-          body: JSON.stringify(ep.body),
-          signal: controller.signal,
-        });
-
-        if (response.ok || response.status === 202) {
-          const data = await response.json();
-          if (data.jobId) {
-            console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост (jobId: ${data.jobId})...`);
-            const polled = await pollJob<any>(ep.pollBase, data.jobId, timeoutMs, onProgress);
-            if (polled && polled.scenes) {
-              clearTimeout(timer);
-              console.log('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
-              return polled;
-            }
-          }
-          if (data.scenes && Array.isArray(data.scenes)) {
-            clearTimeout(timer);
-            console.log('[StoryGenerator] ✅ Сказка получена через серверный endpoint:', data.title);
-            return data;
-          }
-          const rawText = data.choices?.[0]?.message?.content;
-          if (rawText) {
-            const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleaned);
-            clearTimeout(timer);
-            console.log('[StoryGenerator] ✅ Сказка распарсена из ответа модели:', parsed.title);
-            return parsed;
-          }
-        }
-      } catch {
-        // try next endpoint
-      }
+  const addCandidate = (base: string) => {
+    const clean = (base || '').replace(/\/$/, '');
+    const full = clean ? `${clean}/api/v1/ai/generate-story` : '/api/v1/ai/generate-story';
+    if (!candidates.some((c) => c.url === full)) {
+      candidates.push({ url: full, pollBase: clean });
     }
-  } finally {
-    clearTimeout(timer);
+  };
+
+  if (activeApi) addCandidate(activeApi);
+  if (DEFAULT_API_BRIDGE_URL) addCandidate(DEFAULT_API_BRIDGE_URL);
+  addCandidate('https://moya-skazka-bridge.loca.lt');
+  addCandidate('');
+
+  let jobId: string | null = null;
+  let workingPollBase = '';
+
+  for (const candidate of candidates) {
+    const initCtrl = new AbortController();
+    const initTimer = setTimeout(() => initCtrl.abort(), 8000);
+
+    try {
+      const response = await fetch(candidate.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true',
+        },
+        body: JSON.stringify(body),
+        signal: initCtrl.signal,
+      });
+      clearTimeout(initTimer);
+
+      if (response.ok || response.status === 202) {
+        const data = await response.json();
+        if (data.jobId) {
+          jobId = data.jobId;
+          workingPollBase = candidate.pollBase;
+          if (candidate.pollBase) {
+            try {
+              localStorage.setItem('ms_api_url', candidate.pollBase);
+            } catch {}
+          }
+          break;
+        } else if (data.scenes && Array.isArray(data.scenes)) {
+          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
+          return data;
+        }
+      }
+    } catch (err: any) {
+      clearTimeout(initTimer);
+      console.warn(`[StoryGenerator] Не удалось начать генерацию через ${candidate.url}:`, err.message);
+    }
   }
 
-  throw new Error('Story generation endpoints unreachable or timed out');
+  if (jobId) {
+    console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
+    const remainingMs = Math.max(30000, timeoutMs - (Date.now() - overallStart));
+    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress);
+    if (polled && polled.scenes) {
+      console.log('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
+      return polled;
+    }
+  }
+
+  throw new Error('Не удалось связаться с сервером генерации сказок ни по одному из адресов');
 }
 
 export function getFairytaleFallbackIllustration(themeOrInterest?: string, _sceneIndex = 1): string {
