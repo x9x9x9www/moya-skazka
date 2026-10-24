@@ -37,7 +37,7 @@ export function isMockMode(): boolean {
     if (stored === 'true') return true;
     if (stored === 'false') return false;
   }
-  return true; // По умолчанию включён бесплатный тестовый режим без затрат API
+  return false; // По умолчанию включена реальная генерация через Wellflow API
 }
 
 export function setMockMode(enabled: boolean) {

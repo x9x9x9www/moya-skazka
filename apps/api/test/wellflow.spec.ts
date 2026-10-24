@@ -4,7 +4,7 @@ import { AIStoryResponseSchema } from '@moya-skazka/shared';
 
 const LIVE_AI_TESTS = process.env.RUN_LIVE_AI_TESTS === 'true';
 
-describe('Wellflow AI Provider (GPT-6-Astra & Nano-Banana-2)', () => {
+describe('Wellflow AI Provider (GPT-6-Luna & Nano-Banana-2)', () => {
   const provider = new WellflowAIProvider();
 
   it('содержит корректный системный промпт согласно спецификации ТЗ', () => {
@@ -69,4 +69,25 @@ describe('Wellflow AI Provider (GPT-6-Astra & Nano-Banana-2)', () => {
     expect(story.scenes).toHaveLength(4);
     expect(story.questions.length).toBeGreaterThanOrEqual(1);
   }, 120000);
+
+  it.skipIf(!LIVE_AI_TESTS)('generateImage генерирует валидный URL картинки через Nano-Banana-2 (live)', async () => {
+    const img = await provider.generateImage({
+      prompt: 'A cute cozy baby dinosaur holding a bright golden star, warm storybook art',
+      sceneIndex: 1,
+    });
+
+    expect(img).toBeDefined();
+    expect(img.imageUrl).toMatch(/^https?:\/\//);
+    expect(img.storageKey).toContain('wellflow_');
+  }, 60000);
+
+  it.skipIf(!LIVE_AI_TESTS)('analyzePhoto распознает черты через gpt-6-luna Vision (live)', async () => {
+    // 1x1 transparent png for test
+    const testPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const profile = await provider.analyzePhoto(testPixel);
+    expect(profile).toBeDefined();
+    expect(['boy', 'girl']).toContain(profile.gender);
+    expect(profile.confidenceTip).toBeDefined();
+  }, 60000);
 });
+

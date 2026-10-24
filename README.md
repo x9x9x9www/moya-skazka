@@ -25,7 +25,7 @@
    * +1 подарочный кредит начисляется пригласившему **только после первой подтверждённой оплаты** приглашённого друга.
    * Запрет самоприглашений и повторных бонусов.
 5. **AI-генерация через Wellflow + собственный Story Engine:**
-   * Текст: `gemini-3.8-flash` (по умолчанию), `nano-banana-2` для иллюстраций.
+   * Текст: `gpt-6-luna` (Wellflow AI), `nano-banana-2` для иллюстраций.
    * `packages/story-engine`: Story DNA, character bible, 3D Pixar-стиль, обложка + 4 сцены, валидация JSON, удаление вопросов из текста сцен и length repair.
    * Ключи Wellflow живут только в серверном `.env`; в клиентском бандле их нет.
    * Автоматический fallback на процедурную сказку и `MockAIProvider` для локальной разработки.
@@ -53,7 +53,7 @@
 │   │   │   │   ├── privacy/           # Удаление данных по 152-ФЗ / GDPR
 │   │   │   │   └── admin/             # Панель администратора
 │   │   │   ├── services/
-│   │   │   │   ├── ai/                # GeminiAIProvider + MockAIProvider
+│   │   │   │   ├── ai/                # WellflowAIProvider (gpt-6-luna, nano-banana-2) + MockAIProvider
 │   │   │   │   └── storage/           # Приватное хранилище и signed URLs
 │   │   │   └── server.ts              # Fastify сервер + Swagger документация
 │   │   ├── test/
@@ -158,7 +158,7 @@ npm install
 ```bash
 cp .env.example .env
 ```
-В файле `.env` уже указан ваш ключ Gemini API и тестовые параметры.
+В файле `.env` настраиваются ключи Wellflow API (`gpt-6-luna` для текста и `nano-banana-2` для иллюстраций).
 
 #### Шаг 3: Инициализация базы данных
 Если у вас запущен локальный PostgreSQL:

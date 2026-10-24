@@ -2,7 +2,7 @@
 // ========================================================
 // Живая калибровка Story Engine:
 //   node scripts/generate-story.mjs
-//   node scripts/generate-story.mjs --model gemini-3.8-flash --seed demo-1
+//   node scripts/generate-story.mjs --model gpt-6-luna --seed demo-1
 // Генерирует сказку, обложку и 4 сцены, сохраняет всё в out/story-samples/<id>.
 // ========================================================
 import fs from 'node:fs/promises';
@@ -47,10 +47,10 @@ function loadEnvSync() {
 }
 loadEnvSync();
 
-const TEXT_MODEL = arg('model', process.env.WELLFLOW_TEXT_MODEL || 'gemini-3.8-flash');
-const FALLBACK_TEXT_MODEL = arg('fallback-model', 'gemini-3.8-flash');
+const TEXT_MODEL = arg('model', process.env.WELLFLOW_TEXT_MODEL || 'gpt-6-luna');
+const FALLBACK_TEXT_MODEL = arg('fallback-model', 'gpt-6-luna');
 const IMAGE_MODEL = arg('image-model', process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2');
-const FALLBACK_IMAGE_MODEL = arg('fallback-image-model', 'nano-banana-pro');
+const FALLBACK_IMAGE_MODEL = arg('fallback-image-model', 'nano-banana-2');
 const SEED = arg('seed', 'calibration-1');
 const SKIP_IMAGES = hasFlag('no-images');
 

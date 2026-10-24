@@ -1,5 +1,4 @@
 import { prisma } from '@moya-skazka/database';
-import { GeminiAIProvider } from '../../services/ai/gemini.ai.provider';
 import { MockAIProvider } from '../../services/ai/mock.ai.provider';
 import { WellflowAIProvider } from '../../services/ai/wellflow.ai.provider';
 import { config } from '../../config/index';
@@ -7,18 +6,14 @@ import { CreditsService } from '../credits/credits.service';
 import { buildCoverPrompt } from '@moya-skazka/story-engine';
 
 const textProvider =
-  config.AI_TEXT_PROVIDER === 'wellflow'
-    ? new WellflowAIProvider()
-    : config.AI_TEXT_PROVIDER === 'google' || config.AI_TEXT_PROVIDER === 'gemini'
-    ? new GeminiAIProvider()
-    : new MockAIProvider();
+  config.AI_TEXT_PROVIDER === 'mock'
+    ? new MockAIProvider()
+    : new WellflowAIProvider();
 
 const imageProvider =
-  config.AI_IMAGE_PROVIDER === 'wellflow'
-    ? new WellflowAIProvider()
-    : config.AI_IMAGE_PROVIDER === 'gemini'
-    ? new GeminiAIProvider()
-    : new MockAIProvider();
+  config.AI_IMAGE_PROVIDER === 'mock'
+    ? new MockAIProvider()
+    : new WellflowAIProvider();
 
 const workerId = `worker_${process.pid}_${Math.random().toString(36).substring(2, 7)}`;
 

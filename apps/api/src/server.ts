@@ -841,7 +841,7 @@ app.register(
       }
     });
     // ----------------------------------------------------
-    // Zero-Storage Vision: Анализ фото ребенка через Gemini 1.5 Flash
+    // Zero-Storage Vision: Анализ фото ребенка через Wellflow Vision (gpt-6-luna)
     // Фото никогда не сохраняется на диск/БД и обрабатывается исключительно in-memory
     // ----------------------------------------------------
     const characterVision = new CharacterVisionService();

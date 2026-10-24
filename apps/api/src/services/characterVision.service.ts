@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config/index';
 
 export interface AnalyzeCharacterPhotoInput {
@@ -109,11 +108,12 @@ export class CharacterVisionService {
       throw new Error('Размер фотографии превышает допустимый лимит (5 МБ).');
     }
 
-    const apiKey = config.GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
+    const isTestEnv = process.env.NODE_ENV === 'test' && process.env.RUN_LIVE_AI_TESTS !== 'true';
+    const wellflowKey = config.WELLFLOW_TEXT_KEY || process.env.WELLFLOW_TEXT_KEY;
 
-    // Безопасный фоллбэк для тестов / разработки без ключа
-    if (!apiKey || apiKey === '' || apiKey.includes('placeholder')) {
-      console.warn('[CharacterVisionService] GEMINI_API_KEY отсутствует, возвращаем тестовый результат.');
+    // Безопасный фоллбэк для тестов и локальной разработки без ключа
+    if (isTestEnv || !wellflowKey) {
+      console.warn('[CharacterVisionService] Режим тестирования / ключ отсутствует, возвращаем тестовый результат.');
       return {
         gender: 'boy',
         approxAge: 4,
@@ -126,14 +126,7 @@ export class CharacterVisionService {
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-        },
-        systemInstruction: `Ты — детский иллюстратор. Проанализируй фото ребенка и выдели базовые внешние черты для создания сказочного мультяшного персонажа в стиле доброй книжной иллюстрации.
+      const visionPrompt = `Ты — детский иллюстратор. Проанализируй фото ребенка и выдели базовые внешние черты для создания сказочного мультяшного персонажа в стиле доброй книжной иллюстрации.
 Верни строго JSON со следующими полями:
 {
   "gender": "boy" | "girl",
@@ -144,23 +137,40 @@ export class CharacterVisionService {
   "skinTone": "светлая" | "персиковая" | "смуглая",
   "distinctiveFeatures": string (например: "милые круглые очки", "веснушки на щёчках", "задорные хвостики" или "")
 }
-Если на фото нет человека или лицо не видно, верни { "error": "FACE_NOT_DETECTED" }.`,
+Если на фото нет человека или лицо не видно, верни { "error": "FACE_NOT_DETECTED" }.`;
+
+      const dataUrl = `data:${detectedMime};base64,${rawBase64}`;
+      rawBase64 = ''; // Zero-Storage: очистка ссылки из памяти
+
+      const res = await fetch(`${config.WELLFLOW_API_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${wellflowKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.WELLFLOW_TEXT_MODEL || 'gpt-6-luna',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: visionPrompt },
+                { type: 'image_url', image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 500,
+        }),
       });
 
-      const response = await model.generateContent([
-        {
-          inlineData: {
-            data: rawBase64,
-            mimeType: detectedMime,
-          },
-        },
-        'Проанализируй внешность ребёнка для создания сказочного персонажа книги.',
-      ]);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Wellflow Vision HTTP ${res.status}: ${errorText}`);
+      }
 
-      // Немедленное обнуление ссылки на base64 строку для очистки памяти (Zero-Storage)
-      rawBase64 = '';
-
-      const text = response.response.text();
+      const json = (await res.json()) as any;
+      const text = json.choices?.[0]?.message?.content || '{}';
       const parsed = JSON.parse(text);
 
       if (parsed.error === 'FACE_NOT_DETECTED') {
@@ -180,19 +190,17 @@ export class CharacterVisionService {
         distinctiveFeatures: String(parsed.distinctiveFeatures || '').trim(),
       };
     } catch (err: any) {
-      // Обнуление ссылки при ошибке
-      rawBase64 = '';
-      console.warn('[CharacterVisionService] Ошибка Vision анализа Gemini:', err?.message || err);
+      rawBase64 = ''; // Zero-Storage
+      console.warn('[CharacterVisionService] Ошибка Vision анализа Wellflow:', err?.message || err);
 
-      // Если модель сообщила, что лицо не распознано или возник сбой
-      if (err?.message?.includes('FACE_NOT_DETECTED') || err?.message?.includes('candidate')) {
+      if (err?.message?.includes('FACE_NOT_DETECTED')) {
         return {
           error: 'FACE_NOT_DETECTED',
           message: 'Не удалось чётко разглядеть личико. Попробуйте другое фото или выберите параметры вручную.',
         };
       }
 
-      throw new Error('Не удалось проанализировать фото через Gemini Vision. Попробуйте ещё раз или укажите параметры вручную.');
+      throw new Error('Не удалось проанализировать фото через Vision API. Попробуйте ещё раз или укажите параметры вручную.');
     }
   }
 }
