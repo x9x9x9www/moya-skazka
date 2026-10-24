@@ -709,8 +709,11 @@ const server = http.createServer(async (req, res) => {
   // Мгновенная генерация 3D-аватарки по фото ребенка + наряд (Zero-Storage: фото удаляется сразу после Vision)
   const isGenerateAvatar =
     (url.pathname === '/api/v1/character/generate-avatar' ||
+      url.pathname === '/api/v1/ai/generate-avatar' ||
       url.pathname === '/api/character/generate-avatar' ||
-      url.pathname === '/character/generate-avatar') &&
+      url.pathname === '/api/ai/generate-avatar' ||
+      url.pathname === '/character/generate-avatar' ||
+      url.pathname === '/ai/generate-avatar') &&
     req.method === 'POST';
 
   if (isGenerateAvatar) {
@@ -958,7 +961,9 @@ const server = http.createServer(async (req, res) => {
   const isAnalyzePhoto =
     (url.pathname === '/api/v1/ai/analyze-photo' ||
       url.pathname === '/api/v1/character/analyze-photo' ||
+      url.pathname === '/api/ai/analyze-photo' ||
       url.pathname === '/api/character/analyze-photo' ||
+      url.pathname === '/ai/analyze-photo' ||
       url.pathname === '/character/analyze-photo') &&
     req.method === 'POST';
 

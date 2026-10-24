@@ -40,6 +40,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
   const [hairColor, setHairColor] = useState('светлые');
   const [hairType, setHairType] = useState('короткие');
+  const [skinTone, setSkinTone] = useState('персиковая');
+  const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
   const [clothingColor, setClothingColor] = useState('изумрудный');
   const [toy, setToy] = useState('плюшевый динозаврик');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(['Динозавры', 'Волшебство']);
@@ -92,6 +94,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                 setAge(Number(a.estimatedAge));
               }
               if (a.hairColor) setHairColor(a.hairColor);
+              if (a.skinTone) setSkinTone(a.skinTone);
+              if (a.distinctiveFeatures) setDistinctiveFeatures(a.distinctiveFeatures);
               if (a.hairLength || a.hairStructure) {
                 if (a.hairStructure === 'кудрявые') setHairType('кудрявые');
                 else if (a.hairLength === 'длинные') setHairType('длинные');
@@ -134,7 +138,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
     if (!name.trim()) return;
 
     setIsSubmitting(true);
-    const avatarFileName = resolveChildAvatar({ gender, hairColor }).split('/').pop()?.replace('.webp', '') || `${gender}_brown`;
+    const avatarFileName = resolveChildAvatar({ gender, hairColor, skinTone, distinctiveFeatures }).split('/').pop()?.replace('.webp', '') || `${gender}_brown`;
     try {
       await onCreateChild({
         name: name.trim(),
@@ -145,6 +149,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
           gender,
           hairColor,
           hairType,
+          skinTone,
+          distinctiveFeatures,
           clothingItem: gender === 'girl' ? 'платьице' : 'уютный свитер',
           clothingColor,
           toy,

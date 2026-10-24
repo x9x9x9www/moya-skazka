@@ -278,13 +278,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.match(/^image\/(jpeg|png|webp|jpg)$/i)) {
-      setVisionError('Пожалуйста, выберите фото в формате JPG, PNG или WEBP.');
+    if (file.type && !file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
+      setVisionError('Пожалуйста, выберите файл фотографии (JPG, PNG, WEBP).');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setVisionError('Размер фото не должен превышать 5 МБ.');
+    if (file.size > 30 * 1024 * 1024) {
+      setVisionError('Размер фото слишком большой (более 30 МБ). Попробуйте другой снимок.');
       return;
     }
 
@@ -294,74 +294,95 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
 
     try {
       const reader = new FileReader();
-      reader.onload = async () => {
-        let base64String = reader.result as string;
-        try {
-          // Запуск серверного конвейера: Vision анализ + Zero-Storage + 3D Pixar аватар
-          const res = await api.generateCharacterAvatar(
-            base64String,
-            appearance.clothingItem,
-            file.type
-          );
-          // Zero-Storage: немедленно зануляем ссылку на base64
-          base64String = '';
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Не удалось прочитать файл фото'));
+        reader.readAsDataURL(file);
+      });
 
-          const traits = res.traits || {};
-          const targetGender = (traits.gender as 'boy' | 'girl') || data.gender || 'boy';
-          const targetHair = traits.hairColor || appearance.hairColor || 'русые';
-          const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
-          const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';
-          const targetEye = traits.eyeColor || appearance.eyeColor || 'голубые';
-          const targetFeatures = traits.distinctiveFeatures || appearance.distinctiveFeatures || '';
-          const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
-            gender: targetGender,
-            hairColor: targetHair,
-            skinTone: targetSkin,
-            distinctiveFeatures: targetFeatures,
-          });
-
-          const newAppearance = {
-            ...appearance,
-            avatar_url: res.avatarUrl,
-            avatar_id: targetAvatarId,
-            hairColor: targetHair,
-            hairType: targetHairType,
-            eyeColor: targetEye,
-            skinTone: targetSkin,
-            distinctiveFeatures: targetFeatures,
-          };
-
-          const patch: Partial<WizardHeroData> = {
-            appearance: newAppearance,
-            gender: targetGender,
-          };
-          if (traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
-            patch.age = traits.approxAge;
+      // Оптимизируем размер через canvas до max 800px для мгновенной передачи в AI Vision
+      const img = new Image();
+      const optimizedBase64 = await new Promise<string>((resolve) => {
+        img.onload = () => {
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
           }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(rawBase64);
+        img.src = rawBase64;
+      });
 
-          onChange({
-            ...data,
-            ...patch,
-          });
+      // Запуск серверного конвейера: Vision анализ + Zero-Storage + 3D Pixar аватар
+      const res = await api.generateCharacterAvatar(
+        optimizedBase64,
+        appearance.clothingItem,
+        'image/jpeg'
+      );
 
-          setIsPhotoBased(true);
-          setShowManualAppearance(false);
-          setVisionSuccess('✨ Герой ожил по фото!');
-        } catch (err: any) {
-          base64String = '';
-          setVisionError(
-            err?.message ||
-              'Не удалось создать аватар по фото. Попробуйте другой снимок или настройте героя вручную.'
-          );
-        } finally {
-          setIsAnalyzing(false);
-        }
+      const traits = res.traits || {};
+      const targetGender = (traits.gender as 'boy' | 'girl') || data.gender || 'boy';
+      const targetHair = traits.hairColor || appearance.hairColor || 'русые';
+      const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
+      const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';
+      const targetEye = traits.eyeColor || appearance.eyeColor || 'голубые';
+      const targetFeatures = traits.distinctiveFeatures || appearance.distinctiveFeatures || '';
+      const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
+        gender: targetGender,
+        hairColor: targetHair,
+        skinTone: targetSkin,
+        distinctiveFeatures: targetFeatures,
+      });
+
+      const newAppearance = {
+        ...appearance,
+        avatar_url: res.avatarUrl,
+        avatar_id: targetAvatarId,
+        hairColor: targetHair,
+        hairType: targetHairType,
+        eyeColor: targetEye,
+        skinTone: targetSkin,
+        distinctiveFeatures: targetFeatures,
       };
-      reader.readAsDataURL(file);
-    } catch {
-      setIsAnalyzing(false);
-      setVisionError('Не удалось прочитать файл фото. Попробуйте ещё раз.');
+
+      const patch: Partial<WizardHeroData> = {
+        appearance: newAppearance,
+        gender: targetGender,
+      };
+      if (traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
+        patch.age = traits.approxAge;
+      }
+
+      onChange({
+        ...data,
+        ...patch,
+      });
+
+      setIsPhotoBased(true);
+      setShowManualAppearance(false);
+      setVisionSuccess('✨ Герой ожил по фото!');
+    } catch (err: any) {
+      console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
+      setVisionError(
+        err?.message ||
+          'Не удалось создать аватар по фото. Попробуйте другой снимок или настройте героя вручную.'
+      );
     } finally {
+      setIsAnalyzing(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -461,7 +482,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         onChange={handlePhotoSelected}
         className="hidden"
         id="hero-photo-upload"

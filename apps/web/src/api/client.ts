@@ -52,31 +52,49 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const baseUrl = getApiBaseUrl();
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = baseUrl ? `${baseUrl}${API_BASE}${cleanEndpoint}` : `${API_BASE}${cleanEndpoint}`;
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      if (!response.ok) {
-        let errBody: any;
-        try {
-          errBody = await response.json();
-        } catch {
-          errBody = { message: `Ошибка сервера (${response.status})` };
-        }
-        throw new Error(errBody.message || 'Ошибка выполнения запроса');
-      }
-
-      return await response.json();
-    } catch (err: any) {
-      console.warn(`[ApiClient] Ошибка запроса к ${endpoint}:`, err.message);
-      throw err;
+    const primaryBase = getApiBaseUrl();
+    const candidates = [primaryBase];
+    if (primaryBase !== 'https://moya-skazka-bridge.loca.lt') {
+      candidates.push('https://moya-skazka-bridge.loca.lt');
     }
+    if (primaryBase !== '') {
+      candidates.push('');
+    }
+
+    let lastError: any = null;
+    for (const base of candidates) {
+      const url = base ? `${base}${API_BASE}${cleanEndpoint}` : `${API_BASE}${cleanEndpoint}`;
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers,
+        });
+
+        if (!response.ok) {
+          let errBody: any;
+          try {
+            errBody = await response.json();
+          } catch {
+            errBody = { message: `Ошибка сервера (${response.status})` };
+          }
+          throw new Error(errBody.message || 'Ошибка выполнения запроса');
+        }
+
+        if (base && base !== primaryBase) {
+          try {
+            localStorage.setItem('ms_api_url', base);
+          } catch {}
+        }
+
+        return await response.json();
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[ApiClient] Сбой запроса к ${url}:`, err.message);
+      }
+    }
+
+    throw lastError || new Error(`Ошибка запроса к ${endpoint}`);
   }
 
   // 1. Авторизация
