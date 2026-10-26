@@ -1457,19 +1457,40 @@ async function updateChatMenuWithApi(apiUrl) {
   }
 }
 
-const BANNER_ANIMATION_FILE_ID = process.env.BANNER_ANIMATION_FILE_ID || 'CgACAgIAAxkDAAM5at0n0tfqhLOCItTMSgn6e1kSW8EAAo2wAALJ3elKYPaeGcRpR7I9BA';
+const BANNER_ANIMATION_FILE_ID =
+  process.env.BANNER_ANIMATION_FILE_ID || 'CgACAgIAAxUAAWrez1oeiJxqw4FB28bUW5PvUotdAAI0sQACPG_xSsy5Dk8kfFAIPQQ';
 
 async function sendWelcome(chatId, firstName, startParam) {
   const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
   const name = firstName || 'дорогой родитель';
 
-  const welcomeText = `🚀 Чтобы создать персональную терапевтическую сказку для вашего малыша, перейдите в приложение: https://x9x9x9www.github.io/moya-skazka/`;
+  let refNote = '';
+  if (startParam && startParam.startsWith('ref_')) {
+    refNote = '\n• 🎁 **Бонус:** Вы перешли по приглашению друга — первая книга готова к созданию!';
+  }
+
+  const richMarkdown =
+`# Моя сказка
+
+![](tg://video?id=banner "***")
+
+Привет, **${name}**! ✨
+
+Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.
+
+🌟 **Создание сказок через ИИ:**
+• 📖 Текст пишется нейросетью под характер малыша
+• 🎨 3D Pixar обложка и 4 иллюстрации от **Nano-Banana-2**
+• 🧸 4 сцены + вопросы для тёплой беседы перед сном
+• 🎁 Первая персональная сказка — в подарок!${refNote}
+
+Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
 
   const keyboard = {
     inline_keyboard: [
       [
         {
-          text: 'ПЕРЕЙТИ В ПРИЛОЖЕНИЕ',
+          text: '✨ Открыть «Моя сказка»',
           web_app: { url: currentAppUrl },
         },
       ],
@@ -1482,9 +1503,35 @@ async function sendWelcome(chatId, firstName, startParam) {
     ],
   };
 
+  try {
+    const res = await callTelegram('sendRichMessage', {
+      chat_id: chatId,
+      rich_message: {
+        markdown: richMarkdown,
+        media: [
+          {
+            id: 'banner',
+            media: {
+              type: 'animation',
+              media: BANNER_ANIMATION_FILE_ID,
+            },
+          },
+        ],
+      },
+      reply_markup: keyboard,
+    });
+    if (res && res.ok) {
+      return res;
+    }
+    console.warn('[Bot] sendRichMessage fallback triggered:', res?.description);
+  } catch (err) {
+    console.warn('[Bot] sendRichMessage error, falling back:', err.message);
+  }
+
+  // Фолбэк на классический sendMessage
   return await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: welcomeText,
+    text: `🚀 Чтобы создать персональную терапевтическую сказку для вашего малыша, перейдите в приложение: https://x9x9x9www.github.io/moya-skazka/`,
     link_preview_options: {
       url: 'https://x9x9x9www.github.io/moya-skazka/',
       prefer_small_media: true,
