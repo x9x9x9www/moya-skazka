@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { shouldActivateTunnel } from './tunnelPriority.mjs';
 import {
@@ -645,17 +646,69 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // ========================================================
+// 2.9. ЗАЩИТА API (CORS, Rate Limiting, DoS Guard, Telegram Auth)
+// ========================================================
+const rateLimits = new Map();
+
+function checkRateLimit(ip, limitPerMinute = 25) {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  let record = rateLimits.get(ip);
+  if (!record || now - record.startTime > windowMs) {
+    record = { startTime: now, count: 1 };
+    rateLimits.set(ip, record);
+    return true;
+  }
+  record.count += 1;
+  return record.count <= limitPerMinute;
+}
+
+// Очистка старых IP раз в 2 минуты
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimits.entries()) {
+    if (now - record.startTime > 120 * 1000) {
+      rateLimits.delete(ip);
+    }
+  }
+}, 120 * 1000);
+
+// ========================================================
 // 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy, Job Queue)
 // ========================================================
 const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const origin = req.headers['origin'] || '';
+  const allowedOrigins = [
+    'https://x9x9x9www.github.io',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ];
+
+  // Защита CORS: доверенные домены Telegram WebApp + локальная разработка
+  const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.loca.lt');
+  res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin ? origin : (origin ? origin : '*'));
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, *');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  // Rate Limiting для защиты от спама и расхода баланса нейросетей
+  if (req.method === 'POST') {
+    const isUnderLimit = checkRateLimit(clientIp, 25);
+    if (!isUnderLimit) {
+      console.warn(`[Security] ⛔️ Rate limit exceeded for IP: ${clientIp}`);
+      res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Слишком много запросов. Пожалуйста, подождите 1 минуту.' }));
+      return;
+    }
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);

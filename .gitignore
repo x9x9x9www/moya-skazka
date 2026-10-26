@@ -13,3 +13,7 @@ yarn-error.log*
 .tunnel_url
 out/
 bot/generated/
+*.pem
+*.key
+*.secret
+credentials.json
