@@ -1532,12 +1532,12 @@ async function startPolling() {
         for (const update of updates.result) {
           offset = update.update_id + 1;
 
-          if (update.message && update.message.text) {
+          if (update.message) {
             const chatId = update.message.chat.id;
-            const text = update.message.text;
+            const text = update.message.text || update.message.caption || '';
             const firstName = update.message.from?.first_name || '';
 
-            console.log(`[Bot] 📩 Новое сообщение от ${firstName} (${chatId}): "${text}"`);
+            console.log(`[Bot] 📩 Входящее сообщение от ${firstName} (${chatId}):`, JSON.stringify(update.message, null, 2));
 
             if (text.startsWith('/start')) {
               const parts = text.split(' ');
