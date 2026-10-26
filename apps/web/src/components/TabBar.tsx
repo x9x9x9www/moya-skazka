@@ -17,7 +17,7 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto pointer-events-none pb-safe">
-      <div className="mx-4 mb-3 rounded-full border border-cream-300/80 shadow-2xl bg-white/90 dark:bg-stone-900/90 backdrop-blur-xl pointer-events-auto px-2 py-1.5 flex items-center justify-around bg-paper-texture">
+      <div className="mx-4 mb-3 rounded-full border border-cream-300/80 dark:border-white/15 shadow-2xl bg-white/90 dark:bg-[#16192E]/92 backdrop-blur-xl pointer-events-auto px-2 py-1.5 flex items-center justify-around bg-paper-texture transition-colors duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

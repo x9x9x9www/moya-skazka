@@ -27,8 +27,24 @@
       href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <meta name="theme-color" content="#FAF6F0" />
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('moya_skazka_reader_settings');
+          if (raw) {
+            var s = JSON.parse(raw);
+            if (s && s.theme) {
+              document.documentElement.setAttribute('data-theme', s.theme);
+              document.documentElement.classList.add('theme-' + s.theme);
+              if (s.theme === 'dark') document.documentElement.classList.add('dark');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-cream-100 text-stone-900 font-sans antialiased select-none overscroll-none">
+  <body class="font-sans antialiased select-none overscroll-none transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -41,10 +41,10 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
     <div className="p-4 space-y-6 pb-28 max-w-md mx-auto">
       <div>
         <h2 className="font-serif font-bold text-2xl text-stone-900">
-          Настройки чтения
+          Настройки приложения
         </h2>
         <p className="text-xs text-stone-500 mt-0.5">
-          Персонализируйте отображение текста и вопросы
+          Персонализируйте тему интерфейса, шрифт и правила чтения
         </p>
       </div>
 
@@ -119,14 +119,14 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
         </div>
       </div>
 
-      {/* 3. Тема фона (Светлый, Тёплый, Тёмный) */}
+      {/* 3. Тема оформления приложения (Светлый, Тёплый, Тёмный) */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-stone-700">Фон страницы</label>
+        <label className="text-xs font-bold text-stone-700">Тема оформления приложения</label>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { id: 'light', label: 'Светлый', icon: Sun, bg: 'bg-white', text: 'text-stone-800' },
-            { id: 'warm', label: 'Тёплый', icon: Coffee, bg: 'bg-cream-200', text: 'text-amber-900' },
-            { id: 'dark', label: 'Тёмный', icon: Moon, bg: 'bg-stone-900', text: 'text-white' },
+            { id: 'light', label: 'Светлый', icon: Sun, bg: '#FFFFFF', text: '#0F172A', border: '#E2E8F0' },
+            { id: 'warm', label: 'Тёплый', icon: Coffee, bg: '#F5EBE1', text: '#78350F', border: '#E5D7C5' },
+            { id: 'dark', label: 'Тёмный', icon: Moon, bg: '#16192E', text: '#F8FAFC', border: '#334155' },
           ].map((themeItem) => {
             const isSelected = settings.theme === themeItem.id;
             const Icon = themeItem.icon;
@@ -135,21 +135,30 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
               <button
                 key={themeItem.id}
                 type="button"
+                data-preserve-theme="true"
                 onClick={() => onUpdateSetting('theme', themeItem.id as ReaderTheme)}
+                style={{ backgroundColor: themeItem.bg, borderColor: isSelected ? undefined : themeItem.border }}
                 className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all ${
                   isSelected
-                    ? 'border-brand-500 ring-2 ring-brand-500 shadow-sm'
-                    : 'border-cream-300'
-                } ${themeItem.bg}`}
+                    ? 'border-brand-500 ring-2 ring-brand-500 shadow-md scale-[1.02]'
+                    : 'shadow-xs hover:opacity-90 active:scale-98'
+                }`}
               >
-                <Icon className={`w-5 h-5 mb-1 ${isSelected ? 'text-brand-600' : 'text-stone-500'}`} />
-                <span className={`text-xs font-bold ${themeItem.text}`}>
+                <Icon
+                  className={`w-5 h-5 mb-1 ${
+                    isSelected ? (themeItem.id === 'dark' ? 'text-amber-400' : 'text-brand-600 dark:text-emerald-400') : 'text-stone-400'
+                  }`}
+                />
+                <span className="text-xs font-bold" style={{ color: themeItem.text }}>
                   {themeItem.label}
                 </span>
               </button>
             );
           })}
         </div>
+        <p className="text-[11px] text-stone-500 italic px-1">
+          Выбранная тема сразу применяется ко всему приложению и страницам сказок.
+        </p>
       </div>
 
       {/* 4. Музыка для фона (Экран 12 макета) */}

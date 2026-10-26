@@ -574,8 +574,15 @@ export const App: React.FC = () => {
     else if (tab === 'friends') setCurrentScreen('referrals');
   };
 
+  const appThemeClasses =
+    settings.theme === 'dark'
+      ? 'bg-[#12131A] text-stone-100 theme-dark'
+      : settings.theme === 'light'
+      ? 'bg-[#F8FAFC] text-slate-900 theme-light'
+      : 'bg-cream-100 text-stone-900 theme-warm';
+
   return (
-    <div className="min-h-screen bg-cream-100 font-sans flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden">
+    <div className={`min-h-screen ${appThemeClasses} font-sans flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden transition-colors duration-300`}>
       {/* Шапка (кроме читалки и онбординга) */}
       {currentScreen !== 'reader' && currentScreen !== 'final_question' && currentScreen !== 'onboarding' && (
         <Header

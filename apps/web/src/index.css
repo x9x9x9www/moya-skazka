@@ -11,9 +11,278 @@
 body {
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  background-color: #FAF6F0;
+  background-color: var(--app-bg, #FAF6F0);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ==========================================================================
+   ГЛОБАЛЬНАЯ СИСТЕМА ТЕМ: WARM (ТЁПЛЫЙ), LIGHT (СВЕТЛЫЙ), DARK (ТЁМНЫЙ)
+   ========================================================================== */
+
+:root {
+  --app-bg: #FAF6F0;
+  --app-card: #FFFFFF;
+  --app-card-secondary: #F5EBE1;
+  --app-border: #EADFCF;
+  --app-text: #292524;
+  --app-text-muted: #78716C;
+  --reader-bg: #FAF6F0;
+  --reader-card: #F4ECE1;
+  --reader-text: #292524;
+  --reader-border: #E5D7C5;
+  --reader-question-bg: #EAE0D2;
+}
+
+/* 1. ТЁПЛАЯ ТЕМА (ПО УМОЛЧАНИЮ — УЮТНАЯ СКАЗОЧНАЯ БУМАГА) */
+html[data-theme='warm'],
+body.theme-warm {
+  --app-bg: #FAF6F0;
+  --app-card: #FFFFFF;
+  --app-card-secondary: #F5EBE1;
+  --app-border: #EADFCF;
+  --app-text: #292524;
+  --app-text-muted: #78716C;
+  --reader-bg: #FAF6F0;
+  --reader-card: #F4ECE1;
+  --reader-text: #292524;
+  --reader-border: #E5D7C5;
+  --reader-question-bg: #EAE0D2;
+}
+
+/* 2. СВЕТЛАЯ ТЕМА (ЧИСТЫЙ СВЕТЛЫЙ ДНЕВНОЙ РЕЖИМ) */
+html[data-theme='light'],
+body.theme-light {
+  --app-bg: #F8FAFC;
+  --app-card: #FFFFFF;
+  --app-card-secondary: #F1F5F9;
+  --app-border: #E2E8F0;
+  --app-text: #0F172A;
+  --app-text-muted: #64748B;
+  --reader-bg: #FFFFFF;
+  --reader-card: #F9FAFB;
+  --reader-text: #111827;
+  --reader-border: #E5E7EB;
+  --reader-question-bg: #F3F4F6;
+}
+
+.theme-light .bg-cream-100 {
+  background-color: #F8FAFC !important;
+}
+.theme-light .bg-cream-200 {
+  background-color: #F1F5F9 !important;
+}
+.theme-light .border-cream-200,
+.theme-light .border-cream-300 {
+  border-color: #E2E8F0 !important;
+}
+.theme-light .text-stone-900 {
+  color: #0F172A !important;
+}
+.theme-light .text-stone-800 {
+  color: #1E293B !important;
+}
+.theme-light .text-stone-700 {
+  color: #334155 !important;
+}
+.theme-light .text-stone-500 {
+  color: #64748B !important;
+}
+
+/* 3. ТЁМНАЯ ТЕМА (СКАЗОЧНАЯ ЗВЁЗДНАЯ НОЧЬ) */
+html[data-theme='dark'],
+body.theme-dark,
+html.dark,
+body.dark {
+  --app-bg: #12131A;
+  --app-card: #1C1F2E;
+  --app-card-secondary: #23273D;
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-text: #F8FAFC;
+  --app-text-muted: #94A3B8;
+  --reader-bg: #1C1917;
+  --reader-card: #292524;
+  --reader-text: #F5F5F4;
+  --reader-border: #44403C;
+  --reader-question-bg: #38332E;
+}
+
+/* Глобальные адаптивные переопределения для тёмной темы */
+.theme-dark .bg-cream-100,
+.dark .bg-cream-100 {
+  background-color: #12131A !important;
+}
+
+.theme-dark .bg-cream-200,
+.dark .bg-cream-200 {
+  background-color: #23273D !important;
+}
+
+.theme-dark .bg-cream-50,
+.dark .bg-cream-50 {
+  background-color: #1C1F2E !important;
+}
+
+.theme-dark .bg-stone-50,
+.dark .bg-stone-50 {
+  background-color: #161824 !important;
+}
+
+.theme-dark .bg-stone-100,
+.dark .bg-stone-100 {
+  background-color: #1E2235 !important;
+}
+
+/* Белые карточки и подложки мягко переключаются в благородный ночной фон */
+.theme-dark .bg-white:not([data-preserve-theme]),
+.dark .bg-white:not([data-preserve-theme]) {
+  background-color: #1C1F2E !important;
+}
+
+.theme-dark .bg-white\/90:not([data-preserve-theme]),
+.dark .bg-white\/90:not([data-preserve-theme]) {
+  background-color: rgba(28, 31, 46, 0.92) !important;
+}
+
+.theme-dark .bg-white\/80:not([data-preserve-theme]),
+.dark .bg-white\/80:not([data-preserve-theme]) {
+  background-color: rgba(28, 31, 46, 0.85) !important;
+}
+
+.theme-dark .bg-white\/75:not([data-preserve-theme]),
+.dark .bg-white\/75:not([data-preserve-theme]) {
+  background-color: rgba(28, 31, 46, 0.8) !important;
+}
+
+.theme-dark .bg-white\/70:not([data-preserve-theme]),
+.dark .bg-white\/70:not([data-preserve-theme]) {
+  background-color: rgba(28, 31, 46, 0.75) !important;
+}
+
+/* Границы и разделители */
+.theme-dark .border-cream-200,
+.dark .border-cream-200,
+.theme-dark .border-cream-300,
+.dark .border-cream-300,
+.theme-dark .border-stone-100,
+.dark .border-stone-100,
+.theme-dark .border-stone-200,
+.dark .border-stone-200,
+.theme-dark .border-amber-900\/10,
+.dark .border-amber-900\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-dark .border-amber-900\/5,
+.dark .border-amber-900\/5 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.theme-dark .divide-cream-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-cream-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Тексты */
+.theme-dark .text-stone-900:not([data-preserve-theme]),
+.dark .text-stone-900:not([data-preserve-theme]) {
+  color: #F8FAFC !important;
+}
+
+.theme-dark .text-stone-800:not([data-preserve-theme]),
+.dark .text-stone-800:not([data-preserve-theme]) {
+  color: #F1F5F9 !important;
+}
+
+.theme-dark .text-stone-700:not([data-preserve-theme]),
+.dark .text-stone-700:not([data-preserve-theme]) {
+  color: #CBD5E1 !important;
+}
+
+.theme-dark .text-stone-600:not([data-preserve-theme]),
+.dark .text-stone-600:not([data-preserve-theme]) {
+  color: #94A3B8 !important;
+}
+
+.theme-dark .text-stone-500:not([data-preserve-theme]),
+.dark .text-stone-500:not([data-preserve-theme]) {
+  color: #94A3B8 !important;
+}
+
+.theme-dark .text-stone-400:not([data-preserve-theme]),
+.dark .text-stone-400:not([data-preserve-theme]) {
+  color: #64748B !important;
+}
+
+.theme-dark .text-brand-800:not([data-preserve-theme]),
+.dark .text-brand-800:not([data-preserve-theme]),
+.theme-dark .text-brand-700:not([data-preserve-theme]),
+.dark .text-brand-700:not([data-preserve-theme]) {
+  color: #5EEAD4 !important;
+}
+
+.theme-dark .text-amber-900:not([data-preserve-theme]),
+.dark .text-amber-900:not([data-preserve-theme]),
+.theme-dark .text-amber-800:not([data-preserve-theme]),
+.dark .text-amber-800:not([data-preserve-theme]) {
+  color: #FDE68A !important;
+}
+
+.theme-dark .bg-brand-50,
+.dark .bg-brand-50 {
+  background-color: rgba(31, 95, 78, 0.25) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(94, 234, 212, 0.3) !important;
+}
+
+.theme-dark .bg-amber-50,
+.dark .bg-amber-50 {
+  background-color: rgba(245, 185, 85, 0.12) !important;
+  color: #FDE68A !important;
+  border-color: rgba(245, 185, 85, 0.25) !important;
+}
+
+/* Поля ввода (input, textarea, select) */
+.theme-dark input:not([type="checkbox"]):not([type="radio"]),
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.theme-dark textarea,
+.dark textarea,
+.theme-dark select,
+.dark select {
+  background-color: #1E2235 !important;
+  color: #F8FAFC !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.theme-dark input::placeholder,
+.dark input::placeholder,
+.theme-dark textarea::placeholder,
+.dark textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Hover-состояния */
+.theme-dark .hover\:bg-cream-50:hover,
+.dark .hover\:bg-cream-50:hover,
+.theme-dark .hover\:bg-cream-100:hover,
+.dark .hover\:bg-cream-100:hover,
+.theme-dark .hover\:bg-stone-50:hover,
+.dark .hover\:bg-stone-50:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Тени в темной теме */
+.theme-dark .shadow-card,
+.dark .shadow-card,
+.theme-dark .shadow-soft,
+.dark .shadow-soft {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+}
+
+.theme-dark .shadow-inner-paper,
+.dark .shadow-inner-paper {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Полное скрытие всех нативных скроллбаров (ползунков) во всем приложении для чистого мобильного интерфейса */
