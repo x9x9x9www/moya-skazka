@@ -1463,45 +1463,13 @@ async function sendWelcome(chatId, firstName, startParam) {
   const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
   const name = firstName || 'дорогой родитель';
 
-  let refBlock = '';
-  if (startParam && startParam.startsWith('ref_')) {
-    refBlock = `\n\n> 🎁 **Вы перешли по приглашению друга!** Ваша первая иллюстрированная история уже ждёт вас.\n`;
-  }
-
-  const richMarkdown =
-`# ✨ МОЯ СКАЗКА // ПЕРСОНАЛЬНЫЕ ИИ-КНИГИ
-
-![](tg://video?id=banner "Волшебная книга «Моя сказка»")
-
----
-
-Привет, **${name}**! ✨
-
-Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.${refBlock}
-
-### 🌟 Создание сказок через ИИ:
-- 📖 **Сюжет:** Текст генерируется нейросетью специально под характер, возраст и любимые игрушки ребёнка
-- 🎨 **Иллюстрации:** Обложка и 4 сюжетные сцены в 3D Pixar-стиле от **Nano-Banana-2**
-- 🧸 **Терапия сна:** 4 сцены + бережные вопросы для тёплой беседы перед сном
-- 🎁 **Подарок:** Первая персональная книга — бесплатно!
-
----
-
-<details open><summary><b>ℹ️ Как работает волшебная мастерская</b></summary>
-1. 📸 Загрузите фото малыша — зрение ИИ считает черты лица и цвет волос
-2. 🪄 Сервер создаст 3D Pixar портрет-аватарку в сказочном наряде
-3. 📖 Автор сочинит добрую терапевтическую историю под характер ребёнка
-4. 🎨 Художник нарисует 4 иллюстрации и обложку книги!
-</details>
-
----
-*Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇*`;
+  const welcomeText = `🚀 Чтобы создать персональную терапевтическую сказку для вашего малыша, перейдите в приложение: https://x9x9x9www.github.io/moya-skazka/`;
 
   const keyboard = {
     inline_keyboard: [
       [
         {
-          text: '✨ Открыть «Моя сказка»',
+          text: 'ПЕРЕЙТИ В ПРИЛОЖЕНИЕ',
           web_app: { url: currentAppUrl },
         },
       ],
@@ -1514,51 +1482,14 @@ async function sendWelcome(chatId, firstName, startParam) {
     ],
   };
 
-  // 1. Нативная статья Telegram в формате Rich Message (Bot API 10+)
-  try {
-    const richRes = await callTelegram('sendRichMessage', {
-      chat_id: chatId,
-      rich_message: {
-        markdown: richMarkdown,
-        media: [
-          {
-            id: 'banner',
-            media: {
-              type: 'animation',
-              media: BANNER_ANIMATION_FILE_ID,
-            },
-          },
-        ],
-      },
-      reply_markup: keyboard,
-    });
-    if (richRes && richRes.ok) {
-      return richRes;
-    }
-    console.warn('[Bot] sendRichMessage fallback triggered:', richRes?.description);
-  } catch (err) {
-    console.warn('[Bot] sendRichMessage error, falling back:', err.message);
-  }
-
-  // 2. Фолбэк на классический sendMessage
-  let fallbackMessage = `Привет, ${name}! ✨\n\n` +
-    `Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.\n\n`;
-
-  if (startParam && startParam.startsWith('ref_')) {
-    fallbackMessage += `🎁 **Вы перешли по приглашению друга!**\nВаша первая иллюстрированная история уже ждёт вас.\n\n`;
-  }
-
-  fallbackMessage += `🌟 **Создание сказок через ИИ:**\n` +
-    `• Текст генерируется нейросетью специально под характер ребёнка\n` +
-    `• Обложку и 4 иллюстрации в 3D Pixar-стиле рисует **Nano-Banana-2**\n` +
-    `• 4 сцены + вопросы для тёплой беседы перед сном\n` +
-    `• Первая персональная история — бесплатно!\n\n` +
-    `Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
-
   return await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: fallbackMessage,
-    parse_mode: 'Markdown',
+    text: welcomeText,
+    link_preview_options: {
+      url: 'https://x9x9x9www.github.io/moya-skazka/',
+      prefer_small_media: true,
+      show_above_text: false,
+    },
     reply_markup: keyboard,
   });
 }
