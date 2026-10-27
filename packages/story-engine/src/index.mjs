@@ -674,6 +674,7 @@ export function buildStoryPrompt(params = {}, options = {}) {
   const effectiveGender = isGirl ? 'girl' : 'boy';
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
+  const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
 
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ
 

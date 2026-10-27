@@ -43,12 +43,13 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
   if (lastChar === 'а') {
     const prevChar = lower.charAt(lower.length - 2);
     const useI = ['ж', 'ч', 'ш', 'щ', 'г', 'к', 'х'].includes(prevChar);
+    const isSibilant = ['ж', 'ч', 'ш', 'щ', 'ц'].includes(prevChar);
     return {
       nom: trimmed,
       gen: `${stem}${useI ? 'и' : 'ы'}`,
       dat: `${stem}е`,
       acc: `${stem}у`,
-      ins: `${stem}ой`,
+      ins: `${stem}${isSibilant ? 'ей' : 'ой'}`,
       prep: `об ${stem}е`,
     };
   }
@@ -112,18 +113,31 @@ export function removeAgeFromText(text?: string): string {
 /**
  * Исправление родовых согласований глаголов и падежей имени в русском тексте
  */
-export function fixGenderAgreements(text?: string, childName: string = 'Герой', gender: 'boy' | 'girl' | string = 'boy'): string {
+export function fixGenderAgreements(text?: string, arg2: string = 'Герой', arg3: string = 'boy'): string {
   if (!text || typeof text !== 'string') return '';
   let clean = removeAgeFromText(text);
+
+  let childName = 'Герой';
+  let gender = 'boy';
+  if (arg2 === 'boy' || arg2 === 'girl') {
+    gender = arg2;
+    childName = typeof arg3 === 'string' && arg3.trim() ? arg3.trim() : 'Герой';
+  } else {
+    childName = typeof arg2 === 'string' && arg2.trim() ? arg2.trim() : 'Герой';
+    gender = arg3 === 'girl' ? 'girl' : 'boy';
+  }
+
   const isGirl = gender === 'girl' || (childName && (childName.endsWith('а') || childName.endsWith('я')));
   const effectiveGender = isGirl ? 'girl' : 'boy';
   const declined = declineRussianName(childName, effectiveGender);
 
+  const CYR_PRE = '(?<![а-яёА-ЯЁ])';
+  const CYR_POST = '(?![а-яёА-ЯЁ])';
+
   // Исправляем несклонённое имя после предлогов и существительных:
-  // «Сердце Аэлита» -> «Сердце Аэлиты»
-  clean = clean.replace(new RegExp(`(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}\\b`, 'g'), `$1 ${declined.gen}`);
-  clean = clean.replace(new RegExp(`(вместе с|рядом с|вслед за)\\s+${childName}\\b`, 'g'), `$1 ${declined.ins}`);
-  clean = clean.replace(new RegExp(`(навстречу|к)\\s+${childName}\\b`, 'g'), `$1 ${declined.dat}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.gen}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(вместе с|рядом с|вслед за)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.ins}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(навстречу|к)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.dat}`);
 
   if (isGirl) {
     const verbReplacements: [string, string][] = [
@@ -155,14 +169,15 @@ export function fixGenderAgreements(text?: string, childName: string = 'Геро
     ];
 
     for (const [masc, fem] of verbReplacements) {
-      clean = clean.replace(new RegExp(`(${childName}\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bдевочка\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bмалышка\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bгероиня\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bона\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${childName}\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}девочка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}малышка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}героиня\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}она\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
     }
 
-    clean = clean.replace(new RegExp(`(${childName}[^.!?—–]+?)\\b(почувствовал|очутился|улыбнулся|побежал|пошел|пошёл|увидел|обрадовался|взял|справился|решил|доказал|помог|шагнул)\\b`, 'gi'), (match, prefix, verb) => {
+    const verbsPattern = verbReplacements.map((v) => v[0]).join('|');
+    clean = clean.replace(new RegExp(`(${childName}[^.!?—–]+?)${CYR_PRE}(${verbsPattern})${CYR_POST}`, 'gi'), (match, prefix, verb) => {
       const pair = verbReplacements.find((p) => p[0].toLowerCase() === verb.toLowerCase());
       return pair ? `${prefix}${pair[1]}` : match;
     });
@@ -170,3 +185,4 @@ export function fixGenderAgreements(text?: string, childName: string = 'Геро
 
   return clean;
 }
+

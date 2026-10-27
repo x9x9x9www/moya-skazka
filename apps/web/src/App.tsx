@@ -22,6 +22,13 @@ import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/sh
 import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
+const PARENTING_ADVICE = [
+  'Чтение перед сном снижает уровень гормона стресса кортизола и помогает малышу быстрее погрузиться в глубокий восстанавливающий сон.',
+  'Когда ребёнок видит себя главным героем сказки, его самооценка и уверенность в собственных силах растут на глазах.',
+  'Обсуждение вопросов после каждой главы развивает эмоциональный интеллект и учит ребёнка лучше понимать свои чувства.',
+  'Мягкий ритуал отхода ко сну с колыбельной и сказкой создаёт у ребёнка стойкое ощущение безопасности и родительской любви.',
+  'Персонализированные сказки помогают мягко и экологично преодолевать детские страхи: темноты, разлуки или новых начинаний.',
+];
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -130,12 +137,29 @@ export const App: React.FC = () => {
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
   const [selectedSku, setSelectedSku] = useState<'single_book_1' | 'pack_5'>('pack_5');
 
-  // Рефералы
-  const [referralStats, setReferralStats] = useState({
-    link: 'https://t.me/MoyaSkazkaBot?startapp=ref_demo',
-    qualifiedFriends: 0,
-    giftCredits: 0,
+  // Рефералы: динамический production-линк вместо ref_demo
+  const [referralStats, setReferralStats] = useState(() => {
+    const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+    const tgUser = tg?.initDataUnsafe?.user;
+    const userId = tgUser?.id ? String(tgUser.id) : (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') || 'user' : 'user');
+    const botUser = (import.meta as any).env?.VITE_BOT_USERNAME || 'My_SSSkaska_bot';
+    return {
+      link: `https://t.me/${botUser}?startapp=ref_${userId}`,
+      qualifiedFriends: 0,
+      giftCredits: 0,
+    };
   });
+
+  // Ротация советов для родителей на экране генерации
+  const [currentAdviceIndex, setCurrentAdviceIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isCreatingStory) return;
+    const timer = setInterval(() => {
+      setCurrentAdviceIndex((prev) => (prev + 1) % 5);
+    }, 6500);
+    return () => clearInterval(timer);
+  }, [isCreatingStory]);
 
   // Баланс демо-кредитов переживает перезагрузку страницы.
   useEffect(() => {
@@ -377,33 +401,15 @@ export const App: React.FC = () => {
       cover_url: '/illustrations/demo/cover.jpg',
       created_at: new Date().toISOString(),
     },
-    {
-      id: 'b1',
-      child_id: 'default',
-      child_name: 'Миша',
-      title: 'Миша и маленький динозавр Дино',
-      status: 'ILLUSTRATED',
-      format: 'ILLUSTRATED',
-      cover_url: '/illustrations/cover_dino.jpg',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'b2',
-      child_id: 'default',
-      child_name: 'Миша',
-      title: 'Миша и звёздочка',
-      status: 'ILLUSTRATED',
-      format: 'ILLUSTRATED',
-      cover_url: '/illustrations/cover_star.jpg',
-      created_at: new Date().toISOString(),
-    },
   ];
 
   const loadBooks = async () => {
     try {
       const list = await api.getBooks();
       if (list && list.length > 0) {
-        const mapped: BookSummaryDTO[] = list.map((book) => ({
+        // Убираем старые демо-заглушки (b1, b2, b3), оставляя только реальные книги пользователя
+        const filteredList = list.filter((b) => b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3');
+        const mapped: BookSummaryDTO[] = filteredList.map((book) => ({
           ...book,
           cover_url: resolveMediaUrl(book.cover_url) || null,
         }));
@@ -419,7 +425,9 @@ export const App: React.FC = () => {
     if (saved && !saved.includes('unsplash')) {
       try {
         const parsed: BookSummaryDTO[] = JSON.parse(saved);
-        const repaired: BookSummaryDTO[] = parsed.map((b) => ({
+        // Фильтруем старые демо-заглушки из localStorage
+        const cleanParsed = parsed.filter((b) => b.id !== 'b1' && b.id !== 'b2' && b.id !== 'b3');
+        const repaired: BookSummaryDTO[] = cleanParsed.map((b) => ({
           ...b,
           cover_url: resolveMediaUrl(b.cover_url) || getFairytaleFallbackIllustration(b.title),
         }));
@@ -427,6 +435,9 @@ export const App: React.FC = () => {
           repaired.unshift(DEFAULT_BOOKS[0]);
         }
         setBooks(repaired);
+        try {
+          localStorage.setItem('ms_books', JSON.stringify(repaired));
+        } catch {}
         return;
       } catch {}
     }
@@ -697,9 +708,9 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>1. Сюжет и character bible</span>
+                  <span>1. Сюжет и диалоги</span>
                 </span>
-                <span className="text-[11px] text-stone-500">
+                <span className="text-[11px] text-stone-500 font-medium">
                   {creationStage === 'writing' ? 'сочиняем...' : 'готов'}
                 </span>
               </div>
@@ -714,14 +725,31 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>2. Живая обложка + 4 сказочные иллюстрации</span>
+                  <span>2. 5 иллюстраций в стиле Pixar</span>
                 </span>
-                <span className="text-[11px] text-stone-500">
+                <span className="text-[11px] text-stone-500 font-medium">
                   {creationStage === 'writing'
                     ? 'в очереди'
                     : creationStage === 'drawing'
                     ? 'рисуем...'
                     : 'готовы'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-700 flex items-center gap-2">
+                  {creationStage === 'finishing' ? (
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+                  ) : jobProgress >= 95 ? (
+                    <span className="text-emerald-500 font-bold">✓</span>
+                  ) : (
+                    <span className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[9px] text-stone-600">
+                      3
+                    </span>
+                  )}
+                  <span>3. Сборка книги и колыбельная</span>
+                </span>
+                <span className="text-[11px] text-stone-500 font-medium">
+                  {jobProgress >= 95 ? 'готово' : creationStage === 'finishing' ? 'настраиваем...' : 'в очереди'}
                 </span>
               </div>
             </div>
@@ -738,6 +766,17 @@ export const App: React.FC = () => {
                 <span>Прогресс</span>
                 <span>{Math.round(jobProgress)}%</span>
               </div>
+            </div>
+
+            {/* Карточка полезного совета для родителей с автоматической ротацией */}
+            <div className="rounded-2xl bg-amber-50/90 border border-amber-200/80 p-3 text-left transition-all duration-500 shadow-sm space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                <FairyStarIcon className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                <span>Совет перед сном:</span>
+              </div>
+              <p className="text-stone-700 leading-relaxed text-[11px] min-h-[38px] transition-opacity duration-300">
+                {PARENTING_ADVICE[currentAdviceIndex]}
+              </p>
             </div>
 
             <p className="text-[11px] text-stone-500 leading-tight">
@@ -936,194 +975,6 @@ export const App: React.FC = () => {
                 };
                 localStorage.setItem('ms_story_b_aelita', JSON.stringify(aelitaStory));
                 openReader(aelitaStory);
-                return;
-              }
-
-              // Каноническая иллюстрированная история про Мишу и Дино из макета
-              if (id === 'b1') {
-                const dinoStory: BookDetailsDTO = {
-                  id: 'b1',
-                  title: 'Миша и маленький динозавр Дино',
-                  status: 'ILLUSTRATED',
-                  format: 'ILLUSTRATED',
-                  can_upgrade: false,
-                  cover_url: '/illustrations/cover_dino.jpg',
-                  scenes: [
-                    {
-                      id: 's1',
-                      scene_index: 1,
-                      text: 'Миша и его верный друг, маленький динозаврик Дино, уютно сидели на мягкой лесной полянке. Дино бережно прижимался к Мише, а на небе мягко светили сказочные облака и ласковое солнышко. Начиналось самое тёплое волшебное приключение!',
-                      image_url: '/illustrations/demo/scene_1.jpg',
-                    },
-                    {
-                      id: 's2',
-                      scene_index: 2,
-                      text: 'Миша и Дино подошли к большой луже. Дино остановился и испуганно посмотрел на воду. — Я боюсь переходить, — прошептал он. Миша ободряюще улыбнулся, взял друга за лапку и предложил сделать надёжный мостик из крепких веточек.',
-                      image_url: '/illustrations/demo/scene_2.jpg',
-                    },
-                    {
-                      id: 's3',
-                      scene_index: 3,
-                      text: 'Они дружно положили веточки через ручеёк. Дино сделал первый смелый шаг и радостно захлопал в ладоши! Малыши забрались в уютный шалаш из тёплых пледов и открыли светящуюся сказочную книгу, полную добрых историй.',
-                      image_url: '/illustrations/demo/scene_3.jpg',
-                    },
-                    {
-                      id: 's4',
-                      scene_index: 4,
-                      text: 'Вскоре Дино увидел свою семью. Он радостно обнял маму, а потом повернулся к Мише. — Спасибо! Теперь мы друзья навсегда! — сказал он. А Миша радостно улыбнулся, зная, что доброта и верная дружба помогают совершать настоящие чудеса.',
-                      image_url: '/illustrations/demo/scene_4.jpg',
-                    },
-                  ],
-                  questions: [
-                    {
-                      id: 'q1',
-                      after_scene: 2,
-                      question: 'Как ты думаешь, почему Дино испугался? А что помогло ему почувствовать себя смелее?',
-                      parent_hint: 'Выслушайте ребёнка. Обсудите, как поддержка друга помогает преодолеть любой страх.',
-                      skill_tag: 'emotions',
-                    },
-                    {
-                      id: 'q2',
-                      after_scene: 5,
-                      question: 'Что тебе больше всего понравилось в этой истории? Как бы ты поступил на месте Миши?',
-                      parent_hint: 'Обнимите малыша, похвалите за добрые рассуждения и пожелайте сказочных снов.',
-                      skill_tag: 'reflection',
-                    },
-                  ],
-                };
-                localStorage.setItem('ms_story_b1', JSON.stringify(dinoStory));
-                openReader(dinoStory);
-                return;
-              }
-
-              // Каноническая текстовая сказка про звёздочку из макета (Экран 7)
-              if (id === 'b2') {
-                const isUpgraded = books.find((b) => b.id === 'b2')?.format === 'ILLUSTRATED';
-                const starStory: BookDetailsDTO = {
-                  id: 'b2',
-                  title: 'Миша и звёздочка',
-                  status: isUpgraded ? 'ILLUSTRATED' : 'TEXT_READY',
-                  format: isUpgraded ? 'ILLUSTRATED' : 'TEXT',
-                  can_upgrade: !isUpgraded,
-                  cover_url: '/illustrations/cover_star.jpg',
-                  scenes: [
-                    {
-                      id: 's1',
-                      scene_index: 1,
-                      text: 'Миша сидел у тёплого вечернего окна и смотрел на тёмно-синее небо. Вдруг среди мерцающих созвездий вспыхнула крошечная золотистая искорка. Она плавно скользнула вниз и тихо опустилась прямо на деревянный подоконник.',
-                      image_url: isUpgraded ? '/illustrations/demo/scene_1.jpg' : null,
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy looking at a tiny glowing friendly baby star on a cozy bedroom windowsill, golden hour magical dusk, starry sky, modern 3D CGI render, Pixar RenderMan aesthetic, no text.',
-                    },
-                    {
-                      id: 's2',
-                      scene_index: 2,
-                      text: 'Звёздочка тихонько звенела, как хрустальный колокольчик. Она потеряла дорогу к своей маме — Большой Медведице. Миша бережно подставил ладошки: — Не бойся, звёздочка, я помогу тебе вернуться домой! — ласково прошептал он.',
-                      image_url: isUpgraded ? '/illustrations/demo/scene_2.jpg' : null,
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy gently cupping a radiant glowing little star creature in hands, comforting smile, volumetric lighting, no text.',
-                    },
-                    {
-                      id: 's3',
-                      scene_index: 3,
-                      text: 'Миша поднялся на цыпочках, взял свой любимый телескоп и построил лесенку из мягких подушек. Он протянул ручки к ночному небу и помог звёздочке поймать лёгкое дуновение попутного звёздного ветерка.',
-                      image_url: isUpgraded ? '/illustrations/demo/scene_3.jpg' : null,
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Cute boy standing on pillow ladder near open attic window, releasing glowing star into starry night, no text.',
-                    },
-                    {
-                      id: 's4',
-                      scene_index: 4,
-                      text: 'Звёздочка взмыла высоко в небо и радостно засияла рядом с Большой Медведицей. С тех пор каждый вечер она светила в окно Миши самым добрым золотистым лучиком, охраняя его сказочные сны.',
-                      image_url: isUpgraded ? '/illustrations/demo/scene_4.jpg' : null,
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy sleeping peacefully under cozy blanket, radiant golden star shining warmly through window, cozy bedtime vibe, no text.',
-                    },
-                  ],
-                  questions: [
-                    {
-                      id: 'q1',
-                      after_scene: 2,
-                      question: 'Как ты думаешь, почему звёздочка сначала грустила? А что помогло ей снова заулыбаться?',
-                      parent_hint: 'Выслушайте ребёнка. Обсудите, как чуткость и готовность прийти на помощь согревают сердца.',
-                      skill_tag: 'emotions',
-                    },
-                    {
-                      id: 'q2',
-                      after_scene: 5,
-                      question: 'А если бы к тебе в гости прилетела волшебная звёздочка, о чём бы вы с ней посекретничали?',
-                      parent_hint: 'Помечтайте вместе с малышом о далёких мирах и самых заветных желаниях.',
-                      skill_tag: 'reflection',
-                    },
-                  ],
-                };
-                localStorage.setItem('ms_story_b2', JSON.stringify(starStory));
-                openReader(starStory);
-                return;
-              }
-
-              // Каноническая иллюстрированная сказка про волшебный лес из макета (Экран 7)
-              if (id === 'b3') {
-                const forestStory: BookDetailsDTO = {
-                  id: 'b3',
-                  title: 'Миша и волшебный лес',
-                  status: 'ILLUSTRATED',
-                  format: 'ILLUSTRATED',
-                  can_upgrade: false,
-                  cover_url: '/illustrations/cover_forest.jpg',
-                  scenes: [
-                    {
-                      id: 's1',
-                      scene_index: 1,
-                      text: 'Миша шагал по мягкой тропинке, усыпанной золотыми осенними листьями. В волшебном лесу тихо шелестели вековые дубы, сквозь ветви пробивались тёплые лучи заходящего солнца, а в воздухе кружились светлячки.',
-                      image_url: '/illustrations/demo/scene_1.jpg',
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy in overalls walking along a sun-dappled enchanted autumn forest path with glowing fireflies, no text.',
-                    },
-                    {
-                      id: 's2',
-                      scene_index: 2,
-                      text: 'Вдруг под кустом папоротника Миша заметил пушистого рыжего лисёнка с большими любопытными глазками. Лисёнок уронил корзинку со спелой земляникой и никак не мог собрать рассыпавшиеся ягодки.',
-                      image_url: '/illustrations/demo/scene_2.jpg',
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy crouching down near an adorable fluffy baby fox in mossy woods, warm sunbeams, no text.',
-                    },
-                    {
-                      id: 's3',
-                      scene_index: 3,
-                      text: 'Миша присел на корточки, ласково улыбнулся и помог собрать все ягодки до единой. В благодарность лисёнок угостил его самой сладкой земляникой и показал Мише тайную поляну с весёлыми зверятами.',
-                      image_url: '/illustrations/demo/scene_3.jpg',
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy and happy baby fox sharing sweet wild strawberries, woodland friends smiling in background, no text.',
-                    },
-                    {
-                      id: 's4',
-                      scene_index: 4,
-                      text: 'Солнышко скрылось за горизонтом, и лес озарился мягким лунным светом. Миша вернулся домой в свою тёплую постель, вспоминая доброго лисёнка и зная, что в волшебном лесу его всегда ждут друзья.',
-                      image_url: '/illustrations/demo/scene_4.jpg',
-                      image_prompt:
-                        'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy cozily tucked in warm bed at night, smiling peacefully with a toy fox nearby, no text.',
-                    },
-                  ],
-                  questions: [
-                    {
-                      id: 'q1',
-                      after_scene: 2,
-                      question: 'Кому Миша помог в лесу? Как ты думаешь, что почувствовал лисёнок, когда они собирали ягодки вместе?',
-                      parent_hint: 'Обсудите с ребёнком радость взаимопомощи и дружеской поддержки.',
-                      skill_tag: 'emotions',
-                    },
-                    {
-                      id: 'q2',
-                      after_scene: 5,
-                      question: 'Какого лесного зверька ты хотел бы встретить на прогулке? Какую игру ты бы ему предложил?',
-                      parent_hint: 'Обнимите ребёнка, похвалите его фантазию и пожелайте сказочных снов.',
-                      skill_tag: 'reflection',
-                    },
-                  ],
-                };
-                localStorage.setItem('ms_story_b3', JSON.stringify(forestStory));
-                openReader(forestStory);
                 return;
               }
 

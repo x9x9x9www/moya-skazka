@@ -38,12 +38,13 @@ export function declineRussianName(name, gender = 'boy') {
     // После шипящих (ж, ч, ш, щ, г, к, х) в род. падеже 'и', а не 'ы'
     const prevChar = lower.charAt(lower.length - 2);
     const useI = ['ж', 'ч', 'ш', 'щ', 'г', 'к', 'х'].includes(prevChar);
+    const isSibilant = ['ж', 'ч', 'ш', 'щ', 'ц'].includes(prevChar);
     return {
       nom: trimmed,
       gen: `${stem}${useI ? 'и' : 'ы'}`,
       dat: `${stem}е`,
       acc: `${stem}у`,
-      ins: `${stem}ой`,
+      ins: `${stem}${isSibilant ? 'ей' : 'ой'}`,
       prep: `об ${stem}е`,
     };
   }
@@ -118,15 +119,29 @@ export function removeAgeFromText(text) {
 /**
  * Исправление родовых согласований в русском тексте
  */
-export function fixGenderAgreements(text, childName, gender) {
+export function fixGenderAgreements(text, arg2 = 'Герой', arg3 = 'boy') {
   if (!text || typeof text !== 'string') return '';
   let clean = removeAgeFromText(text);
+
+  let childName = 'Герой';
+  let gender = 'boy';
+  if (arg2 === 'boy' || arg2 === 'girl') {
+    gender = arg2;
+    childName = typeof arg3 === 'string' && arg3.trim() ? arg3.trim() : 'Герой';
+  } else {
+    childName = typeof arg2 === 'string' && arg2.trim() ? arg2.trim() : 'Герой';
+    gender = arg3 === 'girl' ? 'girl' : 'boy';
+  }
+
   const declined = declineRussianName(childName, gender);
 
+  const CYR_PRE = '(?<![а-яёА-ЯЁ])';
+  const CYR_POST = '(?![а-яёА-ЯЁ])';
+
   // Исправляем несклонённое имя после слов «Сердце», «ладошка», «глаза», «следы» и т.п.
-  clean = clean.replace(new RegExp(`(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}\\b`, 'g'), `$1 ${declined.gen}`);
-  clean = clean.replace(new RegExp(`(вместе с|рядом с|вслед за)\\s+${childName}\\b`, 'g'), `$1 ${declined.ins}`);
-  clean = clean.replace(new RegExp(`(навстречу|к)\\s+${childName}\\b`, 'g'), `$1 ${declined.dat}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.gen}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(вместе с|рядом с|вслед за)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.ins}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(навстречу|к)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.dat}`);
 
   if (gender === 'girl') {
     // Список мужских глаголов, ошибочно генерируемых моделями для девочек
@@ -160,15 +175,16 @@ export function fixGenderAgreements(text, childName, gender) {
 
     for (const [masc, fem] of verbReplacements) {
       // Замена после имени: «Аэлита почувствовал» -> «Аэлита почувствовала»
-      clean = clean.replace(new RegExp(`(${childName}\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bдевочка\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bмалышка\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bгероиня\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(\\bона\\s+)(${masc})\\b`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${childName}\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}девочка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}малышка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}героиня\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      clean = clean.replace(new RegExp(`(${CYR_PRE}она\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
     }
 
-    // Если прямо в начале предложения: «Сделав смелый шаг, Аэлита очутился»
-    clean = clean.replace(new RegExp(`(${childName}[^.!?—–]+?)\\b(почувствовал|очутился|улыбнулся|побежал|пошел|пошёл|увидел|обрадовался|взял|справился|решил|доказал|помог|шагнул)\\b`, 'gi'), (match, prefix, verb) => {
+    // Если прямо в одном предложении после имени: «Сделав смелый шаг, Аэлита очутилась на полянке и улыбнулся» -> улыбнулась
+    const verbsPattern = verbReplacements.map((v) => v[0]).join('|');
+    clean = clean.replace(new RegExp(`(${childName}[^.!?—–]+?)${CYR_PRE}(${verbsPattern})${CYR_POST}`, 'gi'), (match, prefix, verb) => {
       const pair = verbReplacements.find((p) => p[0].toLowerCase() === verb.toLowerCase());
       return pair ? `${prefix}${pair[1]}` : match;
     });

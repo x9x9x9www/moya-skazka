@@ -411,6 +411,10 @@ export async function callWellflowStory(
 
   if (activeApi) addCandidate(activeApi);
   if (DEFAULT_API_BRIDGE_URL) addCandidate(DEFAULT_API_BRIDGE_URL);
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    addCandidate('http://localhost:4040');
+    addCandidate('http://127.0.0.1:4040');
+  }
   addCandidate('https://moya-skazka-bridge.loca.lt');
   addCandidate('');
 
@@ -537,8 +541,8 @@ export async function generateDynamicStory(
 
   onProgress?.({
     stage: 'writing',
-    progress: 15,
-    message: 'Сочиняем уникальный сюжет и character bible...',
+    progress: 20,
+    message: 'Сочиняем неповторимый сюжет и диалоги...',
   });
 
   let storyData: any = null;
@@ -549,7 +553,7 @@ export async function generateDynamicStory(
       if (attempt > 1) {
         onProgress?.({
           stage: 'writing',
-          progress: 25,
+          progress: 28,
           message: 'Связываемся со сказочной мастерской...',
         });
       }
@@ -609,54 +613,54 @@ export async function generateDynamicStory(
         : [],
   };
 
-    // Если какие-то сцены ещё не имеют image_url (например, при запросе в обход моста)
-    const missingScenes = scenes.filter((s: any) => !s.image_url);
-    if (missingScenes.length > 0) {
-      onProgress?.({
-        stage: 'drawing',
-        progress: 55,
-        message: 'Волшебная мастерская раскрашивает акварельные сцены...',
-      });
-
-      let completedCount = scenes.length - missingScenes.length;
-      await Promise.all(
-        missingScenes.map(async (scene: any) => {
-          try {
-            const url = await generateWellflowImage(scene.image_prompt, 120000);
-            if (url) {
-              scene.image_url = url;
-              console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
-            }
-          } catch (e) {
-            console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${scene.scene_index} задержана:`, e);
-          }
-          if (!scene.image_url) {
-            scene.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], scene.scene_index);
-          }
-          completedCount++;
-          const progressVal = 55 + Math.round((completedCount / scenes.length) * 35);
-          onProgress?.({
-            stage: 'drawing',
-            progress: progressVal,
-            message: `Создаём иллюстрации (${completedCount} из ${scenes.length} готовы)...`,
-          });
-        })
-      );
-    }
-
-    // Железная гарантия: ни одна сцена не останется с пустым image_url!
-    scenes.forEach((s: any, idx: number) => {
-      if (!s.image_url) {
-        s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
-      }
-    });
-
-    // ПРЕДЗАГРУЗКА ИЗОБРАЖЕНИЙ: держим кнопку/оверлей до тех пор, пока картинки не окажутся в памяти браузера
+  // Если какие-то сцены ещё не имеют image_url (например, при запросе в обход моста)
+  const missingScenes = scenes.filter((s: any) => !s.image_url);
+  if (missingScenes.length > 0) {
     onProgress?.({
-      stage: 'finishing',
-      progress: 95,
-      message: 'Прогружаем страницы книги и настраиваем читалку...',
+      stage: 'drawing',
+      progress: 45,
+      message: 'Художественная мастерская рисует 5 иллюстраций...',
     });
+
+    let completedCount = scenes.length - missingScenes.length;
+    await Promise.all(
+      missingScenes.map(async (scene: any) => {
+        try {
+          const url = await generateWellflowImage(scene.image_prompt, 120000);
+          if (url) {
+            scene.image_url = url;
+            console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
+          }
+        } catch (e) {
+          console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${scene.scene_index} задержана:`, e);
+        }
+        if (!scene.image_url) {
+          scene.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], scene.scene_index);
+        }
+        completedCount++;
+        const progressVal = 40 + Math.round((completedCount / scenes.length) * 35);
+        onProgress?.({
+          stage: 'drawing',
+          progress: progressVal,
+          message: `Художественная мастерская рисует 5 иллюстраций (${completedCount} из ${scenes.length} готовы)...`,
+        });
+      })
+    );
+  }
+
+  // Железная гарантия: ни одна сцена не останется с пустым image_url!
+  scenes.forEach((s: any, idx: number) => {
+    if (!s.image_url) {
+      s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
+    }
+  });
+
+  // ПРЕДЗАГРУЗКА ИЗОБРАЖЕНИЙ: держим кнопку/оверлей до тех пор, пока картинки не окажутся в памяти браузера
+  onProgress?.({
+    stage: 'finishing',
+    progress: 90,
+    message: 'Сшиваем страницы и настраиваем колыбельную...',
+  });
 
     await Promise.all(
       scenes.map(
