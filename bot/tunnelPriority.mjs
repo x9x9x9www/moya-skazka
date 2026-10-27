@@ -4,6 +4,7 @@ export const TUNNEL_PRIORITY = {
   '': 0,
   serveo: 1,
   localtunnel: 2,
+  localhost_run: 2,
   env: 3,
 };
 

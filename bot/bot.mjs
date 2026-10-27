@@ -4,6 +4,7 @@ import path from 'path';
 import http from 'http';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { shouldActivateTunnel } from './tunnelPriority.mjs';
 import {
   buildStoryPrompt,
@@ -86,6 +87,28 @@ let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || '';
 let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : '';
 let lastServeoUrl = '';
 let lastLocalTunnelUrl = '';
+
+if (publicTunnelUrl) {
+  fetch(`${publicTunnelUrl.replace(/\/$/, '')}/health`, {
+    headers: { 'Bypass-Tunnel-Reminder': 'true' },
+    signal: AbortSignal.timeout(6000),
+  })
+    .then((res) => {
+      if (res.ok) {
+        console.log(`[Tunnel] ✅ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) подтверждён health-check`);
+        updateChatMenuWithApi(publicTunnelUrl);
+      } else {
+        console.warn(`[Tunnel] ⚠️ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) вернул HTTP ${res.status}. Разрешаем динамические туннели.`);
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
+      }
+    })
+    .catch((err) => {
+      console.warn(`[Tunnel] ⚠️ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) недоступен (${err.message}). Разрешаем динамические туннели.`);
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+    });
+}
 
 const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = path.join(BOT_DIR, 'generated');
@@ -1394,38 +1417,103 @@ async function activateTunnel(url, source) {
 }
 
 let currentTunnel = null;
+let sshTunnelProc = null;
 
 async function startLocalTunnel() {
-  console.log('[LocalTunnel] 🌐 Запуск постоянного туннеля через LocalTunnel...');
+  console.log('[LocalTunnel] 🌐 Запуск туннеля через LocalTunnel...');
   const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'moya-skazka-bridge';
   try {
-    currentTunnel = await localtunnel({ port: BRIDGE_PORT, subdomain });
+    const tunnelPromise = localtunnel({ port: BRIDGE_PORT, subdomain });
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tunnel connect timeout 10s')), 10000));
+    currentTunnel = await Promise.race([tunnelPromise, timeoutPromise]);
     lastLocalTunnelUrl = currentTunnel.url;
     console.log(`[LocalTunnel] 🚀 Постоянный туннель готов: ${currentTunnel.url}`);
     await activateTunnel(currentTunnel.url, 'localtunnel');
 
     currentTunnel.on('close', () => {
-      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 3 сек...');
+      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 5 сек...');
       if (activeTunnelSource === 'localtunnel') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
       }
-      setTimeout(startLocalTunnel, 3000);
+      setTimeout(startLocalTunnel, 5000);
     });
 
     currentTunnel.on('error', (err) => {
       console.warn('[LocalTunnel Ошибка]', err.message);
     });
   } catch (err) {
-    console.error('[LocalTunnel Сбой старта]:', err.message);
-    setTimeout(startLocalTunnel, 4000);
+    console.warn('[LocalTunnel]:', err.message, '— параллельно активен SSH-туннель');
+    setTimeout(startLocalTunnel, 20000);
   }
 }
+
+function startSshTunnel() {
+  if (sshTunnelProc) return;
+  console.log('[SshTunnel] 🌐 Запуск высокоскоростного SSH-туннеля через localhost.run...');
+  try {
+    const proc = spawn('ssh', [
+      '-o', 'StrictHostKeyChecking=no',
+      '-o', 'ServerAliveInterval=30',
+      '-o', 'ExitOnForwardFailure=yes',
+      '-R', `80:localhost:${BRIDGE_PORT}`,
+      'nokey@localhost.run',
+    ]);
+    sshTunnelProc = proc;
+
+    const parseOutput = (data) => {
+      const text = data.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
+      if (match) {
+        const url = match[0];
+        console.log(`[SshTunnel] 🚀 HTTPS туннель готов: ${url}`);
+        activateTunnel(url, 'localhost_run');
+      }
+    };
+
+    proc.stdout.on('data', parseOutput);
+    proc.stderr.on('data', parseOutput);
+
+    proc.on('close', (code) => {
+      console.log(`[SshTunnel] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      sshTunnelProc = null;
+      if (activeTunnelSource === 'localhost_run') {
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
+      }
+      setTimeout(startSshTunnel, 5000);
+    });
+
+    proc.on('error', (err) => {
+      console.warn('[SshTunnel Ошибка]:', err.message);
+      sshTunnelProc = null;
+      setTimeout(startSshTunnel, 10000);
+    });
+  } catch (err) {
+    console.error('[SshTunnel Сбой запуска]:', err.message);
+    sshTunnelProc = null;
+    setTimeout(startSshTunnel, 10000);
+  }
+}
+
+// Завершение процессов туннелей при остановке приложения
+process.on('SIGINT', () => {
+  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
+  if (currentTunnel) try { currentTunnel.close(); } catch {}
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
+  if (currentTunnel) try { currentTunnel.close(); } catch {}
+  process.exit(0);
+});
 
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
+  // Запускаем оба туннеля — первый успешный активируется и настраивает кнопку в Telegram
   startLocalTunnel();
+  startSshTunnel();
 }
 
 // ========================================================

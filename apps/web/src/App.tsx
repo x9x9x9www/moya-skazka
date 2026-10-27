@@ -628,10 +628,10 @@ export const App: React.FC = () => {
         haptic.success();
         openReader(generatedBook);
       }, 350);
-    } catch (err) {
+    } catch (err: any) {
       clearInterval(countdownInterval);
       setIsCreatingStory(false);
-      alert('Произошла ошибка при генерации сказки. Пожалуйста, попробуйте еще раз.');
+      alert(err?.message || 'Произошла ошибка при генерации сказки. Пожалуйста, попробуйте еще раз.');
     }
   };
 

@@ -27,7 +27,7 @@ export interface GenerateStoryParams {
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  'https://moya-skazka-bridge.loca.lt';
+  '';
 
 export function isMockMode(): boolean {
   if (typeof window !== 'undefined') {
@@ -218,10 +218,11 @@ export function getActiveApiUrl(): string {
     const params = new URLSearchParams(window.location.search);
     const paramUrl = params.get('api_url');
     if (paramUrl) {
+      const clean = paramUrl.replace(/\/$/, '');
       try {
-        localStorage.setItem('ms_api_url', paramUrl);
+        localStorage.setItem('ms_api_url', clean);
       } catch {}
-      return paramUrl.replace(/\/$/, '');
+      return clean;
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
@@ -229,11 +230,15 @@ export function getActiveApiUrl(): string {
         cached &&
         !cached.includes('192a1eaba3c1ee78') &&
         !cached.includes('b4e24b393c4c2c70') &&
-        !cached.includes('serveousercontent.com')
+        !cached.includes('serveousercontent.com') &&
+        !cached.includes('moya-skazka-bridge.loca.lt')
       ) {
         return cached.replace(/\/$/, '');
       }
     } catch {}
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:4040';
+    }
   }
   return DEFAULT_API_BRIDGE_URL;
 }
@@ -415,7 +420,6 @@ export async function callWellflowStory(
     addCandidate('http://localhost:4040');
     addCandidate('http://127.0.0.1:4040');
   }
-  addCandidate('https://moya-skazka-bridge.loca.lt');
   addCandidate('');
 
   let jobId: string | null = null;
@@ -548,13 +552,13 @@ export async function generateDynamicStory(
   let storyData: any = null;
   let lastError: any = null;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       if (attempt > 1) {
         onProgress?.({
           stage: 'writing',
-          progress: 28,
-          message: 'Связываемся со сказочной мастерской...',
+          progress: 24,
+          message: 'Связываемся со сказочной мастерской нейросетей...',
         });
       }
       storyData = await callWellflowStory(params, 180000, onProgress);
@@ -564,15 +568,18 @@ export async function generateDynamicStory(
     } catch (err: any) {
       lastError = err;
       console.warn(`[StoryGenerator] Попытка ${attempt} завершилась ошибкой:`, err);
-      if (attempt < 2) {
+      if (attempt < 3) {
         await new Promise((r) => setTimeout(r, 1500));
       }
     }
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.warn('[StoryGenerator] ⚠️ Сервер генерации недоступен, переключаемся на локальную сказку без сбоя:', lastError?.message);
-    return createMockStory(params);
+    console.error('[StoryGenerator] ❌ Ошибка генерации сказки через нейросети:', lastError);
+    throw new Error(
+      lastError?.message ||
+        'Не удалось сгенерировать сказку через нейросети. Проверьте соединение с ИИ-мостом и повторите попытку.'
+    );
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));
