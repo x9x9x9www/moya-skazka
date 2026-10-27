@@ -17,13 +17,26 @@ export const STYLE_3D_PIXAR =
   'absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. ' +
   'Any books, signs, or labels in the scene are completely blank.';
 
+import { declineRussianName, removeAgeFromText, fixGenderAgreements } from './declension.mjs';
+export { declineRussianName, removeAgeFromText, fixGenderAgreements };
+
 // --------------------------------------------------------
 // 2. Системный промпт
 // --------------------------------------------------------
 export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's book author, developmental psychologist, and animation art director. You write one deeply personalized illustrated fairytale for a child aged 2–6, suitable for cozy shared reading at any time of day (daytime adventures, quiet afternoon reading, or evening warmth). Return ONLY a valid JSON object. No Markdown, no code fences, no explanations.
 
-### 1. LANGUAGE RULES (CRITICAL)
+### 1. LANGUAGE & GRAMMAR RULES (STRICTEST PRIORITY)
 - ALL user-facing text (\`title\`, \`story_outline\`, \`scenes[].text\`, \`questions[].question\`, \`questions[].parent_hint\`, \`characters[].name\`) MUST be written in warm, vivid, natural literary RUSSIAN. No bureaucratic wording, no translated calques, no adult jargon.
+- GENDER AGREEMENT: The child's gender is explicitly given as "девочка" (girl) or "мальчик" (boy).
+  * If girl ("девочка"): ALL past tense verbs for the child MUST have feminine grammatical endings (-ла / -лась / -а: увидела, почувствовала, побежала, улыбнулась, нашла, помогла, обрадовалась, решила). NEVER use masculine verbs for a female hero (FORBIDDEN: «Аэлита почувствовал», «Аэлита побежал»).
+  * If girl ("девочка"): ALL adjectives describing the child MUST be feminine (смелая, маленькая, добрая).
+  * If boy ("мальчик"): ALL past tense verbs are masculine (увидел, почувствовал, побежал, улыбнулся).
+- DECLENSION OF NAMES (СКЛОНЕНИЕ ИМЕНИ): Correctly decline the child's Russian name in all grammatical cases!
+  * Родительный падеж (кого? чьё?): «сердце Аэлиты», «ладошка Аэлиты», «улыбка Аэлиты» (FORBIDDEN: «сердце Аэлита»).
+  * Дательный падеж (кому?): «навстречу Аэлите», «сказал Аэлите».
+  * Творительный падеж (с кем?): «вместе с Аэлитой».
+- ABSOLUTE BAN ON AGE IN BRACKETS OR TEXT:
+  * NEVER write the child's age in brackets, parentheses, or inline in the story text (FORBIDDEN: «Аэлита (4 года)», «Малышка (5)», «(4 года)»). Age is ONLY a guideline for text complexity and vocabulary calibration.
 - ALL visual fields (\`characters[].visual_description\`, \`cover_visual\`, \`scenes[].visual\`) MUST be written in precise, concrete ENGLISH.
 - Never transliterate Russian names in English visual fields: write "a 4-year-old boy named Misha" only if needed, but prefer describing appearance without the name.
 
@@ -657,15 +670,20 @@ export function buildStoryPrompt(params = {}, options = {}) {
   const hints = appearanceHints(params.appearance);
   const band = ageBand(Number(params.age) || 4);
   const recent = (params.recentOutlines || []).filter(Boolean).slice(0, 5);
-  const gender = params.gender === 'girl' ? 'девочка' : 'мальчик';
-  const toy = params.appearance?.toy || 'плюшевый динозаврик';
+  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
+  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const declinedName = declineRussianName(params.childName, effectiveGender);
+  const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
 
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ
 
 Ребёнок:
 - Имя: ${params.childName || 'Малыш'}
-- Пол: ${gender}
-- Возраст: ${Number(params.age) || 4} лет (${band.label})
+- Пол: ${genderRus}
+- Падежные формы имени: Родительный (кого? чьё?): «сердце ${declinedName.gen}», Дательный (кому?): «навстречу ${declinedName.dat}», Творительный (с кем?): «вместе с ${declinedName.ins}».
+- ВАЖНЕЙШЕЕ ПРАВИЛО ГРАММАТИКИ: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала», «решила»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
+- СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)» или «(4)»)! Текст должен быть чистой художественной литературой без технических меток.
+- Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
 - Характер: ${params.personality || 'добрый, любознательный'}
 - Любимая игрушка-спутник: ${toy}
 - Внешность (русские значения): ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, одежда: ${params.appearance?.clothingItem || (params.appearance?.clothingColor ? `${params.appearance.clothingColor} одежда` : 'уютный свитер')}
@@ -924,6 +942,21 @@ export function normalizeStory(raw, params = {}, dna = null) {
         scene.text = scene.text.replace(question.question, '').replace(/\n{3,}/g, '\n\n').trim();
         warnings.push(`вопрос после сцены ${question.after_scene} дублировался в тексте — удалён`);
       }
+    }
+  }
+
+  // Пост-промпт валидация: очистка от технических скобок возраста и исправление согласования рода
+  const childName = params.childName || 'Герой';
+  const isGirl = params.gender === 'girl' || (childName.endsWith('а') || childName.endsWith('я'));
+  const effectiveGender = isGirl ? 'girl' : 'boy';
+
+  for (const scene of scenes) {
+    scene.text = fixGenderAgreements(scene.text, childName, effectiveGender);
+  }
+  for (const question of questions) {
+    question.question = fixGenderAgreements(question.question, childName, effectiveGender);
+    if (question.parent_hint) {
+      question.parent_hint = fixGenderAgreements(question.parent_hint, childName, effectiveGender);
     }
   }
 

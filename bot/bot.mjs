@@ -15,6 +15,9 @@ import {
   buildCoverPrompt,
   buildScenePrompt,
   fallbackQuestions,
+  declineRussianName,
+  removeAgeFromText,
+  fixGenderAgreements,
 } from '../packages/story-engine/src/index.mjs';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import localtunnel from 'localtunnel';
@@ -323,18 +326,22 @@ export function resolveChildAvatarKey(params) {
 }
 
 function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0, params = null) {
-  if (sceneIndex === 0 && params) {
-    const avatarKey = resolveChildAvatarKey(params);
-    return `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarKey}.webp`;
+  const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';
+  if (sceneIndex === 0) {
+    if (params) {
+      const avatarKey = resolveChildAvatarKey(params);
+      return `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
+    }
+    const t = (themeOrInterest || '').toLowerCase();
+    if (t.includes('дино')) return `${baseUrl}/illustrations/cover_dino.jpg`;
+    if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) return `${baseUrl}/illustrations/cover_star.jpg`;
+    return `${baseUrl}/illustrations/demo/cover.jpg`;
   }
-  const t = (themeOrInterest || '').toLowerCase();
-  if (t.includes('дино')) {
-    return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_dino.jpg';
-  }
-  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
-    return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_star.jpg';
-  }
-  return 'https://x9x9x9www.github.io/moya-skazka/illustrations/cover_forest.jpg';
+  if (sceneIndex === 1) return `${baseUrl}/illustrations/demo/scene_1.jpg`;
+  if (sceneIndex === 2) return `${baseUrl}/illustrations/demo/scene_2.jpg`;
+  if (sceneIndex === 3) return `${baseUrl}/illustrations/demo/scene_3.jpg`;
+  if (sceneIndex === 4) return `${baseUrl}/illustrations/demo/scene_4.jpg`;
+  return `${baseUrl}/illustrations/demo/cover.jpg`;
 }
 
 async function generateWellflowImageAI(prompt, retries = 2) {
@@ -445,10 +452,11 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     await new Promise((r) => setTimeout(r, 500));
 
     const child = params.childName || 'Малыш';
-    const age = params.age || 4;
-    const theme = params.theme || 'Космос и дружба';
+    const isGirl = params.gender === 'girl' || (child.endsWith('а') || child.endsWith('я'));
+    const declined = declineRussianName(child, isGirl ? 'girl' : 'boy');
+    const theme = params.theme || 'Дружба и светлячок';
     const interest = params.interests?.[0] || 'волшебные звёзды';
-    const wishes = params.customWishes ? ` Любимая вещь и верный спутник — ${params.customWishes}.` : '';
+    const wishes = params.customWishes ? ` Рядом был любимый спутник — ${params.customWishes}.` : '';
     const hair = params.appearance?.hairColor
       ? `${params.appearance.hairLength || ''} ${params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
       : 'аккуратные волосы';
@@ -461,30 +469,35 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     const avatarUrl = `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
     const t = theme.toLowerCase();
     let worldName = 'Волшебная страна';
-    let companionName = 'Светлячок Лучик';
-    let trialText = 'дорога через сверкающий лабиринт с загадками';
-    let climaxText = 'древний кристалл озарил небо сотнями разноцветных огней';
-    let coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
+    let companionName = params.appearance?.toy || 'Светлячок Лучик';
+    let trialText = 'пушистый сонный туман, в котором потерялась тропинка';
+    let climaxText = 'поляна озарилась тысячами добрых мерцающих светлячков';
+    let coverImg = `${baseUrl}/illustrations/demo/cover.jpg`;
 
     if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
       worldName = 'Звёздная Галактика';
-      companionName = 'Звёздный Лисёнок Спарки';
-      trialText = 'пояс мерцающих астероидов, где нужно было найти золотистую тропу';
-      climaxText = 'созвездие Доброты вспыхнуло на небесном своде, открыв путь к тайне';
+      companionName = params.appearance?.toy || 'Звёздный Лисёнок Спарки';
+      trialText = 'звездный пояс из мягких мерцающих облачков';
+      climaxText = 'созвездие Дружбы мягко осветило всю ночную галактику';
       coverImg = `${baseUrl}/illustrations/cover_star.jpg`;
     } else if (t.includes('мор') || t.includes('океан') || t.includes('подвод') || t.includes('дельфин')) {
       worldName = 'Лазурные Глубины';
-      companionName = 'Дельфинёнок Флип';
-      trialText = 'подводное течение с танцующими кораллами и лабиринтом жемчужин';
-      climaxText = 'гигантская раковина раскрылась и наполнила океан мягким изумрудным сиянием';
-      coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
+      companionName = params.appearance?.toy || 'Дельфинёнок Флип';
+      trialText = 'волна мягких светящихся пузырьков';
+      climaxText = 'жемчужный цветок распустился и наполнил море изумрудным светом';
+      coverImg = `${baseUrl}/illustrations/demo/cover.jpg`;
     } else if (t.includes('дино') || t.includes('древн') || t.includes('джунгл')) {
       worldName = 'Долина Исполинов';
-      companionName = 'Маленький Трикки';
-      trialText = 'древний подвесной мостик над шепчущим водопадом';
-      climaxText = 'цветок папоротника распустился золотым сиянием дружбы';
+      companionName = params.appearance?.toy || 'Маленький Трикки';
+      trialText = 'густые листья сказочного папоротника';
+      climaxText = 'добрый маячок зажегся золотым светом на вершине холма';
       coverImg = `${baseUrl}/illustrations/cover_dino.jpg`;
     }
+
+    const vFelt = isGirl ? 'почувствовала' : 'почувствовал';
+    const vStepped = isGirl ? 'очутилась' : 'очутился';
+    const vSmiled = isGirl ? 'не испугалась, улыбнулась и крепко взяла' : 'не испугался, улыбнулся и крепко взял';
+    const vProved = isGirl ? 'доказала' : 'доказал';
 
     const mockStory = {
       title: `${child} и тайна: «${theme}»`,
@@ -496,40 +509,40 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       scenes: [
         {
           index: 1,
-          text: `Однажды солнечным утром ${child} (${age} лет) почувствовал, что день готовит нечто необыкновенное. На герое была ${clothes}, а ${hair} искрились в тёплых лучах света.${wishes} Вдруг прямо на ладонь опустилась волшебная светящаяся пылинка, приглашая за собой в ${worldName}!`,
-          image_url: coverImg,
-          visual: `3D Pixar style scene 1 of ${child} discovering a magic portal`,
+          text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо. На герое была ${clothes}, а ${hair} согревали лучи ласкового солнца.${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
+          image_url: `${baseUrl}/illustrations/demo/scene_1.jpg`,
+          visual: `3D Pixar style scene 1 of ${child} meeting ${companionName}`,
         },
         {
           index: 2,
-          text: `Сделав смелый шаг, ${child} очутился в удивительном краю, где повсюду оживали ${interest}. Навстречу выбежал ${companionName} с сияющими добрыми глазами. «Здравствуй, ${child}! — радостно воскликнул спутник. — Только твоё чуткое сердце поможет нам разгадать великую тайну!»`,
-          image_url: coverImg,
-          visual: `3D Pixar style scene 2 with ${child} and ${companionName}`,
+          text: `Сделав смелый шаг, ${child} и ${companionName} вместе ${vStepped} на мягкую тропинку, где повсюду оживали ${interest}. «Здравствуй, ${child}! — радостно прошептал спутник. — Только твое чуткое сердце и смелость помогут нам найти путь к волшебной полянке!»`,
+          image_url: `${baseUrl}/illustrations/demo/scene_2.jpg`,
+          visual: `3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
         },
         {
           index: 3,
-          text: `Впереди возникло непростое испытание: перед друзьями раскинулся ${trialText}. ${child} не испугался, улыбнулся и крепко взял друга за руку. Проявив смекалку и взаимовыручку, герои дружно справились с препятствием, доказав, что вместе им по плечу любые чудеса!`,
-          image_url: coverImg,
-          visual: `3D Pixar style scene 3 showing ${child} overcoming challenge`,
+          text: `Впереди на дорожку опустился ${trialText}. ${child} ${vSmiled} друга за руку. ${companionName} засветился еще теплее и ярче, разгоняя сумерки, и вместе они легко нашли дорогу вперед, доказав, что дружба побеждает любые преграды!`,
+          image_url: `${baseUrl}/illustrations/demo/scene_3.jpg`,
+          visual: `3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
         },
         {
           index: 4,
-          text: `И вот тайна была разгадана: ${climaxText}! Сердце ${child} наполнилось радостью и гордостью за совершённый подвиг. Это удивительное приключение доказало: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
-          image_url: coverImg,
-          visual: `3D Pixar style scene 4 triumphant finale with ${child}`,
+          text: `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось теплом, радостью и гордостью. Это удивительное приключение ${vProved}: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
+          image_url: `${baseUrl}/illustrations/demo/scene_4.jpg`,
+          visual: `3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
         },
       ],
       questions: params.includeQuestions
         ? [
             {
               after_scene: 2,
-              question: `Что почувствовал ${child}, когда встретил нового пушистого друга?`,
-              parent_hint: 'Спросите ребёнка о доверии и о том, как приятно находить новых друзей.',
+              question: `Как ${child} ${isGirl ? 'поддержала' : 'поддержал'} друга ${companionName} в начале их пути?`,
+              parent_hint: 'Спросите ребёнка о доверии и о том, как приятно помогать друзьям.',
               skill_tag: 'empathy',
             },
             {
               after_scene: 4,
-              question: `А какой поступок ${child} помог друзьям справиться с препятствием?`,
+              question: `Что помогло ${declined.dat} и ${companionName} справиться с испытанием?`,
               parent_hint: 'Подчеркните ценность доброты, терпения и взаимовыручки перед сном.',
               skill_tag: 'emotions',
             },

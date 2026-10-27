@@ -43,29 +43,39 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
         </div>
       </div>
 
-      <div className="space-y-6 my-auto py-4 overflow-y-auto">
-        {/* Иллюстрация 4 сцены */}
+      <div className="space-y-5 my-auto py-2 overflow-y-auto">
+        {/* Иллюстрация счастливого финала */}
         {finalScene?.image_url && (
-          <div className="w-full h-56 rounded-3xl overflow-hidden shadow-card border border-cream-300/60 bg-cream-200">
+          <div className="w-full h-52 rounded-3xl overflow-hidden shadow-card border border-cream-300/60 bg-cream-200 relative">
             <img
               src={finalScene.image_url}
-              alt="Финал"
+              alt="Финал сказки"
               className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
           </div>
         )}
 
-        {/* Завершающий текст */}
-        <p className="font-serif leading-relaxed px-1 text-justify text-base">
-          {finalScene?.text}
-        </p>
+        {/* Праздничное поздравление с прочтением книги */}
+        <div className="text-center space-y-1.5 px-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 text-xs font-bold shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+            <span>Ты молодец! Сказка прочитана!</span>
+          </div>
+          <h2 className="font-serif font-black text-2xl text-stone-900 dark:text-stone-100 leading-tight">
+            Чудесное путешествие завершилось
+          </h2>
+          <p className="text-xs text-stone-600 dark:text-stone-300 max-w-xs mx-auto leading-relaxed">
+            Герои сладко засыпают под мерцающим звёздным небом, а впереди вас ждут самые добрые и волшебные сны.
+          </p>
+        </div>
 
-        {/* Карточка «Последний вопрос» (Экран 6) */}
+        {/* Карточка «Вопрос для тёплой беседы перед сном» (Экран 6) */}
         {settings.showQuestions && finalQuestion && (
           <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-100/90 to-amber-50/90 dark:from-stone-800 dark:to-stone-800/60 border border-amber-300/70 dark:border-stone-700 shadow-sm space-y-2.5">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-300">
               <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <span>Вопрос для тёплой беседы</span>
+              <span>Вопрос для тёплой беседы перед сном</span>
             </div>
 
             <h3 className="font-serif font-bold text-base text-stone-900 dark:text-stone-100 leading-snug">
@@ -73,7 +83,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             </h3>
 
             {finalQuestion.parent_hint && (
-              <p className="text-xs text-stone-600 dark:text-stone-300 italic pt-2 border-t border-amber-200 dark:border-stone-700">
+              <p className="text-xs text-stone-600 dark:text-stone-300 italic pt-2 border-t border-amber-200/80 dark:border-stone-700">
                 Подсказка для родителя: {finalQuestion.parent_hint}
               </p>
             )}

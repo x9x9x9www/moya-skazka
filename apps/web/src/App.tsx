@@ -366,11 +366,51 @@ export const App: React.FC = () => {
     },
   ];
 
+  const DEFAULT_BOOKS: BookSummaryDTO[] = [
+    {
+      id: 'b_aelita',
+      child_id: 'default',
+      child_name: 'Аэлита',
+      title: 'Аэлита и тайна Светлячка Лучика',
+      status: 'ILLUSTRATED',
+      format: 'ILLUSTRATED',
+      cover_url: '/illustrations/demo/cover.jpg',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'b1',
+      child_id: 'default',
+      child_name: 'Миша',
+      title: 'Миша и маленький динозавр Дино',
+      status: 'ILLUSTRATED',
+      format: 'ILLUSTRATED',
+      cover_url: '/illustrations/cover_dino.jpg',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'b2',
+      child_id: 'default',
+      child_name: 'Миша',
+      title: 'Миша и звёздочка',
+      status: 'ILLUSTRATED',
+      format: 'ILLUSTRATED',
+      cover_url: '/illustrations/cover_star.jpg',
+      created_at: new Date().toISOString(),
+    },
+  ];
+
   const loadBooks = async () => {
     try {
       const list = await api.getBooks();
       if (list && list.length > 0) {
-        setBooks(list.map((book) => ({ ...book, cover_url: resolveMediaUrl(book.cover_url) })));
+        const mapped: BookSummaryDTO[] = list.map((book) => ({
+          ...book,
+          cover_url: resolveMediaUrl(book.cover_url) || null,
+        }));
+        if (!mapped.some((b) => b.id === 'b_aelita')) {
+          mapped.unshift(DEFAULT_BOOKS[0]);
+        }
+        setBooks(mapped);
         return;
       }
     } catch {}
@@ -379,16 +419,19 @@ export const App: React.FC = () => {
     if (saved && !saved.includes('unsplash')) {
       try {
         const parsed: BookSummaryDTO[] = JSON.parse(saved);
-        const repaired = parsed.map((b) => ({
+        const repaired: BookSummaryDTO[] = parsed.map((b) => ({
           ...b,
           cover_url: resolveMediaUrl(b.cover_url) || getFairytaleFallbackIllustration(b.title),
         }));
+        if (!repaired.some((b) => b.id === 'b_aelita')) {
+          repaired.unshift(DEFAULT_BOOKS[0]);
+        }
         setBooks(repaired);
         return;
       } catch {}
     }
 
-    setBooks([]);
+    setBooks(DEFAULT_BOOKS);
   };
 
   const loadDailyIdea = async (childId: string) => {
@@ -454,8 +497,27 @@ export const App: React.FC = () => {
 
   const openReader = (book: BookDetailsDTO) => {
     setCurrentReadingBook(resolveBookMedia(book));
-    setCurrentSceneIndex(1);
+    let initialScene = 1;
+    try {
+      const saved = localStorage.getItem(`ms_last_scene_${book.id}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 4) {
+          initialScene = parsed;
+        }
+      }
+    } catch {}
+    setCurrentSceneIndex(initialScene);
     setCurrentScreen('reader');
+  };
+
+  const handleSceneIndexChange = (newIndex: number) => {
+    setCurrentSceneIndex(newIndex);
+    if (currentReadingBook?.id) {
+      try {
+        localStorage.setItem(`ms_last_scene_${currentReadingBook.id}`, String(newIndex));
+      } catch {}
+    }
   };
 
   // Обработчик создания сказки из визарда: уникальная генерация на каждый запуск
@@ -748,14 +810,23 @@ export const App: React.FC = () => {
             interest={wizardData.interests[0] || 'Волшебство'}
             appearance={wizardData.appearance}
             onToggleQuestions={() => updateSetting('showQuestions', !settings.showQuestions)}
+            onCycleFontSize={() => {
+              const sizes: ('small' | 'medium' | 'large')[] = ['small', 'medium', 'large'];
+              const currentIdx = sizes.indexOf(settings.fontSize || 'medium');
+              const nextSize = sizes[(currentIdx + 1) % sizes.length];
+              updateSetting('fontSize', nextSize);
+              haptic.light();
+            }}
             onPrevScene={() => {
               haptic.light();
-              setCurrentSceneIndex((prev) => Math.max(1, prev - 1));
+              const prev = Math.max(1, currentSceneIndex - 1);
+              handleSceneIndexChange(prev);
             }}
             onNextScene={() => {
               haptic.light();
               if (currentSceneIndex < 4) {
-                setCurrentSceneIndex((prev) => prev + 1);
+                const next = currentSceneIndex + 1;
+                handleSceneIndexChange(next);
               } else {
                 setCurrentScreen('final_question');
               }
@@ -769,7 +840,7 @@ export const App: React.FC = () => {
             book={currentReadingBook}
             settings={settings}
             onRestart={() => {
-              setCurrentSceneIndex(1);
+              handleSceneIndexChange(1);
               setCurrentScreen('reader');
             }}
             onGoToLibrary={() => {
@@ -811,6 +882,63 @@ export const App: React.FC = () => {
                 } catch {}
               }
 
+              // Эталонная сказка для проверки качества (Definition of Done)
+              if (id === 'b_aelita') {
+                const aelitaStory: BookDetailsDTO = {
+                  id: 'b_aelita',
+                  title: 'Аэлита и тайна Светлячка Лучика',
+                  status: 'ILLUSTRATED',
+                  format: 'ILLUSTRATED',
+                  can_upgrade: false,
+                  cover_url: '/illustrations/demo/cover.jpg',
+                  scenes: [
+                    {
+                      id: 's1',
+                      scene_index: 1,
+                      text: 'Однажды тихим солнечным утром Аэлита почувствовала, что день готовит нечто по-настоящему чудесное. На ней было красивое платье, а золотистые волосы искрились в мягких лучах света. Вдруг прямо на тёплую ладошку опустился крошечный Светлячок Лучик с изумрудными крылышками, приглашая в Волшебную Поляну!',
+                      image_url: '/illustrations/demo/scene_1.jpg',
+                    },
+                    {
+                      id: 's2',
+                      scene_index: 2,
+                      text: 'Сделав смелый шаг, Аэлита очутилась на тропинке, где шелестели диковинные сказочные травы. Лучик тихонько прозвенел: «Здравствуй, Аэлита! Нам нужно помочь крошечным лесным колокольчикам найти дорогу ко сну». Маленькая героиня с радостью согласилась помочь верному другу.',
+                      image_url: '/illustrations/demo/scene_2.jpg',
+                    },
+                    {
+                      id: 's3',
+                      scene_index: 3,
+                      text: 'Впереди возникло небольшое испытание: прохладный вечерний туман спрятал тропинку к полянке с колокольчиками. Но Аэлита не растерялась, улыбнулась и крепко взяла спутника за руку. Девочка зажгла волшебный фонарик доброты, а Лучик озарил каждый листик тёплым сиянием. Вместе они рассеяли туман, доказав силу дружбы!',
+                      image_url: '/illustrations/demo/scene_3.jpg',
+                    },
+                    {
+                      id: 's4',
+                      scene_index: 4,
+                      text: 'И вот тайна открылась: все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу! Сердце Аэлиты наполнилось тихим теплом и радостью. Приключение счастливо завершилось, Лучик уютно устроился рядом, напевая нежную колыбельную. Самое время сладко закрыть глазки и уснуть.',
+                      image_url: '/illustrations/demo/scene_4.jpg',
+                    },
+                  ],
+                  questions: [
+                    {
+                      id: 'q1',
+                      after_scene: 2,
+                      question: 'Куда Аэлита и Лучик отправились в начале своего пути?',
+                      parent_hint: 'Обсудите с малышом, как приятно и важно помогать тем, кто попал в беду.',
+                      skill_tag: 'empathy',
+                    },
+                    {
+                      id: 'q2',
+                      after_scene: 4,
+                      question: 'Как дружба помогла Аэлите и Лучику рассеять вечерний туман?',
+                      parent_hint: 'Подчеркните важность заботы, доброты и взаимной поддержки перед сном.',
+                      skill_tag: 'reflection',
+                    },
+                  ],
+                };
+                localStorage.setItem('ms_story_b_aelita', JSON.stringify(aelitaStory));
+                openReader(aelitaStory);
+                return;
+              }
+
               // Каноническая иллюстрированная история про Мишу и Дино из макета
               if (id === 'b1') {
                 const dinoStory: BookDetailsDTO = {
@@ -819,30 +947,31 @@ export const App: React.FC = () => {
                   status: 'ILLUSTRATED',
                   format: 'ILLUSTRATED',
                   can_upgrade: false,
+                  cover_url: '/illustrations/cover_dino.jpg',
                   scenes: [
                     {
                       id: 's1',
                       scene_index: 1,
                       text: 'Миша и его верный друг, маленький динозаврик Дино, уютно сидели на мягкой лесной полянке. Дино бережно прижимался к Мише, а на небе мягко светили сказочные облака и ласковое солнышко. Начиналось самое тёплое волшебное приключение!',
-                      image_url: './illustrations/cover_dino.jpg',
+                      image_url: '/illustrations/demo/scene_1.jpg',
                     },
                     {
                       id: 's2',
                       scene_index: 2,
                       text: 'Миша и Дино подошли к большой луже. Дино остановился и испуганно посмотрел на воду. — Я боюсь переходить, — прошептал он. Миша ободряюще улыбнулся, взял друга за лапку и предложил сделать надёжный мостик из крепких веточек.',
-                      image_url: './illustrations/cover_dino.jpg',
+                      image_url: '/illustrations/demo/scene_2.jpg',
                     },
                     {
                       id: 's3',
                       scene_index: 3,
                       text: 'Они дружно положили веточки через ручеёк. Дино сделал первый смелый шаг и радостно захлопал в ладоши! Малыши забрались в уютный шалаш из тёплых пледов и открыли светящуюся сказочную книгу, полную добрых историй.',
-                      image_url: './illustrations/cover_dino.jpg',
+                      image_url: '/illustrations/demo/scene_3.jpg',
                     },
                     {
                       id: 's4',
                       scene_index: 4,
                       text: 'Вскоре Дино увидел свою семью. Он радостно обнял маму, а потом повернулся к Мише. — Спасибо! Теперь мы друзья навсегда! — сказал он. А Миша радостно улыбнулся, зная, что доброта и верная дружба помогают совершать настоящие чудеса.',
-                      image_url: './illustrations/cover_dino.jpg',
+                      image_url: '/illustrations/demo/scene_4.jpg',
                     },
                   ],
                   questions: [
@@ -876,12 +1005,13 @@ export const App: React.FC = () => {
                   status: isUpgraded ? 'ILLUSTRATED' : 'TEXT_READY',
                   format: isUpgraded ? 'ILLUSTRATED' : 'TEXT',
                   can_upgrade: !isUpgraded,
+                  cover_url: '/illustrations/cover_star.jpg',
                   scenes: [
                     {
                       id: 's1',
                       scene_index: 1,
                       text: 'Миша сидел у тёплого вечернего окна и смотрел на тёмно-синее небо. Вдруг среди мерцающих созвездий вспыхнула крошечная золотистая искорка. Она плавно скользнула вниз и тихо опустилась прямо на деревянный подоконник.',
-                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_url: isUpgraded ? '/illustrations/demo/scene_1.jpg' : null,
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy looking at a tiny glowing friendly baby star on a cozy bedroom windowsill, golden hour magical dusk, starry sky, modern 3D CGI render, Pixar RenderMan aesthetic, no text.',
                     },
@@ -889,7 +1019,7 @@ export const App: React.FC = () => {
                       id: 's2',
                       scene_index: 2,
                       text: 'Звёздочка тихонько звенела, как хрустальный колокольчик. Она потеряла дорогу к своей маме — Большой Медведице. Миша бережно подставил ладошки: — Не бойся, звёздочка, я помогу тебе вернуться домой! — ласково прошептал он.',
-                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_url: isUpgraded ? '/illustrations/demo/scene_2.jpg' : null,
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy gently cupping a radiant glowing little star creature in hands, comforting smile, volumetric lighting, no text.',
                     },
@@ -897,7 +1027,7 @@ export const App: React.FC = () => {
                       id: 's3',
                       scene_index: 3,
                       text: 'Миша поднялся на цыпочках, взял свой любимый телескоп и построил лесенку из мягких подушек. Он протянул ручки к ночному небу и помог звёздочке поймать лёгкое дуновение попутного звёздного ветерка.',
-                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_url: isUpgraded ? '/illustrations/demo/scene_3.jpg' : null,
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Cute boy standing on pillow ladder near open attic window, releasing glowing star into starry night, no text.',
                     },
@@ -905,7 +1035,7 @@ export const App: React.FC = () => {
                       id: 's4',
                       scene_index: 4,
                       text: 'Звёздочка взмыла высоко в небо и радостно засияла рядом с Большой Медведицей. С тех пор каждый вечер она светила в окно Миши самым добрым золотистым лучиком, охраняя его сказочные сны.',
-                      image_url: isUpgraded ? './illustrations/cover_star.jpg' : null,
+                      image_url: isUpgraded ? '/illustrations/demo/scene_4.jpg' : null,
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy sleeping peacefully under cozy blanket, radiant golden star shining warmly through window, cozy bedtime vibe, no text.',
                     },
@@ -940,12 +1070,13 @@ export const App: React.FC = () => {
                   status: 'ILLUSTRATED',
                   format: 'ILLUSTRATED',
                   can_upgrade: false,
+                  cover_url: '/illustrations/cover_forest.jpg',
                   scenes: [
                     {
                       id: 's1',
                       scene_index: 1,
                       text: 'Миша шагал по мягкой тропинке, усыпанной золотыми осенними листьями. В волшебном лесу тихо шелестели вековые дубы, сквозь ветви пробивались тёплые лучи заходящего солнца, а в воздухе кружились светлячки.',
-                      image_url: './illustrations/cover_forest.jpg',
+                      image_url: '/illustrations/demo/scene_1.jpg',
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. A cute 4-year-old toddler boy in overalls walking along a sun-dappled enchanted autumn forest path with glowing fireflies, no text.',
                     },
@@ -953,7 +1084,7 @@ export const App: React.FC = () => {
                       id: 's2',
                       scene_index: 2,
                       text: 'Вдруг под кустом папоротника Миша заметил пушистого рыжего лисёнка с большими любопытными глазками. Лисёнок уронил корзинку со спелой земляникой и никак не мог собрать рассыпавшиеся ягодки.',
-                      image_url: './illustrations/cover_forest.jpg',
+                      image_url: '/illustrations/demo/scene_2.jpg',
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Toddler boy crouching down near an adorable fluffy baby fox in mossy woods, warm sunbeams, no text.',
                     },
@@ -961,7 +1092,7 @@ export const App: React.FC = () => {
                       id: 's3',
                       scene_index: 3,
                       text: 'Миша присел на корточки, ласково улыбнулся и помог собрать все ягодки до единой. В благодарность лисёнок угостил его самой сладкой земляникой и показал Мише тайную поляну с весёлыми зверятами.',
-                      image_url: './illustrations/cover_forest.jpg',
+                      image_url: '/illustrations/demo/scene_3.jpg',
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy and happy baby fox sharing sweet wild strawberries, woodland friends smiling in background, no text.',
                     },
@@ -969,7 +1100,7 @@ export const App: React.FC = () => {
                       id: 's4',
                       scene_index: 4,
                       text: 'Солнышко скрылось за горизонтом, и лес озарился мягким лунным светом. Миша вернулся домой в свою тёплую постель, вспоминая доброго лисёнка и зная, что в волшебном лесу его всегда ждут друзья.',
-                      image_url: './illustrations/cover_forest.jpg',
+                      image_url: '/illustrations/demo/scene_4.jpg',
                       image_prompt:
                         'A breathtaking 3D Disney Pixar animation style movie still for a children fairy tale book. Boy cozily tucked in warm bed at night, smiling peacefully with a toy fox nearby, no text.',
                     },

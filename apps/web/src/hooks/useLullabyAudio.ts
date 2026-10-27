@@ -85,6 +85,14 @@ export function useLullabyAudio(musicType: ReaderMusic, isReading: boolean) {
       intervalRef.current = null;
       setIsPlaying(false);
     } else {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume().catch(() => {});
+        }
+      } catch {}
       setIsPlaying(true);
       playChime();
       intervalRef.current = setInterval(() => {

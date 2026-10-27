@@ -26,6 +26,7 @@ interface Screen5ReaderProps {
   onNextScene: () => void;
   onClose: () => void;
   onToggleQuestions?: () => void;
+  onCycleFontSize?: () => void;
 }
 
 export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
@@ -40,10 +41,12 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   onNextScene,
   onClose,
   onToggleQuestions,
+  onCycleFontSize,
 }) => {
   const currentScene = book.scenes.find((s) => s.scene_index === currentSceneIndex) || book.scenes[0];
 
   const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(currentScene?.image_url);
+  const [skippedScenes, setSkippedScenes] = React.useState<number[]>([]);
 
   React.useEffect(() => {
     setLiveImageUrl(currentScene?.image_url);
@@ -57,8 +60,9 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   }, [currentSceneIndex, currentScene?.image_url]);
 
   // Вопросы после 2-й сцены показываем в читалке, а вопрос после 4-й — на финальном экране
+  const isQuestionSkipped = skippedScenes.includes(currentSceneIndex);
   const questionForThisScene =
-    settings.showQuestions && currentSceneIndex !== 4
+    settings.showQuestions && currentSceneIndex !== 4 && !isQuestionSkipped
       ? book.questions.find((q) => q.after_scene === currentSceneIndex)
       : null;
 
@@ -97,14 +101,26 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        {/* Название книги и номер страницы */}
+        {/* Номер страницы */}
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 text-xs font-bold font-mono tracking-wider">
           <FairyStarIcon className="w-3.5 h-3.5 text-amber-500" />
           <span>{currentSceneIndex} из 4</span>
         </div>
 
-        {/* Элементы управления звуком и вопросами */}
+        {/* Элементы управления: размер шрифта, вопросы, колыбельная */}
         <div className="flex items-center gap-1.5">
+          {onCycleFontSize && (
+            <button
+              onClick={onCycleFontSize}
+              className="px-2.5 py-1.5 rounded-full text-xs font-bold font-mono tracking-tight flex items-center justify-center transition-all active:scale-95 bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 text-stone-700 dark:text-stone-200 border border-black/5 dark:border-white/10"
+              title={`Размер шрифта: ${settings.fontSize === 'small' ? 'Мелкий' : settings.fontSize === 'large' ? 'Крупный' : 'Стандартный'}`}
+            >
+              <span className="font-serif font-black text-xs">
+                {settings.fontSize === 'small' ? 'A–' : settings.fontSize === 'large' ? 'A+' : 'Aa'}
+              </span>
+            </button>
+          )}
+
           <button
             onClick={onToggleQuestions}
             className={`p-2 rounded-full text-xs font-semibold flex items-center justify-center transition-all active:scale-95 ${
@@ -139,8 +155,8 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         </div>
       </div>
 
-      {/* 2. Основной контент сцены: Иллюстрация + Буквица + Свиток беседы */}
-      <div className="flex-1 p-5 space-y-6 overflow-y-auto pb-32">
+      {/* 2. Основной контент сцены: Иллюстрация + Буквица + Свиток беседы (pb-44 предотвращает наложение нижнего дока) */}
+      <div className="flex-1 p-5 space-y-6 overflow-y-auto pb-44 scroll-smooth overscroll-contain">
         {/* Крупная сказочная иллюстрация с мягким виньетированием и Ken Burns эффектом */}
         <div className="relative rounded-3xl overflow-hidden shadow-card border border-amber-200/60 bg-cream-100">
           <div
@@ -169,17 +185,17 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           />
         </div>
 
-        {/* Текст сцены с классической декоративной книжной буквицей (Drop Cap) */}
+        {/* Текст сцены: строго выравнивание text-left (убирает неестественные пробелы мобильных экранов) */}
         <div className="px-1 pt-1">
           {firstLetter ? (
-            <p className={`font-serif leading-[1.85] text-[#292524] dark:text-stone-100 text-justify ${fontClass}`}>
+            <p className={`font-serif leading-[1.85] text-[#292524] dark:text-stone-100 text-left ${fontClass}`}>
               <span className="float-left font-serif font-bold text-4xl leading-none pt-1 pr-3 pb-0.5 text-emerald-800 dark:text-amber-400 select-none">
                 {firstLetter}
               </span>
               {restOfText}
             </p>
           ) : (
-            <p className={`font-serif leading-[1.85] text-[#292524] dark:text-stone-100 text-justify ${fontClass}`}>
+            <p className={`font-serif leading-[1.85] text-[#292524] dark:text-stone-100 text-left ${fontClass}`}>
               {currentScene?.text}
             </p>
           )}
@@ -193,13 +209,21 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
               <FairyStarIcon className="w-10 h-10 text-amber-500" />
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-amber-200/80 dark:bg-amber-900/50 flex items-center justify-center shrink-0 shadow-inner text-amber-800 dark:text-amber-300">
-                <MessageSquareQuote className="w-4 h-4" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-amber-200/80 dark:bg-amber-900/50 flex items-center justify-center shrink-0 shadow-inner text-amber-800 dark:text-amber-300">
+                  <MessageSquareQuote className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-amber-950 dark:text-amber-200 tracking-wide uppercase">
+                  Свиток доброй беседы
+                </span>
               </div>
-              <span className="text-xs font-bold text-amber-950 dark:text-amber-200 tracking-wide uppercase">
-                Свиток доброй беседы
-              </span>
+              <button
+                onClick={() => setSkippedScenes((prev) => [...prev, currentSceneIndex])}
+                className="text-[11px] font-bold text-stone-400 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+              >
+                Пропустить ›
+              </button>
             </div>
 
             <p className="font-serif font-bold text-sm text-[#292524] dark:text-stone-100 leading-snug">
