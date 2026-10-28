@@ -24,8 +24,16 @@ test('pinggy важнее localtunnel и serveo', () => {
   assert.equal(shouldActivateTunnel('localtunnel', 'pinggy'), false);
 });
 
+test('cloudflare важнее pinggy, localtunnel и serveo', () => {
+  assert.equal(shouldActivateTunnel('cloudflare', 'pinggy'), true);
+  assert.equal(shouldActivateTunnel('cloudflare', 'localtunnel'), true);
+  assert.equal(shouldActivateTunnel('pinggy', 'cloudflare'), false);
+  assert.equal(shouldActivateTunnel('localtunnel', 'cloudflare'), false);
+});
+
 test('повторный URL того же источника не блокируется', () => {
   assert.equal(shouldActivateTunnel('localtunnel', 'localtunnel'), true);
   assert.equal(shouldActivateTunnel('serveo', 'serveo'), true);
   assert.equal(shouldActivateTunnel('pinggy', 'pinggy'), true);
+  assert.equal(shouldActivateTunnel('cloudflare', 'cloudflare'), true);
 });

@@ -268,7 +268,6 @@ export function getActiveApiUrl(): string {
         cached &&
         !cached.includes('192a1eaba3c1ee78') &&
         !cached.includes('b4e24b393c4c2c70') &&
-        !cached.includes('trycloudflare.com') &&
         !cached.includes('loca.lt')
       ) {
         return cached.replace(/\/$/, '');

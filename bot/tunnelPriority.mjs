@@ -6,7 +6,8 @@ export const TUNNEL_PRIORITY = {
   localhost_run: 2,
   localtunnel: 3,
   pinggy: 4,
-  env: 5,
+  cloudflare: 5,
+  env: 6,
 };
 
 export function shouldActivateTunnel(source, activeSource = '') {

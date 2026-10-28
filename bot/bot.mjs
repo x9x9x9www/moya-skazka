@@ -87,7 +87,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.1';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.2';
 const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow';
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
@@ -1495,22 +1495,30 @@ async function startLocalTunnel() {
 // Watchdog: каждые 25 сек проверяет живость активного туннеля
 setInterval(async () => {
   if (!publicTunnelUrl) {
-    if (!pinggyProc && !currentTunnel) {
-      startPinggyTunnel();
+    if (!cloudflareProc && !pinggyProc && !currentTunnel) {
+      startCloudflareTunnel();
     }
     return;
   }
   const healthy = await checkTunnelHealth(publicTunnelUrl, 6000);
   if (!healthy) {
     console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) перестал отвечать. Автоматический перезапуск...`);
-    if (activeTunnelSource === 'pinggy') {
+    if (activeTunnelSource === 'cloudflare') {
+      if (cloudflareProc) {
+        try { cloudflareProc.kill(); } catch {}
+        cloudflareProc = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+      startCloudflareTunnel();
+    } else if (activeTunnelSource === 'pinggy') {
       if (pinggyProc) {
         try { pinggyProc.kill(); } catch {}
         pinggyProc = null;
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startPinggyTunnel();
+      startCloudflareTunnel();
     } else {
       if (currentTunnel) {
         try { currentTunnel.close(); } catch {}
@@ -1518,10 +1526,60 @@ setInterval(async () => {
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startPinggyTunnel();
+      startCloudflareTunnel();
     }
   }
 }, 25000);
+
+let cloudflareProc = null;
+
+function startCloudflareTunnel() {
+  if (cloudflareProc) return;
+  const binPath = path.resolve('bot/cloudflared');
+  if (!fs.existsSync(binPath)) {
+    console.warn('[Cloudflare] Бинарник cloudflared не найден, пробуем резервные туннели...');
+    startPinggyTunnel();
+    return;
+  }
+  console.log('[Cloudflare] 🌐 Запуск быстрого HTTPS-туннеля Cloudflare (без предупреждений и блокировок CORS)...');
+  try {
+    const proc = spawn(binPath, ['tunnel', '--url', `http://localhost:${BRIDGE_PORT}`]);
+    cloudflareProc = proc;
+
+    const parseOutput = async (data) => {
+      const text = data.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      if (match) {
+        const url = match[0];
+        console.log(`[Cloudflare] 🚀 HTTPS туннель получен: ${url}`);
+        await activateTunnel(url, 'cloudflare');
+      }
+    };
+
+    proc.stdout.on('data', parseOutput);
+    proc.stderr.on('data', parseOutput);
+
+    proc.on('close', (code) => {
+      console.log(`[Cloudflare] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      cloudflareProc = null;
+      if (activeTunnelSource === 'cloudflare') {
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
+      }
+      setTimeout(startCloudflareTunnel, 5000);
+    });
+
+    proc.on('error', (err) => {
+      console.warn('[Cloudflare Ошибка]:', err.message);
+      cloudflareProc = null;
+      setTimeout(startCloudflareTunnel, 10000);
+    });
+  } catch (err) {
+    console.error('[Cloudflare Сбой запуска]:', err.message);
+    cloudflareProc = null;
+    startPinggyTunnel();
+  }
+}
 
 let pinggyProc = null;
 
@@ -1632,12 +1690,14 @@ function startSshTunnel() {
 
 // Завершение процессов туннелей при остановке приложения
 process.on('SIGINT', () => {
+  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', () => {
+  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
@@ -1647,11 +1707,11 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startPinggyTunnel();
+  startCloudflareTunnel();
   setTimeout(() => {
-    if (!publicTunnelUrl && !pinggyProc) {
-      console.log('[Tunnel] Pinggy не поднялся за 15 сек, запускаем LocalTunnel как резерв...');
-      startLocalTunnel();
+    if (!publicTunnelUrl && !cloudflareProc) {
+      console.log('[Tunnel] Cloudflare не поднялся за 15 сек, запускаем Pinggy как резерв...');
+      startPinggyTunnel();
     }
   }, 15000);
 }
