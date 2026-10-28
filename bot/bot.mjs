@@ -54,7 +54,16 @@ const proxyUrl = isProxyDisabled ? null : (explicitProxy || null);
 
 if (proxyUrl) {
   try {
-    setGlobalDispatcher(new ProxyAgent(proxyUrl));
+    setGlobalDispatcher(
+      new ProxyAgent({
+        uri: proxyUrl,
+        connect: {
+          timeout: 60000,
+        },
+        headersTimeout: 60000,
+        bodyTimeout: 150000,
+      })
+    );
     console.log(`[Proxy] 🛡 Настроен системный прокси: ${proxyUrl}`);
   } catch (err) {
     console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
@@ -1528,13 +1537,18 @@ if (SKIP_TUNNELS) {
 // ========================================================
 async function callTelegram(method, params = {}) {
   try {
+    const isLongPoll = method === 'getUpdates';
     const res = await fetch(`${TELEGRAM_API}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
+      signal: AbortSignal.timeout(isLongPoll ? 45000 : 15000),
     });
     return await res.json();
   } catch (err) {
+    if (method === 'getUpdates' && (err.name === 'TimeoutError' || err.message?.includes('timeout') || err.message?.includes('Timeout'))) {
+      return { ok: true, result: [] };
+    }
     const causeMsg = err.cause?.message || err.cause?.code || '';
     const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
     console.error(`[Bot] Ошибка вызова ${method}:`, details);
