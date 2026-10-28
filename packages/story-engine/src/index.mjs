@@ -59,12 +59,21 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 - ALL visual fields (\`characters[].visual_description\`, \`cover_visual\`, \`scenes[].visual\`) MUST be written in precise, concrete ENGLISH.
 - Never transliterate Russian names in English visual fields: write "a 4-year-old boy named Misha" only if needed, but prefer describing appearance without the name.
 
-### 2. ANTI-CLICHÉ & ANTI-FORMULA RULES
+### 2. ANTI-CLICHÉ, MORAL & PERSONALITY RULES
 - FORBIDDEN openings: "Жил-был", "Однажды", "В некотором царстве", "В одном волшебном лесу", "Как-то раз". Start in the middle of a curious sound, texture, smell, movement, or line of dialogue.
 - FORBIDDEN default plot: the hero walks into a forest, finds a crying baby animal that lost its mother, helps it, and goes to bed. Do not use it.
 - AVOID generic "magical forest with glowing mushrooms" as the default setting. Use the specific world chosen in STORY DNA.
 - Do not just insert the child's name into a ready-made plot. The child's clothes, toy, age, personality, and special wishes must actively drive how the problem is solved.
-- No preachy moral at the end. The meaning must live inside the events and the final cozy image.
+- MEANING & MORAL (СМЫСЛ И МОРАЛЬ ЧЕРЕЗ ДЕЙСТВИЕ, А НЕ ПОУЧЕНИЯ):
+  * Every fairytale must have a clear, heartwarming meaning and emotional core (friendship, kindness, perseverance, mutual aid, curiosity, courage).
+  * NEVER write preachy, didactic moral lectures at the end (FORBIDDEN: «И понял герой, что нужно всегда делиться»).
+  * The moral and meaning MUST be expressed through the child's own courageous, kind, or ingenious ACTION in Scene 3. The child experiences the value through their own choice!
+- CHILD PERSONALITY & TONE ALIGNMENT (ТОЧНОЕ СООТВЕТСТВИЕ ХАРАКТЕРУ):
+  * If playful/cheerful ("Весёлый"): include warm child-friendly humor, comical companion mishaps, playful onomatopoeia («бульк!», «ой-ёй!», «дзынь!»), and joyful banter.
+  * If curious/inquisitive ("Любознательный"): incorporate 1–2 real fascinating facts about the world/nature/mechanisms tailored for young minds (why stars twinkle, how fireflies glow cold light, why seashells echo waves).
+  * If kind/caring ("Добрый"): emphasize deep empathy, noticing sadness in others, gentle hugs, sharing, and comforting.
+  * If brave/courageous ("Смелый"): overcome a small childhood doubt or fear (shadows, strange sounds, new steps) by discovering it is friendly.
+  * If calm/peaceful ("Спокойный"): meditative pacing, tactile comfort, soothing sensory rhythm.
 - No brands, no real people, no pop-culture references, no advertisements.
 
 ### 3. STORY DNA (USE THE PROVIDED COMBINATION)
@@ -679,6 +688,70 @@ function getHeroAnchor(params, hints) {
   return `искренняя доброта и сообразительность: тёплые объятия, ласковая поддержка спутника (${hints.toy}) и уютное тепло ${hints.clothes}`;
 }
 
+export function getPersonalityProfile(trait = 'Добрый', theme = '') {
+  const t = String(trait).toLowerCase();
+  const th = String(theme).toLowerCase();
+
+  if (t.includes('весел') || t.includes('озорн') || t.includes('шут')) {
+    return {
+      traitLabel: 'Весёлый (жизнерадостный озорник)',
+      voice: 'Искрящийся, жизнерадостный тон, наполненный добрым детским юмором и звукоподражаниями',
+      guidelines: [
+        'Включи 2–3 добрых шутки, комичных момента или забавных недоразумения со спутником (спутник забавно чихнул искрами, перепутал башмачки, смешные звуки: «бульк!», «ой-ёй!», «дзынь!»).',
+        'Диалоги должны быть задорными, озорными и вызывать у ребёнка искреннюю улыбку.',
+        'Смысл и мораль: Смех и неунывающий настрой помогают преодолеть любые сложности и дарят радость всем вокруг.',
+      ],
+    };
+  }
+
+  if (t.includes('любознательн') || t.includes('почемучк') || t.includes('умн') || t.includes('исследовател')) {
+    return {
+      traitLabel: 'Любознательный (маленький исследователь-почемучка)',
+      voice: 'Увлекательный, познавательный тон исследователя, открывающий тайны мира понятным для малыша языком',
+      guidelines: [
+        'ОБЯЗАТЕЛЬНО включи 1–2 удивительных реальных факта о мире/природе/вещах, адаптированных под возраст (например: как светлячки зажигают холодный свет без огня, почему звёзды мерцают в темноте, как муравьи строят свои мостики, почему морские ракушки поют песенку прибоя).',
+        'Покажи исследовательский азарт героя: ребёнок подмечает интересные детали, находит закономерности и с восторгом делает новые открытия.',
+        'Смысл и мораль: Любопытство, внимание к деталям и ум открывают самые удивительные двери и помогают найти верное решение.',
+      ],
+    };
+  }
+
+  if (t.includes('смел') || t.includes('храбр') || th.includes('смел')) {
+    return {
+      traitLabel: 'Смелый (отважный первооткрыватель)',
+      voice: 'Вдохновляющий, динамичный тон первооткрывателя: неизвестное оказывается дружелюбным и понятным',
+      guidelines: [
+        'Покажи преодоление маленького детского сомнения или страха (непонятный ночной шорох, таинственная дверца, шаг на новый мостик).',
+        'Страх быстро рассеивается: герой делает глубокий вдох, крепче сжимает лапку друга и убеждается, что мир полон дружелюбия («страшная тень оказалась веткой яблони с птичкой»).',
+        'Смысл и мораль: Истинная смелость — это не отсутствие страха, а готовность сделать добрый шаг вперёд и прийти на выручку другу.',
+      ],
+    };
+  }
+
+  if (t.includes('спокойн') || th.includes('сон')) {
+    return {
+      traitLabel: 'Спокойный (чуткий созерцатель и мечтатель)',
+      voice: 'Бархатный, медитативный, убаюкивающий тон: покой, дыхание, мягкие текстуры, тихое удивление',
+      guidelines: [
+        'Сделай акцент на тактильном комфорте и умиротворяющих звуках (шелест листьев, тепло чая, мерцание звёзд, ровное спокойное дыхание).',
+        'Плавный, размеренный ритм без резких потрясений, создающий глубокое чувство безопасности и нежного тепла.',
+        'Смысл и мораль: Спокойствие, гармония и душевный мир — это великая целительная сила, укутывающая теплом перед сном.',
+      ],
+    };
+  }
+
+  // По умолчанию: Добрый
+  return {
+    traitLabel: 'Добрый (чуткий и заботливый друг)',
+    voice: 'Тёплый, сердечный, осязаемый тон с акцентом на искреннюю заботу и взаимопомощь',
+    guidelines: [
+      'Покажи тонкую эмпатию героя: способность заметить, что спутник или лесной житель загрустил, и вовремя прийти на помощь.',
+      'Трогательные жесты заботы: согреть озябшие лапки, поделиться последней земляничкой, сказать тёплое ласковое слово.',
+      'Смысл и мораль: Самое главное чудо на свете — это чуткое сердце, сочувствие и готовность бескорыстно согреть того, кто рядом.',
+    ],
+  };
+}
+
 export function chooseStoryDna(params = {}, random = Math.random) {
   const world = getThemedWorld(params, random);
   const engine = pick(NARRATIVE_ENGINES, random);
@@ -686,20 +759,15 @@ export function chooseStoryDna(params = {}, random = Math.random) {
   const hook = getThemedHook(params, random);
   const hints = appearanceHints(params.appearance);
   const trait = params.personality || 'Добрый';
-  let voice = 'Тёплый, сердечный, осязаемый тон с живыми диалогами и маленькими совместными ритуалами';
-  if (trait === 'Спокойный' || params.theme === 'Спокойный сон') {
-    voice = 'Бархатный, медитативный, ритмичный тон: покой, дыхание, мягкие текстуры, тихое удивление';
-  } else if (trait === 'Весёлый' || trait === 'Любопытный') {
-    voice = 'Изобретательный, слегка эксцентричный тон с забавными деталями и звукоподражаниями';
-  } else if (trait === 'Смелый' || params.theme === 'Смелость') {
-    voice = 'Атмосферный тон первооткрывателя: неизвестное оказывается дружелюбным и понятным';
-  }
+  const profile = getPersonalityProfile(trait, params.theme || '');
+
   return {
     world_scale: world.type,
     world_description: world.desc,
     narrative_engine: engine.type,
     narrative_description: engine.desc,
-    literary_voice: voice,
+    literary_voice: profile.voice,
+    personality_profile: profile,
     companion_quirk: quirk,
     opening_hook: hook,
     hero_anchor: getHeroAnchor(params, hints),
@@ -740,7 +808,10 @@ export function buildStoryPrompt(params = {}, options = {}) {
   * Игрушка-спутник оживает, сохраняя свою форму, и находится рядом с героем с самого начала Сцены 1 до финального сна в Сцене 4!
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)» или «(4)»)! Текст должен быть чистой художественной литературой без технических меток.
 - Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
-- Характер: ${params.personality || 'добрый, любознательный'}
+- ХАРАКТЕР И ТЕМПЕРАМЕНТ РЕБЁНКА: ${dna.personality_profile?.traitLabel || params.personality || 'Добрый'}
+  * СТИЛЬ И ГОЛОС: ${dna.personality_profile?.voice || dna.literary_voice}
+  * ОБЯЗАТЕЛЬНЫЕ ДЕТАЛИ ДЛЯ ЭТОГО ХАРАКТЕРА В СЮЖЕТЕ:
+${(dna.personality_profile?.guidelines || ['Сделай акцент на доброте и помощи другу.']).map((g) => `    - ${g}`).join('\n')}
 
 2. ТЕМА, ИНТЕРЕСЫ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
 - Тема: ${params.theme || 'Дружба'}
@@ -766,10 +837,11 @@ ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (В�
 - Сцена 3: Кульминация и доброе решение: ${dna.hero_anchor}${params.customWishes ? `, исполнение пожелания «${params.customWishes}»` : ''}.
 - Сцена 4: Умиротворяющий сонный финал, мягкий свет звёзд, уют, покой перед сном. Завершается паузой для Вопроса 2.
 - Каждая сцена — это 2–4 небольших абзаца, а не одна короткая фраза. Не растягивай текст водой: добавляй сенсорные детали, диалоги и маленькие действия.
+- СМЫСЛ И МОРАЛЬ: Сказка обязана нести добрый смысл и ценность (дружба, смелость, чуткость), но раскрываться они должны через ПОСТУПОК и ВЫБОР героя в Сцене 3, а НЕ через сухие нотации в конце. Категорически запрещены дидактические поучения («И понял малыш, что...»).
+- Никаких заезженных штампов («Жил-был», «Однажды», «в одном волшебном лесу»).
 - Ровно один вопрос после сцены 2 и ровно один после сцены 4. Вопросы — строго про переживания героев в этой истории под возраст ${band.label}.
 - Герой и спутник — отдельные объекты в characters[]. Не склеивай их.
 - visual-поля — только английский, без описания внешности персонажей: рендерер добавит её сам по character_ids.
-- Никаких «Жил-был», «Однажды», «в одном волшебном лесу», никакой морали в финале.
 - Сказка должна быть тёплой, безопасной и пригодной для чтения перед сном.
 ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты, миры и спутников из последних сказок:\n${recent.map((t) => `- «${t}»`).join('\n')}\n` : ''}
 Верни только валидный JSON по контракту из системной инструкции.`;
