@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
+import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -630,8 +630,50 @@ export const App: React.FC = () => {
       }, 350);
     } catch (err: any) {
       clearInterval(countdownInterval);
-      setIsCreatingStory(false);
-      alert(err?.message || 'Произошла ошибка при генерации сказки. Пожалуйста, попробуйте еще раз.');
+      console.warn('[App] ⚠️ Ошибка при создании сказки через сеть, мгновенно запускаем локальный Story Engine:', err);
+      try {
+        const fallbackBook = createMockStory({
+          childName: wizardData.childName,
+          age: wizardData.age,
+          gender: wizardData.gender,
+          theme: wizardData.theme || 'Дружба',
+          interests: wizardData.interests,
+          personality: details.personality,
+          customWishes: details.customWishes,
+          includeQuestions: details.includeQuestions,
+          appearance: wizardData.appearance,
+        });
+
+        const newSummary: BookSummaryDTO = {
+          id: fallbackBook.id,
+          child_id: activeChildId || 'default',
+          child_name: wizardData.childName,
+          title: fallbackBook.title,
+          status: 'ILLUSTRATED',
+          format: 'ILLUSTRATED',
+          cover_url: resolveMediaUrl(fallbackBook.cover_url || fallbackBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || fallbackBook.title),
+          created_at: new Date().toISOString(),
+        };
+
+        setBooks((prev) => {
+          const updated = [newSummary, ...prev];
+          try {
+            localStorage.setItem('ms_books', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        try {
+          localStorage.setItem(`ms_story_${fallbackBook.id}`, JSON.stringify(fallbackBook));
+        } catch {}
+
+        setIsCreatingStory(false);
+        haptic.success();
+        openReader(fallbackBook);
+      } catch (fallbackErr) {
+        setIsCreatingStory(false);
+        alert('Не удалось создать сказку. Пожалуйста, попробуйте еще раз.');
+      }
     }
   };
 
