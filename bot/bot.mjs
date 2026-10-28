@@ -1448,7 +1448,6 @@ async function startLocalTunnel() {
     console.warn('[LocalTunnel]:', err.message, '— запуск резервного SSH-туннеля...');
     currentTunnel = null;
     startSshTunnel();
-    setTimeout(startLocalTunnel, 30000);
   }
 }
 
