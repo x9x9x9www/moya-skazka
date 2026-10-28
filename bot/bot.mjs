@@ -721,7 +721,7 @@ const server = http.createServer(async (req, res) => {
   const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.loca.lt');
   res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin ? origin : (origin ? origin : '*'));
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, ngrok-skip-browser-warning, *');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -1495,41 +1495,98 @@ async function startLocalTunnel() {
 // Watchdog: каждые 25 сек проверяет живость активного туннеля
 setInterval(async () => {
   if (!publicTunnelUrl) {
-    if (!cloudflareProc && !pinggyProc && !currentTunnel) {
-      startCloudflareTunnel();
+    if (!serveoProc && !cloudflareProc && !pinggyProc && !currentTunnel) {
+      startServeoTunnel();
     }
     return;
   }
   const healthy = await checkTunnelHealth(publicTunnelUrl, 6000);
   if (!healthy) {
     console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) перестал отвечать. Автоматический перезапуск...`);
-    if (activeTunnelSource === 'cloudflare') {
+    if (activeTunnelSource === 'serveo') {
+      if (serveoProc) {
+        try { serveoProc.kill(); } catch {}
+        serveoProc = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+      startServeoTunnel();
+    } else if (activeTunnelSource === 'cloudflare') {
       if (cloudflareProc) {
         try { cloudflareProc.kill(); } catch {}
         cloudflareProc = null;
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startCloudflareTunnel();
-    } else if (activeTunnelSource === 'pinggy') {
+      startServeoTunnel();
+    } else {
       if (pinggyProc) {
         try { pinggyProc.kill(); } catch {}
         pinggyProc = null;
       }
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      startCloudflareTunnel();
-    } else {
       if (currentTunnel) {
         try { currentTunnel.close(); } catch {}
         currentTunnel = null;
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startCloudflareTunnel();
+      startServeoTunnel();
     }
   }
 }, 25000);
+
+let serveoProc = null;
+
+function startServeoTunnel() {
+  if (serveoProc) return;
+  console.log('[Serveo] 🌐 Запуск быстрого HTTPS-туннеля Serveo (порт 443, без предупреждений)...');
+  try {
+    const sshArgs = [
+      '-p', '443',
+      '-o', 'StrictHostKeyChecking=no',
+      '-o', 'ServerAliveInterval=15',
+      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ExitOnForwardFailure=yes',
+      '-R', `80:localhost:${BRIDGE_PORT}`,
+      'serveo.net',
+    ];
+    const proc = spawn('ssh', sshArgs);
+    serveoProc = proc;
+
+    const parseOutput = async (data) => {
+      const text = data.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.serveousercontent\.com/);
+      if (match) {
+        const url = match[0];
+        console.log(`[Serveo] 🚀 HTTPS туннель получен: ${url}`);
+        await activateTunnel(url, 'serveo');
+      }
+    };
+
+    proc.stdout.on('data', parseOutput);
+    proc.stderr.on('data', parseOutput);
+
+    proc.on('close', (code) => {
+      console.log(`[Serveo] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      serveoProc = null;
+      if (activeTunnelSource === 'serveo') {
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
+      }
+      setTimeout(startServeoTunnel, 5000);
+    });
+
+    proc.on('error', (err) => {
+      console.warn('[Serveo Ошибка]:', err.message);
+      serveoProc = null;
+      setTimeout(startServeoTunnel, 10000);
+    });
+  } catch (err) {
+    console.error('[Serveo Сбой запуска]:', err.message);
+    serveoProc = null;
+    startPinggyTunnel();
+  }
+}
 
 let cloudflareProc = null;
 
@@ -1690,6 +1747,7 @@ function startSshTunnel() {
 
 // Завершение процессов туннелей при остановке приложения
 process.on('SIGINT', () => {
+  if (serveoProc) try { serveoProc.kill(); } catch {}
   if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
@@ -1697,6 +1755,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 process.on('SIGTERM', () => {
+  if (serveoProc) try { serveoProc.kill(); } catch {}
   if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
@@ -1707,13 +1766,13 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startCloudflareTunnel();
+  startServeoTunnel();
   setTimeout(() => {
-    if (!publicTunnelUrl && !cloudflareProc) {
-      console.log('[Tunnel] Cloudflare не поднялся за 15 сек, запускаем Pinggy как резерв...');
+    if (!publicTunnelUrl && !serveoProc) {
+      console.log('[Tunnel] Serveo не поднялся за 12 сек, запускаем Pinggy как резерв...');
       startPinggyTunnel();
     }
-  }, 15000);
+  }, 12000);
 }
 
 // ========================================================

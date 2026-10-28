@@ -45,6 +45,8 @@ class ApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Bypass-Tunnel-Reminder': 'true',
+      'X-Pinggy-No-Screen': 'true',
+      'ngrok-skip-browser-warning': 'true',
       ...(options.headers as Record<string, string>),
     };
 

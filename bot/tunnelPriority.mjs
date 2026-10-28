@@ -2,10 +2,10 @@
 // а явно заданный PUBLIC_BRIDGE_URL важнее всех.
 export const TUNNEL_PRIORITY = {
   '': 0,
-  serveo: 1,
-  localhost_run: 2,
-  localtunnel: 3,
-  pinggy: 4,
+  localhost_run: 1,
+  localtunnel: 2,
+  pinggy: 3,
+  serveo: 4,
   cloudflare: 5,
   env: 6,
 };

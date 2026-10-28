@@ -309,6 +309,8 @@ async function pollJob<T>(
       const res = await fetch(`${currentBase}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`, {
         headers: {
           'Bypass-Tunnel-Reminder': 'true',
+          'X-Pinggy-No-Screen': 'true',
+          'ngrok-skip-browser-warning': 'true',
         },
       });
       if (res.ok) {
@@ -501,6 +503,8 @@ export async function callWellflowStory(
         headers: {
           'Content-Type': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
+          'X-Pinggy-No-Screen': 'true',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(body),
         signal: initCtrl.signal,
