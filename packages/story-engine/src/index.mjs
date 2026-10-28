@@ -20,6 +20,25 @@ export const STYLE_3D_PIXAR =
 import { declineRussianName, removeAgeFromText, fixGenderAgreements } from './declension.mjs';
 export { declineRussianName, removeAgeFromText, fixGenderAgreements };
 
+import {
+  runEditorialAgent,
+  proofreadRussianGrammar,
+  formatRussianDialogues,
+  applyYoification,
+  applyTypographySpacing,
+  sanitizeToneAndPurity,
+  verifyNarrativeIntegrity,
+} from './editorialAgent.mjs';
+export {
+  runEditorialAgent,
+  proofreadRussianGrammar,
+  formatRussianDialogues,
+  applyYoification,
+  applyTypographySpacing,
+  sanitizeToneAndPurity,
+  verifyNarrativeIntegrity,
+};
+
 // --------------------------------------------------------
 // 2. Системный промпт
 // --------------------------------------------------------
@@ -979,7 +998,7 @@ export function normalizeStory(raw, params = {}, dna = null) {
   const name = params.childName || '';
   if (name && !scenes.some((s) => s.text.includes(name))) warnings.push('имя ребёнка не встречается в тексте');
 
-  return {
+  const baseStory = {
     title,
     age,
     theme: params.theme || 'Дружба',
@@ -991,6 +1010,22 @@ export function normalizeStory(raw, params = {}, dna = null) {
     questions,
     warnings,
     metrics: { total_words: totalWords, scene_words: sceneWords, target: band.total, age_band: band.label },
+  };
+
+  const editorial = runEditorialAgent(baseStory, params);
+  const finalWarnings = [...warnings];
+  if (editorial.fixesApplied?.length) {
+    finalWarnings.push(...editorial.fixesApplied.map((f) => `агент-редактор: ${f}`));
+  }
+
+  return {
+    ...editorial.story,
+    warnings: finalWarnings,
+    metrics: {
+      ...editorial.story.metrics,
+      target: band.total,
+      age_band: band.label,
+    },
   };
 }
 

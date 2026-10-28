@@ -61,7 +61,45 @@ export function declineRussianName(name, gender = 'boy') {
     };
   }
 
-  // 4. Мужские имена на согласный (Марк, Лев, Артём, Роман, Даниил...)
+  // 4. Исключения с беглыми гласными: Лев, Павел, Пётр
+  if (lower === 'лев') {
+    const isCap = trimmed[0] === trimmed[0].toUpperCase();
+    const l = isCap ? 'Л' : 'л';
+    return {
+      nom: trimmed,
+      gen: `${l}ьва`,
+      dat: `${l}ьву`,
+      acc: `${l}ьва`,
+      ins: `${l}ьвом`,
+      prep: `о ${l}ьве`,
+    };
+  }
+  if (lower === 'павел') {
+    const isCap = trimmed[0] === trimmed[0].toUpperCase();
+    const p = isCap ? 'Павл' : 'павл';
+    return {
+      nom: trimmed,
+      gen: `${p}а`,
+      dat: `${p}у`,
+      acc: `${p}а`,
+      ins: `${p}ом`,
+      prep: `о ${p}е`,
+    };
+  }
+  if (lower === 'пётр' || lower === 'петр') {
+    const isCap = trimmed[0] === trimmed[0].toUpperCase();
+    const p = isCap ? 'Петр' : 'петр';
+    return {
+      nom: trimmed,
+      gen: `${p}а`,
+      dat: `${p}у`,
+      acc: `${p}а`,
+      ins: `${p}ом`,
+      prep: `о ${p}е`,
+    };
+  }
+
+  // 5. Мужские имена на согласный (Марк, Артём, Роман, Даниил...)
   if (gender === 'boy' || (!lower.endsWith('а') && !lower.endsWith('я') && !lower.endsWith('и') && !lower.endsWith('е') && !lower.endsWith('о'))) {
     if (lastChar === 'й') {
       return {

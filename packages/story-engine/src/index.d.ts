@@ -138,3 +138,35 @@ export function buildCoverPrompt(story: NormalizedStory | { cover_visual: string
 export function buildRepairPrompt(raw: unknown, issues: string[]): string;
 export function buildLengthRepairPrompt(story: NormalizedStory, target?: [number, number]): string;
 export function fallbackQuestions(heroName?: string): StoryQuestion[];
+
+export interface DeclinedName {
+  nom: string;
+  gen: string;
+  dat: string;
+  acc: string;
+  ins: string;
+  prep: string;
+}
+
+export function declineRussianName(name: string, gender?: 'boy' | 'girl' | string): DeclinedName;
+export function removeAgeFromText(text: string): string;
+export function fixGenderAgreements(text: string, childName?: string, gender?: 'boy' | 'girl' | string): string;
+
+export interface EditorialResult {
+  story: NormalizedStory;
+  fixesApplied: string[];
+  integrityPassed: boolean;
+}
+
+export function runEditorialAgent(story: unknown, params?: Partial<StoryParams>): EditorialResult;
+export function proofreadRussianGrammar(text: string, params?: Partial<StoryParams>): string;
+export function formatRussianDialogues(text: string): string;
+export function applyYoification(text: string): string;
+export function applyTypographySpacing(text: string): string;
+export function sanitizeToneAndPurity(text: string): string;
+export function verifyNarrativeIntegrity(story: unknown, params?: Partial<StoryParams>): {
+  valid: boolean;
+  issues: string[];
+  fixes: string[];
+  story: any;
+};
