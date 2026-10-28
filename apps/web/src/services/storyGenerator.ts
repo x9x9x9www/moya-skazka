@@ -288,8 +288,9 @@ export function getActiveApiUrl(): string {
 async function pollJob<T>(
   activeApi: string,
   jobId: string,
-  maxWaitMs = 150000,
-  onProgress?: (update: StoryProgressUpdate) => void
+  maxWaitMs = 240000,
+  onProgress?: (update: StoryProgressUpdate) => void,
+  childName?: string
 ): Promise<T> {
   const start = Date.now();
   let consecutiveErrors = 0;
@@ -324,6 +325,11 @@ async function pollJob<T>(
           });
         }
         if (data.status === 'ready') {
+          onProgress?.({
+            stage: 'finishing',
+            progress: 96,
+            message: 'Сказка готова! Открываем страницы...',
+          });
           return (data.story || data.imageUrl || data) as T;
         }
         if (data.status === 'error') {
@@ -331,7 +337,7 @@ async function pollJob<T>(
         }
       } else if (res.status === 404) {
         consecutiveErrors++;
-        if (consecutiveErrors > 15) {
+        if (consecutiveErrors > 20) {
           throw new Error('Задача генерации не найдена на сервере');
         }
       }
@@ -341,10 +347,48 @@ async function pollJob<T>(
       }
       consecutiveErrors++;
       if (consecutiveErrors > 30) {
+        // Пробуем аварийный запрос последней готовой сказки перед падением
+        if (childName) {
+          try {
+            const fallbackRes = await fetch(
+              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}`,
+              {
+                headers: { 'Bypass-Tunnel-Reminder': 'true' },
+              }
+            );
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData.status === 'ready' && fallbackData.story) {
+                console.log('[StoryGenerator] 🔄 Найдена готовая сказка через latest-story!');
+                return fallbackData.story as T;
+              }
+            }
+          } catch {}
+        }
         throw new Error('Потеряно соединение с сервером генерации сказок');
       }
     }
   }
+
+  // Перед таймаутом проверяем, не завершилась ли сказка на сервере
+  if (childName) {
+    try {
+      const fallbackRes = await fetch(
+        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}`,
+        {
+          headers: { 'Bypass-Tunnel-Reminder': 'true' },
+        }
+      );
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        if (fallbackData.status === 'ready' && fallbackData.story) {
+          console.log('[StoryGenerator] 🔄 Готовая сказка получена перед таймаутом!');
+          return fallbackData.story as T;
+        }
+      }
+    } catch {}
+  }
+
   throw new Error('Превышено время ожидания генерации сказки (таймаут)');
 }
 
@@ -536,7 +580,7 @@ export async function callWellflowStory(
   if (jobId) {
     console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
     const remainingMs = Math.max(30000, timeoutMs - (Date.now() - overallStart));
-    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress);
+    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress, params.childName);
     if (polled && polled.scenes) {
       console.log('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
       return polled;
@@ -635,7 +679,7 @@ export async function generateDynamicStory(
           message: 'Связываемся со сказочной мастерской нейросетей...',
         });
       }
-      storyData = await callWellflowStory(params, 120000, onProgress);
+      storyData = await callWellflowStory(params, 240000, onProgress);
       if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
         break;
       }

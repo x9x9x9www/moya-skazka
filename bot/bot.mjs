@@ -87,7 +87,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.2';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.3';
 const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow';
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
@@ -581,12 +581,27 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     message: 'Автор придумывает сюжет и character bible...',
   });
 
+  let writingProg = 20;
+  const writingTimer = setInterval(() => {
+    writingProg = Math.min(48, writingProg + 2);
+    onProgress?.({
+      stage: 'writing',
+      progress: writingProg,
+      message:
+        writingProg > 34
+          ? 'Сочиняем диалоги и вопросы для обсуждения...'
+          : 'Автор придумывает сюжет и character bible...',
+    });
+  }, 3500);
+
   let story;
   try {
     story = await generateWellflowStoryAI(params);
   } catch (err) {
     console.warn(`[StoryEngine] ⚠️ Ошибка основного провайдера сюжета: ${err.message}. Пробуем резервный генератор Wellflow...`);
     story = await generateWellflowStoryAI({ ...params, _forceWellflow: true });
+  } finally {
+    clearInterval(writingTimer);
   }
 
   if (!story.scenes || !Array.isArray(story.scenes) || story.scenes.length !== 4) {
@@ -599,7 +614,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     message: 'Художник создаёт обложку и 4 иллюстрации...',
   });
 
-  const jobs = [
+  const imageTasks = [
     { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story), fallback: getThemedFallbackIllustration(params.theme, 0, params) },
     ...story.scenes.map((scene) => ({
       name: `scene_${scene.index}`,
@@ -614,7 +629,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
   let completedImages = 0;
   await Promise.all(
-    jobs.map(async (job) => {
+    imageTasks.map(async (job) => {
       let url;
       try {
         const remoteUrl = await generateWellflowImageAI(job.prompt);
@@ -635,11 +650,11 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       }
 
       completedImages += 1;
-      const pct = 50 + Math.round((completedImages / jobs.length) * 45);
+      const pct = 50 + Math.round((completedImages / imageTasks.length) * 45);
       onProgress?.({
         stage: 'drawing',
         progress: pct,
-        message: `Создаём иллюстрации (${completedImages} из ${jobs.length} готовы)...`,
+        message: `Создаём иллюстрации (${completedImages} из ${imageTasks.length} готовы)...`,
         story,
       });
     })
@@ -650,6 +665,21 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   for (const scene of story.scenes) {
     if (!scene.image_url) scene.image_url = getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index);
     if (!scene.image_prompt) scene.image_prompt = scene.visual;
+  }
+
+  // Заполняем системные поля для читалки
+  story.id = jobId || ('story_' + Date.now());
+  story.status = 'ILLUSTRATED';
+  story.format = 'ILLUSTRATED';
+
+  // Сохраняем в кэш готовых сказок для мгновенной отдачи при обрыве соединения
+  const childKey = (params.childName || '').trim().toLowerCase();
+  if (childKey) {
+    recentReadyStories.set(childKey, {
+      story,
+      jobId: story.id,
+      readyAt: Date.now(),
+    });
   }
 
   onProgress?.({
@@ -663,13 +693,20 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
 // Хранилище фоновых задач генерации
 const jobs = new Map();
+// Кэш недавно сгенерированных сказок по имени ребенка для быстрого восстановления
+const recentReadyStories = new Map();
 
 // Очистка старых задач каждые 5 минут
 setInterval(() => {
   const now = Date.now();
   for (const [id, job] of jobs.entries()) {
-    if (now - job.createdAt > 10 * 60 * 1000) {
+    if (now - job.createdAt > 15 * 60 * 1000) {
       jobs.delete(id);
+    }
+  }
+  for (const [key, item] of recentReadyStories.entries()) {
+    if (now - item.readyAt > 20 * 60 * 1000) {
+      recentReadyStories.delete(key);
     }
   }
 }, 5 * 60 * 1000);
@@ -770,13 +807,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+function sendJsonResponse(res, statusCode, data, origin = '') {
+  const jsonStr = typeof data === 'string' ? data : JSON.stringify(data);
+  const isAllowed = origin && (origin.includes('github.io') || origin.includes('localhost') || origin.includes('127.0.0.1'));
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(jsonStr),
+    'Access-Control-Allow-Origin': isAllowed ? origin : '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *',
+  });
+  res.end(jsonStr);
+}
+
   if (url.pathname === '/health' || url.pathname === '/') {
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    });
-    res.end(
-      JSON.stringify({
+    sendJsonResponse(
+      res,
+      200,
+      {
         status: 'ok',
         providers: {
           text: AI_TEXT_PROVIDER,
@@ -786,7 +834,8 @@ const server = http.createServer(async (req, res) => {
           text: WELLFLOW_TEXT_MODEL,
           image: WELLFLOW_IMAGE_MODEL,
         },
-      })
+      },
+      origin
     );
     return;
   }
@@ -802,22 +851,37 @@ const server = http.createServer(async (req, res) => {
     const jobId = url.searchParams.get('id');
     const job = jobs.get(jobId);
     if (!job) {
-      const notFoundStr = JSON.stringify({ status: 'not_found' });
-      res.writeHead(404, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Content-Length': Buffer.byteLength(notFoundStr),
-        'Access-Control-Allow-Origin': '*',
-      });
-      res.end(notFoundStr);
+      sendJsonResponse(res, 404, { status: 'not_found' }, origin);
       return;
     }
-    const jsonStr = JSON.stringify(job);
-    res.writeHead(200, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Content-Length': Buffer.byteLength(jsonStr),
-      'Access-Control-Allow-Origin': '*',
-    });
-    res.end(jsonStr);
+    sendJsonResponse(res, 200, job, origin);
+    return;
+  }
+
+  // Получение последней готовой сказки для восстановления при обрывах
+  const isLatestStory =
+    (url.pathname === '/api/v1/ai/latest-story' ||
+      url.pathname === '/api/ai/latest-story' ||
+      url.pathname === '/latest-story') &&
+    req.method === 'GET';
+  if (isLatestStory) {
+    const childName = (url.searchParams.get('childName') || '').trim().toLowerCase();
+    const cached = childName ? recentReadyStories.get(childName) : null;
+    if (cached && Date.now() - cached.readyAt < 15 * 60 * 1000) {
+      sendJsonResponse(
+        res,
+        200,
+        {
+          status: 'ready',
+          story: cached.story,
+          jobId: cached.jobId,
+          message: 'Сказка готова!',
+        },
+        origin
+      );
+      return;
+    }
+    sendJsonResponse(res, 404, { status: 'not_found' }, origin);
     return;
   }
 
@@ -1290,6 +1354,14 @@ const server = http.createServer(async (req, res) => {
         }
       }, jobId)
         .then((story) => {
+          const childKey = (params.childName || '').trim().toLowerCase();
+          if (childKey) {
+            recentReadyStories.set(childKey, {
+              story,
+              jobId,
+              readyAt: Date.now(),
+            });
+          }
           jobs.set(jobId, {
             status: 'ready',
             story,
@@ -1305,22 +1377,10 @@ const server = http.createServer(async (req, res) => {
         });
 
       // Мгновенный ответ клиенту (менее 10мс!)
-      const jsonStr = JSON.stringify({ jobId, status: 'pending' });
-      res.writeHead(202, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Content-Length': Buffer.byteLength(jsonStr),
-        'Access-Control-Allow-Origin': '*',
-      });
-      res.end(jsonStr);
+      sendJsonResponse(res, 202, { jobId, status: 'pending' }, origin);
     } catch (err) {
       console.error('[API Bridge Error generate-story]:', err.message, err.cause || '');
-      const errStr = JSON.stringify({ error: err.message });
-      res.writeHead(500, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Content-Length': Buffer.byteLength(errStr),
-        'Access-Control-Allow-Origin': '*',
-      });
-      res.end(errStr);
+      sendJsonResponse(res, 500, { error: err.message }, origin);
     }
     return;
   }
@@ -1413,6 +1473,13 @@ async function activateTunnel(url, source) {
   const isHealthy = await checkTunnelHealth(cleanUrl, 8000);
   if (!isHealthy) {
     console.warn(`[Tunnel] ❌ ${source} (${cleanUrl}) не прошёл health-check (HTTP 408/503/таймаут). Активация отклонена!`);
+    if (source === 'cloudflare') {
+      if (cloudflareProc) {
+        try { cloudflareProc.kill(); } catch {}
+        cloudflareProc = null;
+      }
+      startServeoTunnel();
+    }
     return false;
   }
 
@@ -1492,46 +1559,55 @@ async function startLocalTunnel() {
   setTimeout(startLocalTunnel, 5000);
 }
 
+let consecutiveWatchdogFailures = 0;
 // Watchdog: каждые 25 сек проверяет живость активного туннеля
 setInterval(async () => {
   if (!publicTunnelUrl) {
-    if (!serveoProc && !cloudflareProc && !pinggyProc && !currentTunnel) {
+    if (!serveoProc && !pinggyProc && !currentTunnel) {
       startServeoTunnel();
     }
     return;
   }
-  const healthy = await checkTunnelHealth(publicTunnelUrl, 6000);
-  if (!healthy) {
-    console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) перестал отвечать. Автоматический перезапуск...`);
-    if (activeTunnelSource === 'serveo') {
-      if (serveoProc) {
-        try { serveoProc.kill(); } catch {}
-        serveoProc = null;
-      }
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      startServeoTunnel();
-    } else if (activeTunnelSource === 'cloudflare') {
-      if (cloudflareProc) {
-        try { cloudflareProc.kill(); } catch {}
-        cloudflareProc = null;
-      }
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      startServeoTunnel();
-    } else {
-      if (pinggyProc) {
-        try { pinggyProc.kill(); } catch {}
-        pinggyProc = null;
-      }
-      if (currentTunnel) {
-        try { currentTunnel.close(); } catch {}
-        currentTunnel = null;
-      }
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-      startServeoTunnel();
+  const healthy = await checkTunnelHealth(publicTunnelUrl, 10000);
+  if (healthy) {
+    consecutiveWatchdogFailures = 0;
+    return;
+  }
+  consecutiveWatchdogFailures++;
+  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/3)...`);
+  if (consecutiveWatchdogFailures < 3) {
+    return;
+  }
+  consecutiveWatchdogFailures = 0;
+  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) признан неработающим. Автоматический перезапуск...`);
+  if (activeTunnelSource === 'serveo') {
+    if (serveoProc) {
+      try { serveoProc.kill(); } catch {}
+      serveoProc = null;
     }
+    publicTunnelUrl = '';
+    activeTunnelSource = '';
+    startServeoTunnel();
+  } else if (activeTunnelSource === 'cloudflare') {
+    if (cloudflareProc) {
+      try { cloudflareProc.kill(); } catch {}
+      cloudflareProc = null;
+    }
+    publicTunnelUrl = '';
+    activeTunnelSource = '';
+    startCloudflareTunnel();
+  } else {
+    if (pinggyProc) {
+      try { pinggyProc.kill(); } catch {}
+      pinggyProc = null;
+    }
+    if (currentTunnel) {
+      try { currentTunnel.close(); } catch {}
+      currentTunnel = null;
+    }
+    publicTunnelUrl = '';
+    activeTunnelSource = '';
+    startServeoTunnel();
   }
 }, 25000);
 
@@ -1617,13 +1693,13 @@ function startCloudflareTunnel() {
     proc.stderr.on('data', parseOutput);
 
     proc.on('close', (code) => {
-      console.log(`[Cloudflare] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      console.log(`[Cloudflare] Соединение завершилось (код ${code}).`);
       cloudflareProc = null;
       if (activeTunnelSource === 'cloudflare') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
+        setTimeout(startCloudflareTunnel, 5000);
       }
-      setTimeout(startCloudflareTunnel, 5000);
     });
 
     proc.on('error', (err) => {

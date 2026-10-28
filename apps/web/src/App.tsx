@@ -552,7 +552,7 @@ export const App: React.FC = () => {
     setJobProgress(15);
     setCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет и character bible...');
-    const TOTAL_ESTIMATED_SEC = 120;
+    const TOTAL_ESTIMATED_SEC = 140;
     setRemainingSeconds(TOTAL_ESTIMATED_SEC);
     haptic.medium();
 
@@ -562,7 +562,7 @@ export const App: React.FC = () => {
       const elapsed = (Date.now() - startTime) / 1000;
       const left = Math.max(0, Math.ceil(TOTAL_ESTIMATED_SEC - elapsed));
       setRemainingSeconds(left);
-      setJobProgress((prev) => (prev < 90 ? Math.min(88, prev + 1.2) : prev));
+      setJobProgress((prev) => (prev < 90 ? Math.min(88, prev + 0.6) : prev));
     }, 500);
 
     try {
