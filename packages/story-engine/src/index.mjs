@@ -410,12 +410,12 @@ function pick(list, random) {
 
 function ageBand(age) {
   if (age <= 3) {
-    return { label: '2–3 года', total: [220, 360], perScene: [45, 95], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
+    return { label: '2–3 года', total: [240, 360], perScene: [50, 95], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
   }
   if (age <= 5) {
-    return { label: '4–5 лет', total: [280, 520], perScene: [65, 135], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
+    return { label: '4–5 лет', total: [380, 540], perScene: [85, 140], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
   }
-  return { label: '6 лет', total: [420, 680], perScene: [95, 175], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
+  return { label: '6 лет', total: [520, 720], perScene: [120, 185], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
 }
 
 function getThemedWorld(params, random) {
