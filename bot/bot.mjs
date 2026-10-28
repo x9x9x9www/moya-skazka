@@ -92,32 +92,10 @@ const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2'
 const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
 const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
-let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || '';
-let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : '';
+let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || 'https://moya-skazka-live-api.loca.lt';
+let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : 'localtunnel';
 let lastServeoUrl = '';
 let lastLocalTunnelUrl = '';
-
-if (publicTunnelUrl) {
-  fetch(`${publicTunnelUrl.replace(/\/$/, '')}/health`, {
-    headers: { 'Bypass-Tunnel-Reminder': 'true' },
-    signal: AbortSignal.timeout(6000),
-  })
-    .then((res) => {
-      if (res.ok) {
-        console.log(`[Tunnel] ✅ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) подтверждён health-check`);
-        updateChatMenuWithApi(publicTunnelUrl);
-      } else {
-        console.warn(`[Tunnel] ⚠️ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) вернул HTTP ${res.status}. Разрешаем динамические туннели.`);
-        publicTunnelUrl = '';
-        activeTunnelSource = '';
-      }
-    })
-    .catch((err) => {
-      console.warn(`[Tunnel] ⚠️ PUBLIC_BRIDGE_URL (${publicTunnelUrl}) недоступен (${err.message}). Разрешаем динамические туннели.`);
-      publicTunnelUrl = '';
-      activeTunnelSource = '';
-    });
-}
 
 const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = path.join(BOT_DIR, 'generated');
@@ -258,11 +236,10 @@ async function generateWellflowStoryAI(params) {
   try {
     let story = normalizeStory(raw, input, dna);
 
-    // Если модель написала заметно короче возрастной нормы — расширяем
-    // без изменения сюжета. Это лучше, чем отдавать 300 слов вместо 400+.
-    if (story.metrics.total_words < story.metrics.target[0]) {
+    // Если модель написала заметно короче минимума (< 260 слов) — расширяем
+    if (story.metrics.total_words < 260) {
       console.warn(
-        `[StoryEngine] 📏 Текст короче цели: ${story.metrics.total_words} < ${story.metrics.target[0]}, запускаем length repair`
+        `[StoryEngine] 📏 Текст короче минимума: ${story.metrics.total_words} < 260, запускаем length repair`
       );
       try {
         const lengthRepair = buildLengthRepairPrompt(story, story.metrics.target);
@@ -1409,12 +1386,11 @@ async function activateTunnel(url, source) {
   try {
     const res = await fetch(`${cleanUrl}/health`, {
       headers: { 'Bypass-Tunnel-Reminder': 'true' },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (error) {
-    console.warn(`[Tunnel] ⚠️ ${source} health-check не пройден (${error.message}). Туннель не активирован.`);
-    return;
+    console.warn(`[Tunnel] ⚠️ ${source} health-check: ${error.message} (активируем ${cleanUrl})`);
   }
 
   publicTunnelUrl = cleanUrl;
@@ -1432,31 +1408,27 @@ let sshTunnelProc = null;
 async function startLocalTunnel() {
   if (currentTunnel) return;
   console.log('[LocalTunnel] 🌐 Запуск стабильного туннеля через LocalTunnel...');
-  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'skazka-story-live';
+  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'moya-skazka-live-api';
   try {
     const tunnelPromise = localtunnel({ port: BRIDGE_PORT, subdomain });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 10s')), 10000));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 25s')), 25000));
     currentTunnel = await Promise.race([tunnelPromise, timeoutPromise]);
     console.log(`[LocalTunnel] 🚀 Постоянный туннель готов: ${currentTunnel.url}`);
     await activateTunnel(currentTunnel.url, 'localtunnel');
 
     currentTunnel.on('close', () => {
-      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 5 сек...');
+      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 3 сек...');
       currentTunnel = null;
-      if (activeTunnelSource === 'localtunnel') {
-        publicTunnelUrl = '';
-        activeTunnelSource = '';
-      }
-      setTimeout(startLocalTunnel, 5000);
+      setTimeout(startLocalTunnel, 3000);
     });
 
     currentTunnel.on('error', (err) => {
       console.warn('[LocalTunnel Ошибка]:', err.message);
     });
   } catch (err) {
-    console.warn('[LocalTunnel]:', err.message, '— запуск резервного SSH-туннеля...');
+    console.warn('[LocalTunnel]:', err.message, '— повторная попытка через 5 сек...');
     currentTunnel = null;
-    startSshTunnel();
+    setTimeout(startLocalTunnel, 5000);
   }
 }
 

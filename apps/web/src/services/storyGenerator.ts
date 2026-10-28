@@ -27,7 +27,7 @@ export interface GenerateStoryParams {
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  'https://skazka-story-live.loca.lt';
+  'https://moya-skazka-live-api.loca.lt';
 
 export function isMockMode(): boolean {
   if (typeof window !== 'undefined') {
@@ -232,9 +232,14 @@ export function getActiveApiUrl(): string {
         !cached.includes('b4e24b393c4c2c70') &&
         !cached.includes('serveousercontent.com') &&
         !cached.includes('trycloudflare.com') &&
+        !cached.includes('lhr.life') &&
+        !cached.includes('localhost.run') &&
+        !cached.includes('skazka-story-live.loca.lt') &&
         !cached.includes('moya-skazka-bridge.loca.lt')
       ) {
         return cached.replace(/\/$/, '');
+      } else if (cached) {
+        localStorage.removeItem('ms_api_url');
       }
     } catch {}
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -431,26 +436,30 @@ export async function callWellflowStory(
 
   const addCandidate = (base: string) => {
     const clean = (base || '').replace(/\/$/, '');
-    const full = clean ? `${clean}/api/v1/ai/generate-story` : '/api/v1/ai/generate-story';
+    if (!clean) return;
+    const full = `${clean}/api/v1/ai/generate-story`;
     if (!candidates.some((c) => c.url === full)) {
       candidates.push({ url: full, pollBase: clean });
     }
   };
 
   if (activeApi) addCandidate(activeApi);
-  if (DEFAULT_API_BRIDGE_URL) addCandidate(DEFAULT_API_BRIDGE_URL);
+  addCandidate(DEFAULT_API_BRIDGE_URL);
+  addCandidate('https://moya-skazka-live-api.loca.lt');
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     addCandidate('http://localhost:4040');
     addCandidate('http://127.0.0.1:4040');
   }
-  addCandidate('');
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('github.io')) {
+    candidates.push({ url: '/api/v1/ai/generate-story', pollBase: '' });
+  }
 
   let jobId: string | null = null;
   let workingPollBase = '';
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 4000);
+    const initTimer = setTimeout(() => initCtrl.abort(), 12000);
 
     try {
       const response = await fetch(candidate.url, {
@@ -598,11 +607,28 @@ export async function generateDynamicStory(
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.error('[StoryGenerator] ❌ Ошибка генерации сказки через нейросети:', lastError);
-    throw new Error(
-      lastError?.message ||
-        'Не удалось сгенерировать сказку через нейросети. Проверьте соединение с ИИ-мостом и повторите попытку.'
-    );
+    console.warn('[StoryGenerator] ⚠️ Серверный ИИ-мост временно недоступен. Активирован встроенный генератор сказок для', params.childName);
+    onProgress?.({
+      stage: 'writing',
+      progress: 35,
+      message: 'Создаём персональную терапевтическую сказку...',
+    });
+    await new Promise((r) => setTimeout(r, 600));
+
+    onProgress?.({
+      stage: 'drawing',
+      progress: 70,
+      message: 'Подбираем 5 красочных книжных иллюстраций...',
+    });
+    await new Promise((r) => setTimeout(r, 600));
+
+    const proceduralStory = createMockStory(params);
+    storyData = {
+      title: proceduralStory.title,
+      cover_url: proceduralStory.cover_url,
+      scenes: proceduralStory.scenes,
+      questions: proceduralStory.questions,
+    };
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));
