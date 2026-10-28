@@ -27,7 +27,7 @@ export interface GenerateStoryParams {
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  'https://moya-skazka-live-api.loca.lt';
+  '';
 
 export function isMockMode(): boolean {
   if (typeof window !== 'undefined') {
@@ -112,11 +112,11 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   const title = `${declined.nom} и тайна: «${theme}»`;
 
   // Ровно 5 уникальных иллюстраций (1 обложка + 4 сцены)
-  const coverUrl = '/illustrations/demo/cover.jpg';
-  const scene1Img = '/illustrations/demo/scene_1.jpg';
-  const scene2Img = '/illustrations/demo/scene_2.jpg';
-  const scene3Img = '/illustrations/demo/scene_3.jpg';
-  const scene4Img = '/illustrations/demo/scene_4.jpg';
+  const coverUrl = resolveAssetUrl('/illustrations/demo/cover.jpg');
+  const scene1Img = resolveAssetUrl('/illustrations/demo/scene_1.jpg');
+  const scene2Img = resolveAssetUrl('/illustrations/demo/scene_2.jpg');
+  const scene3Img = resolveAssetUrl('/illustrations/demo/scene_3.jpg');
+  const scene4Img = resolveAssetUrl('/illustrations/demo/scene_4.jpg');
 
   const rawScenes = [
     {
@@ -190,16 +190,47 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
  * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
  * Прямые CDN-ссылки Wellflow (https://api.wellflow.dev) защищены и отдаются напрямую!
  */
+/**
+ * Преобразует относительный путь ассета (например /illustrations/...) в корректный URL для GitHub Pages
+ */
+export function resolveAssetUrl(url?: string | null): string {
+  if (!url) return '';
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:')
+  ) {
+    return url;
+  }
+  const base = ((import.meta as any).env?.BASE_URL || '/').replace(/\/+$/, '');
+  const clean = url.replace(/^\/+/, '');
+  return `${base}/${clean}`;
+}
+
+/**
+ * Картинки, сгенерированные мостом, лежат в /media/<jobId>/...
+ * Прямые CDN-ссылки Wellflow (https://api.wellflow.dev) защищены и отдаются напрямую!
+ */
 export function resolveMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
   // Прямые CDN-ссылки Wellflow не трогаем — они отдаются напрямую и быстро
-  if (url.startsWith('https://api.wellflow.dev') || url.startsWith('http://api.wellflow.dev')) {
+  if (
+    url.startsWith('https://api.wellflow.dev') ||
+    url.startsWith('http://api.wellflow.dev') ||
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:')
+  ) {
     return url;
   }
   const mediaIndex = url.indexOf('/media/');
-  if (mediaIndex === -1) return url;
-  const base = getActiveApiUrl();
-  return base ? `${base}${url.slice(mediaIndex)}` : url;
+  if (mediaIndex !== -1) {
+    const base = getActiveApiUrl();
+    return base ? `${base}${url.slice(mediaIndex)}` : url;
+  }
+  return resolveAssetUrl(url);
 }
 
 export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
@@ -215,8 +246,15 @@ export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
 
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
-    const params = new URLSearchParams(window.location.search);
-    const paramUrl = params.get('api_url');
+    const searchParams = new URLSearchParams(window.location.search);
+    let paramUrl = searchParams.get('api_url');
+    if (!paramUrl && window.location.hash.includes('api_url=')) {
+      const qIndex = window.location.hash.indexOf('?');
+      if (qIndex !== -1) {
+        const hashParams = new URLSearchParams(window.location.hash.slice(qIndex + 1));
+        paramUrl = hashParams.get('api_url');
+      }
+    }
     if (paramUrl) {
       const clean = paramUrl.replace(/\/$/, '');
       try {
@@ -231,8 +269,7 @@ export function getActiveApiUrl(): string {
         !cached.includes('192a1eaba3c1ee78') &&
         !cached.includes('b4e24b393c4c2c70') &&
         !cached.includes('trycloudflare.com') &&
-        !cached.includes('skazka-story-live.loca.lt') &&
-        !cached.includes('moya-skazka-bridge.loca.lt')
+        !cached.includes('loca.lt')
       ) {
         return cached.replace(/\/$/, '');
       } else if (cached) {
@@ -441,8 +478,9 @@ export async function callWellflowStory(
   };
 
   if (activeApi) addCandidate(activeApi);
-  addCandidate(DEFAULT_API_BRIDGE_URL);
-  addCandidate('https://moya-skazka-live-api.loca.lt');
+  if (DEFAULT_API_BRIDGE_URL && !DEFAULT_API_BRIDGE_URL.includes('loca.lt')) {
+    addCandidate(DEFAULT_API_BRIDGE_URL);
+  }
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     addCandidate('http://localhost:4040');
     addCandidate('http://127.0.0.1:4040');
@@ -507,17 +545,21 @@ export async function callWellflowStory(
 
 export function getFairytaleFallbackIllustration(themeOrInterest?: string, sceneIndex = 1): string {
   const num = Number(sceneIndex) || 1;
-  if (num === 1) return '/illustrations/demo/scene_1.jpg';
-  if (num === 2) return '/illustrations/demo/scene_2.jpg';
-  if (num === 3) return '/illustrations/demo/scene_3.jpg';
-  if (num === 4) return '/illustrations/demo/scene_4.jpg';
-
-  const t = (themeOrInterest || '').toLowerCase();
-  if (t.includes('дино')) return '/illustrations/cover_dino.jpg';
-  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
-    return '/illustrations/cover_star.jpg';
+  let path = '/illustrations/demo/cover.jpg';
+  if (num === 1) path = '/illustrations/demo/scene_1.jpg';
+  else if (num === 2) path = '/illustrations/demo/scene_2.jpg';
+  else if (num === 3) path = '/illustrations/demo/scene_3.jpg';
+  else if (num === 4) path = '/illustrations/demo/scene_4.jpg';
+  else {
+    const t = (themeOrInterest || '').toLowerCase();
+    if (t.includes('дино')) path = '/illustrations/cover_dino.jpg';
+    else if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
+      path = '/illustrations/cover_star.jpg';
+    } else {
+      path = '/illustrations/demo/cover.jpg';
+    }
   }
-  return '/illustrations/demo/cover.jpg';
+  return resolveAssetUrl(path);
 }
 
 export interface StoryProgressUpdate {
@@ -604,28 +646,11 @@ export async function generateDynamicStory(
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.warn('[StoryGenerator] ⚠️ Серверный ИИ-мост временно недоступен. Активирован встроенный генератор сказок для', params.childName);
-    onProgress?.({
-      stage: 'writing',
-      progress: 35,
-      message: 'Создаём персональную терапевтическую сказку...',
-    });
-    await new Promise((r) => setTimeout(r, 600));
-
-    onProgress?.({
-      stage: 'drawing',
-      progress: 70,
-      message: 'Подбираем 5 красочных книжных иллюстраций...',
-    });
-    await new Promise((r) => setTimeout(r, 600));
-
-    const proceduralStory = createMockStory(params);
-    storyData = {
-      title: proceduralStory.title,
-      cover_url: proceduralStory.cover_url,
-      scenes: proceduralStory.scenes,
-      questions: proceduralStory.questions,
-    };
+    const errorMsg =
+      lastError?.message ||
+      'Не удалось получить сказку от ИИ-мастерской. Пожалуйста, убедитесь, что бот запущен, и повторите попытку.';
+    console.error('[StoryGenerator] ❌ Генерация не удалась:', errorMsg);
+    throw new Error(errorMsg);
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));

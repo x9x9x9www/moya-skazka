@@ -87,7 +87,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.0';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.1';
 const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow';
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
@@ -721,7 +721,7 @@ const server = http.createServer(async (req, res) => {
   const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.loca.lt');
   res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin ? origin : (origin ? origin : '*'));
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, *');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, ngrok-skip-browser-warning, *');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -1381,32 +1381,49 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
 // ========================================================
 // 4. ТУННЕЛИ: localtunnel важнее случайного serveo
 // ========================================================
+async function checkTunnelHealth(url, timeoutMs = 7000) {
+  if (!url) return false;
+  try {
+    const cleanUrl = url.replace(/\/$/, '');
+    const res = await fetch(`${cleanUrl}/health`, {
+      headers: {
+        'Bypass-Tunnel-Reminder': 'true',
+        'bypass-tunnel-reminder': 'true',
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return false;
+    const json = await res.json().catch(() => null);
+    return Boolean(json && (json.status === 'ok' || json.service));
+  } catch {
+    return false;
+  }
+}
+
 async function activateTunnel(url, source) {
-  if (!url) return;
+  if (!url) return false;
   if (!shouldActivateTunnel(source, activeTunnelSource)) {
     console.log(`[Tunnel] ${source} не активирован: приоритет ниже ${activeTunnelSource || '—'}`);
-    return;
+    return false;
   }
   const cleanUrl = url.replace(/\/$/, '');
-  if (cleanUrl === publicTunnelUrl) return;
+  if (cleanUrl === publicTunnelUrl) return true;
 
-  try {
-    const res = await fetch(`${cleanUrl}/health`, {
-      headers: { 'Bypass-Tunnel-Reminder': 'true' },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } catch (error) {
-    console.warn(`[Tunnel] ⚠️ ${source} health-check: ${error.message} (активируем ${cleanUrl})`);
+  console.log(`[Tunnel] 🩺 Проверка работоспособности туннеля (${source}): ${cleanUrl}...`);
+  const isHealthy = await checkTunnelHealth(cleanUrl, 8000);
+  if (!isHealthy) {
+    console.warn(`[Tunnel] ❌ ${source} (${cleanUrl}) не прошёл health-check (HTTP 408/503/таймаут). Активация отклонена!`);
+    return false;
   }
 
   publicTunnelUrl = cleanUrl;
   activeTunnelSource = source;
-  console.log(`[Tunnel] 🚀 Активный туннель (${source}): ${publicTunnelUrl}`);
+  console.log(`[Tunnel] 🚀 Активный туннель (${source}) подтверждён: ${publicTunnelUrl}`);
   try {
     fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
   } catch {}
   await updateChatMenuWithApi(publicTunnelUrl);
+  return true;
 }
 
 let currentTunnel = null;
@@ -1414,28 +1431,148 @@ let sshTunnelProc = null;
 
 async function startLocalTunnel() {
   if (currentTunnel) return;
+  if (!shouldActivateTunnel('localtunnel', activeTunnelSource) && activeTunnelSource) {
+    return;
+  }
   console.log('[LocalTunnel] 🌐 Запуск стабильного туннеля через LocalTunnel...');
-  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'moya-skazka-live-api';
-  try {
-    const tunnelPromise = localtunnel({ port: BRIDGE_PORT, subdomain });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 25s')), 25000));
-    currentTunnel = await Promise.race([tunnelPromise, timeoutPromise]);
-    console.log(`[LocalTunnel] 🚀 Постоянный туннель готов: ${currentTunnel.url}`);
-    await activateTunnel(currentTunnel.url, 'localtunnel');
 
-    currentTunnel.on('close', () => {
-      console.log('[LocalTunnel] Соединение закрыто. Переподключение через 3 сек...');
-      currentTunnel = null;
-      setTimeout(startLocalTunnel, 3000);
+  const envSub = process.env.LOCALTUNNEL_SUBDOMAIN;
+  const initialSubdomain = envSub && envSub !== 'moya-skazka-live-api' ? envSub : 'moya-skazka-app-live';
+
+  const subdomains = [
+    initialSubdomain,
+    `moya-skazka-${crypto.randomBytes(3).toString('hex')}`,
+    undefined,
+  ];
+
+  for (const sub of subdomains) {
+    if (!shouldActivateTunnel('localtunnel', activeTunnelSource) && activeTunnelSource) {
+      return;
+    }
+    try {
+      console.log(`[LocalTunnel] Попытка подключения с поддоменом: ${sub || 'random'}...`);
+      const tunnelPromise = localtunnel({ port: BRIDGE_PORT, subdomain: sub });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 15s')), 15000));
+      const tunnelInstance = await Promise.race([tunnelPromise, timeoutPromise]);
+
+      if (!shouldActivateTunnel('localtunnel', activeTunnelSource) && activeTunnelSource) {
+        currentTunnel = tunnelInstance;
+        return;
+      }
+
+      console.log(`[LocalTunnel] Подключен: ${tunnelInstance.url}, проверяем доступность...`);
+      const activated = await activateTunnel(tunnelInstance.url, 'localtunnel');
+      if (activated) {
+        currentTunnel = tunnelInstance;
+        currentTunnel.on('close', () => {
+          console.log('[LocalTunnel] Соединение закрыто. Переподключение через 3 сек...');
+          currentTunnel = null;
+          if (activeTunnelSource === 'localtunnel') {
+            publicTunnelUrl = '';
+            activeTunnelSource = '';
+          }
+          setTimeout(startLocalTunnel, 3000);
+        });
+
+        currentTunnel.on('error', (err) => {
+          console.warn('[LocalTunnel Ошибка]:', err.message);
+        });
+        return;
+      } else {
+        console.warn(`[LocalTunnel] Поддомен ${sub || 'random'} не отвечает. Пробуем следующий...`);
+        try { tunnelInstance.close(); } catch {}
+      }
+    } catch (err) {
+      console.warn(`[LocalTunnel] Сбой при подключении (${sub || 'random'}): ${err.message}`);
+    }
+  }
+
+  console.warn('[LocalTunnel]: Все попытки localtunnel исчерпаны. Повтор через 5 сек...');
+  currentTunnel = null;
+  setTimeout(startLocalTunnel, 5000);
+}
+
+// Watchdog: каждые 25 сек проверяет живость активного туннеля
+setInterval(async () => {
+  if (!publicTunnelUrl) {
+    if (!pinggyProc && !currentTunnel) {
+      startPinggyTunnel();
+    }
+    return;
+  }
+  const healthy = await checkTunnelHealth(publicTunnelUrl, 6000);
+  if (!healthy) {
+    console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) перестал отвечать. Автоматический перезапуск...`);
+    if (activeTunnelSource === 'pinggy') {
+      if (pinggyProc) {
+        try { pinggyProc.kill(); } catch {}
+        pinggyProc = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+      startPinggyTunnel();
+    } else {
+      if (currentTunnel) {
+        try { currentTunnel.close(); } catch {}
+        currentTunnel = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+      startPinggyTunnel();
+    }
+  }
+}, 25000);
+
+let pinggyProc = null;
+
+function startPinggyTunnel() {
+  if (pinggyProc) return;
+  console.log('[Pinggy] 🌐 Запуск быстрого HTTPS-туннеля через Pinggy (порт 443)...');
+  try {
+    const sshArgs = [
+      '-p', '443',
+      '-o', 'StrictHostKeyChecking=no',
+      '-o', 'ServerAliveInterval=15',
+      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ExitOnForwardFailure=yes',
+      '-R', `80:localhost:${BRIDGE_PORT}`,
+      'a.pinggy.io',
+    ];
+    const proc = spawn('ssh', sshArgs);
+    pinggyProc = proc;
+
+    const parseOutput = async (data) => {
+      const text = data.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.run\.pinggy-free\.link/);
+      if (match) {
+        const url = match[0];
+        console.log(`[Pinggy] 🚀 HTTPS туннель получен: ${url}`);
+        await activateTunnel(url, 'pinggy');
+      }
+    };
+
+    proc.stdout.on('data', parseOutput);
+    proc.stderr.on('data', parseOutput);
+
+    proc.on('close', (code) => {
+      console.log(`[Pinggy] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      pinggyProc = null;
+      if (activeTunnelSource === 'pinggy') {
+        publicTunnelUrl = '';
+        activeTunnelSource = '';
+      }
+      setTimeout(startPinggyTunnel, 5000);
     });
 
-    currentTunnel.on('error', (err) => {
-      console.warn('[LocalTunnel Ошибка]:', err.message);
+    proc.on('error', (err) => {
+      console.warn('[Pinggy Ошибка]:', err.message);
+      pinggyProc = null;
+      setTimeout(startPinggyTunnel, 10000);
     });
   } catch (err) {
-    console.warn('[LocalTunnel]:', err.message, '— повторная попытка через 5 сек...');
-    currentTunnel = null;
-    setTimeout(startLocalTunnel, 5000);
+    console.error('[Pinggy Сбой запуска]:', err.message);
+    pinggyProc = null;
+    setTimeout(startPinggyTunnel, 10000);
   }
 }
 
@@ -1495,11 +1632,13 @@ function startSshTunnel() {
 
 // Завершение процессов туннелей при остановке приложения
 process.on('SIGINT', () => {
+  if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', () => {
+  if (pinggyProc) try { pinggyProc.kill(); } catch {}
   if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
@@ -1508,7 +1647,13 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startLocalTunnel();
+  startPinggyTunnel();
+  setTimeout(() => {
+    if (!publicTunnelUrl && !pinggyProc) {
+      console.log('[Tunnel] Pinggy не поднялся за 15 сек, запускаем LocalTunnel как резерв...');
+      startLocalTunnel();
+    }
+  }, 15000);
 }
 
 // ========================================================

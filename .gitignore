@@ -18,3 +18,4 @@ bot/generated/
 *.secret
 credentials.json
 bot/cloudflared
+*.gif

@@ -18,7 +18,14 @@ test('явный PUBLIC_BRIDGE_URL важнее любых туннелей', ()
   assert.equal(shouldActivateTunnel('localtunnel', 'env'), false);
 });
 
+test('pinggy важнее localtunnel и serveo', () => {
+  assert.equal(shouldActivateTunnel('pinggy', 'localtunnel'), true);
+  assert.equal(shouldActivateTunnel('pinggy', 'serveo'), true);
+  assert.equal(shouldActivateTunnel('localtunnel', 'pinggy'), false);
+});
+
 test('повторный URL того же источника не блокируется', () => {
   assert.equal(shouldActivateTunnel('localtunnel', 'localtunnel'), true);
   assert.equal(shouldActivateTunnel('serveo', 'serveo'), true);
+  assert.equal(shouldActivateTunnel('pinggy', 'pinggy'), true);
 });

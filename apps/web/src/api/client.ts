@@ -55,9 +55,6 @@ class ApiClient {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const primaryBase = getApiBaseUrl();
     const candidates = [primaryBase];
-    if (primaryBase !== 'https://moya-skazka-bridge.loca.lt') {
-      candidates.push('https://moya-skazka-bridge.loca.lt');
-    }
     if (primaryBase !== '') {
       candidates.push('');
     }

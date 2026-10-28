@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl } from './services/storyGenerator';
+import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl } from './services/storyGenerator';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -119,6 +119,8 @@ export const App: React.FC = () => {
     },
   });
   const [isCreatingStory, setIsCreatingStory] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [lastGenerationDetails, setLastGenerationDetails] = useState<any>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);
   const [creationStage, setCreationStage] = useState<'writing' | 'drawing' | 'finishing'>('writing');
@@ -398,7 +400,7 @@ export const App: React.FC = () => {
       title: 'Аэлита и тайна Светлячка Лучика',
       status: 'ILLUSTRATED',
       format: 'ILLUSTRATED',
-      cover_url: '/illustrations/demo/cover.jpg',
+      cover_url: resolveAssetUrl('/illustrations/demo/cover.jpg'),
       created_at: new Date().toISOString(),
     },
   ];
@@ -413,7 +415,7 @@ export const App: React.FC = () => {
           ...book,
           cover_url: resolveMediaUrl(book.cover_url) || null,
         }));
-        if (!mapped.some((b) => b.id === 'b_aelita')) {
+        if (mapped.length === 0) {
           mapped.unshift(DEFAULT_BOOKS[0]);
         }
         setBooks(mapped);
@@ -431,7 +433,7 @@ export const App: React.FC = () => {
           ...b,
           cover_url: resolveMediaUrl(b.cover_url) || getFairytaleFallbackIllustration(b.title),
         }));
-        if (!repaired.some((b) => b.id === 'b_aelita')) {
+        if (repaired.length === 0) {
           repaired.unshift(DEFAULT_BOOKS[0]);
         }
         setBooks(repaired);
@@ -544,6 +546,8 @@ export const App: React.FC = () => {
       return;
     }
 
+    setLastGenerationDetails(details);
+    setGenerationError(null);
     setIsCreatingStory(true);
     setJobProgress(15);
     setCreationStage('writing');
@@ -630,50 +634,13 @@ export const App: React.FC = () => {
       }, 350);
     } catch (err: any) {
       clearInterval(countdownInterval);
-      console.warn('[App] ⚠️ Ошибка при создании сказки через сеть, мгновенно запускаем локальный Story Engine:', err);
-      try {
-        const fallbackBook = createMockStory({
-          childName: wizardData.childName,
-          age: wizardData.age,
-          gender: wizardData.gender,
-          theme: wizardData.theme || 'Дружба',
-          interests: wizardData.interests,
-          personality: details.personality,
-          customWishes: details.customWishes,
-          includeQuestions: details.includeQuestions,
-          appearance: wizardData.appearance,
-        });
-
-        const newSummary: BookSummaryDTO = {
-          id: fallbackBook.id,
-          child_id: activeChildId || 'default',
-          child_name: wizardData.childName,
-          title: fallbackBook.title,
-          status: 'ILLUSTRATED',
-          format: 'ILLUSTRATED',
-          cover_url: resolveMediaUrl(fallbackBook.cover_url || fallbackBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || fallbackBook.title),
-          created_at: new Date().toISOString(),
-        };
-
-        setBooks((prev) => {
-          const updated = [newSummary, ...prev];
-          try {
-            localStorage.setItem('ms_books', JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-
-        try {
-          localStorage.setItem(`ms_story_${fallbackBook.id}`, JSON.stringify(fallbackBook));
-        } catch {}
-
-        setIsCreatingStory(false);
-        haptic.success();
-        openReader(fallbackBook);
-      } catch (fallbackErr) {
-        setIsCreatingStory(false);
-        alert('Не удалось создать сказку. Пожалуйста, попробуйте еще раз.');
-      }
+      console.error('[App] ❌ Ошибка генерации сказки:', err);
+      setIsCreatingStory(false);
+      setGenerationError(
+        err?.message ||
+          'Не удалось связаться со сказочной мастерской нейросетей. Пожалуйста, убедитесь, что бот активен, и повторите попытку.'
+      );
+      haptic.medium();
     }
   };
 
@@ -828,6 +795,44 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Модальное окно ошибки генерации сказки с возможностью повтора */}
+      {generationError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-rose-100">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center text-2xl">
+              ⚠️
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-serif font-bold text-lg text-stone-900">
+                Связь со сказочной мастерской
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                {generationError}
+              </p>
+            </div>
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={() => {
+                  setGenerationError(null);
+                  if (lastGenerationDetails) {
+                    handleCreateStorySubmit(lastGenerationDetails);
+                  }
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-brand-500 text-white font-bold text-sm shadow-md active:scale-98 transition-transform"
+              >
+                ✨ Повторить попытку
+              </button>
+              <button
+                onClick={() => setGenerationError(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-100 text-stone-600 font-semibold text-xs hover:bg-stone-200 transition-colors"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Роутинг экранов */}
       <main className="flex-1">
         {currentScreen === 'onboarding' && (
@@ -971,31 +976,31 @@ export const App: React.FC = () => {
                   status: 'ILLUSTRATED',
                   format: 'ILLUSTRATED',
                   can_upgrade: false,
-                  cover_url: '/illustrations/demo/cover.jpg',
+                  cover_url: resolveAssetUrl('/illustrations/demo/cover.jpg'),
                   scenes: [
                     {
                       id: 's1',
                       scene_index: 1,
                       text: 'Однажды тихим солнечным утром Аэлита почувствовала, что день готовит нечто по-настоящему чудесное. На ней было красивое платье, а золотистые волосы искрились в мягких лучах света. Вдруг прямо на тёплую ладошку опустился крошечный Светлячок Лучик с изумрудными крылышками, приглашая в Волшебную Поляну!',
-                      image_url: '/illustrations/demo/scene_1.jpg',
+                      image_url: resolveAssetUrl('/illustrations/demo/scene_1.jpg'),
                     },
                     {
                       id: 's2',
                       scene_index: 2,
                       text: 'Сделав смелый шаг, Аэлита очутилась на тропинке, где шелестели диковинные сказочные травы. Лучик тихонько прозвенел: «Здравствуй, Аэлита! Нам нужно помочь крошечным лесным колокольчикам найти дорогу ко сну». Маленькая героиня с радостью согласилась помочь верному другу.',
-                      image_url: '/illustrations/demo/scene_2.jpg',
+                      image_url: resolveAssetUrl('/illustrations/demo/scene_2.jpg'),
                     },
                     {
                       id: 's3',
                       scene_index: 3,
                       text: 'Впереди возникло небольшое испытание: прохладный вечерний туман спрятал тропинку к полянке с колокольчиками. Но Аэлита не растерялась, улыбнулась и крепко взяла спутника за руку. Девочка зажгла волшебный фонарик доброты, а Лучик озарил каждый листик тёплым сиянием. Вместе они рассеяли туман, доказав силу дружбы!',
-                      image_url: '/illustrations/demo/scene_3.jpg',
+                      image_url: resolveAssetUrl('/illustrations/demo/scene_3.jpg'),
                     },
                     {
                       id: 's4',
                       scene_index: 4,
                       text: 'И вот тайна открылась: все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу! Сердце Аэлиты наполнилось тихим теплом и радостью. Приключение счастливо завершилось, Лучик уютно устроился рядом, напевая нежную колыбельную. Самое время сладко закрыть глазки и уснуть.',
-                      image_url: '/illustrations/demo/scene_4.jpg',
+                      image_url: resolveAssetUrl('/illustrations/demo/scene_4.jpg'),
                     },
                   ],
                   questions: [

@@ -1,11 +1,12 @@
-// Приоритет туннелей: стабильный localtunnel важнее случайного serveo,
-// а явно заданный PUBLIC_BRIDGE_URL важнее обоих.
+// Приоритет туннелей: Pinggy (надежный TCP на 443 без 502) > localtunnel > serveo,
+// а явно заданный PUBLIC_BRIDGE_URL важнее всех.
 export const TUNNEL_PRIORITY = {
   '': 0,
   serveo: 1,
   localhost_run: 2,
   localtunnel: 3,
-  env: 4,
+  pinggy: 4,
+  env: 5,
 };
 
 export function shouldActivateTunnel(source, activeSource = '') {
