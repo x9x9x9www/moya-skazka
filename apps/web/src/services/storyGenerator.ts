@@ -27,7 +27,7 @@ export interface GenerateStoryParams {
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  '';
+  'https://skazka-story-live.loca.lt';
 
 export function isMockMode(): boolean {
   if (typeof window !== 'undefined') {
@@ -231,6 +231,7 @@ export function getActiveApiUrl(): string {
         !cached.includes('192a1eaba3c1ee78') &&
         !cached.includes('b4e24b393c4c2c70') &&
         !cached.includes('serveousercontent.com') &&
+        !cached.includes('trycloudflare.com') &&
         !cached.includes('moya-skazka-bridge.loca.lt')
       ) {
         return cached.replace(/\/$/, '');
@@ -249,15 +250,25 @@ export function getActiveApiUrl(): string {
 async function pollJob<T>(
   activeApi: string,
   jobId: string,
-  maxWaitMs = 120000,
+  maxWaitMs = 150000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<T> {
   const start = Date.now();
   let consecutiveErrors = 0;
+  let currentBase = activeApi;
+
   while (Date.now() - start < maxWaitMs) {
     await new Promise((r) => setTimeout(r, 1200));
     try {
-      const res = await fetch(`${activeApi}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`, {
+      // Если было несколько сетевых сбоев, пробуем обновить базовый URL из хранилища
+      if (consecutiveErrors >= 5) {
+        const fresh = getActiveApiUrl();
+        if (fresh && fresh !== currentBase) {
+          currentBase = fresh;
+        }
+      }
+
+      const res = await fetch(`${currentBase}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`, {
         headers: {
           'Bypass-Tunnel-Reminder': 'true',
         },
@@ -280,7 +291,7 @@ async function pollJob<T>(
         }
       } else if (res.status === 404) {
         consecutiveErrors++;
-        if (consecutiveErrors > 6) {
+        if (consecutiveErrors > 15) {
           throw new Error('Задача генерации не найдена на сервере');
         }
       }
@@ -289,7 +300,7 @@ async function pollJob<T>(
         throw err;
       }
       consecutiveErrors++;
-      if (consecutiveErrors > 12) {
+      if (consecutiveErrors > 30) {
         throw new Error('Потеряно соединение с сервером генерации сказок');
       }
     }

@@ -1400,11 +1400,12 @@ async function activateTunnel(url, source) {
   try {
     const res = await fetch(`${cleanUrl}/health`, {
       headers: { 'Bypass-Tunnel-Reminder': 'true' },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (error) {
-    console.warn(`[Tunnel] ${source} предупреждение health-check (${error.message}), туннель активируется.`);
+    console.warn(`[Tunnel] ⚠️ ${source} health-check не пройден (${error.message}). Туннель не активирован.`);
+    return;
   }
 
   publicTunnelUrl = cleanUrl;
@@ -1417,21 +1418,22 @@ async function activateTunnel(url, source) {
 }
 
 let currentTunnel = null;
-let cloudflareProc = null;
+let sshTunnelProc = null;
 
 async function startLocalTunnel() {
-  console.log('[LocalTunnel] 🌐 Запуск туннеля через LocalTunnel...');
-  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'moya-skazka-bridge';
+  if (currentTunnel) return;
+  console.log('[LocalTunnel] 🌐 Запуск стабильного туннеля через LocalTunnel...');
+  const subdomain = process.env.LOCALTUNNEL_SUBDOMAIN || 'skazka-story-live';
   try {
     const tunnelPromise = localtunnel({ port: BRIDGE_PORT, subdomain });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tunnel connect timeout 10s')), 10000));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 10s')), 10000));
     currentTunnel = await Promise.race([tunnelPromise, timeoutPromise]);
-    lastLocalTunnelUrl = currentTunnel.url;
     console.log(`[LocalTunnel] 🚀 Постоянный туннель готов: ${currentTunnel.url}`);
     await activateTunnel(currentTunnel.url, 'localtunnel');
 
     currentTunnel.on('close', () => {
       console.log('[LocalTunnel] Соединение закрыто. Переподключение через 5 сек...');
+      currentTunnel = null;
       if (activeTunnelSource === 'localtunnel') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
@@ -1440,34 +1442,42 @@ async function startLocalTunnel() {
     });
 
     currentTunnel.on('error', (err) => {
-      console.warn('[LocalTunnel Ошибка]', err.message);
+      console.warn('[LocalTunnel Ошибка]:', err.message);
     });
   } catch (err) {
-    console.warn('[LocalTunnel]:', err.message);
+    console.warn('[LocalTunnel]:', err.message, '— запуск резервного SSH-туннеля...');
+    currentTunnel = null;
+    startSshTunnel();
     setTimeout(startLocalTunnel, 30000);
   }
 }
 
-function startCloudflareTunnel() {
-  if (cloudflareProc) return;
-  const cfBinary = path.join(BOT_DIR, 'cloudflared');
-  if (!fs.existsSync(cfBinary)) {
-    console.warn('[Cloudflare] Бинарник cloudflared не найден, запуск резервного LocalTunnel...');
-    startLocalTunnel();
-    return;
-  }
-  console.log('[Cloudflare] 🌐 Запуск быстрого и стабильного Cloudflare Tunnel...');
+function startSshTunnel() {
+  if (sshTunnelProc) return;
+  console.log('[SshTunnel] 🌐 Запуск туннеля через localhost.run...');
   try {
-    const proc = spawn(cfBinary, ['tunnel', '--url', `http://localhost:${BRIDGE_PORT}`]);
-    cloudflareProc = proc;
+    const sshArgs = [
+      '-o', 'StrictHostKeyChecking=no',
+      '-o', 'ServerAliveInterval=10',
+      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ExitOnForwardFailure=yes',
+      '-R', `80:localhost:${BRIDGE_PORT}`,
+      'nokey@localhost.run',
+    ];
+    const ed25519Path = path.join(process.env.HOME || '', '.ssh', 'id_ed25519');
+    if (fs.existsSync(ed25519Path)) {
+      sshArgs.unshift('-i', ed25519Path);
+    }
+    const proc = spawn('ssh', sshArgs);
+    sshTunnelProc = proc;
 
     const parseOutput = (data) => {
       const text = data.toString();
-      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
       if (match) {
         const url = match[0];
-        console.log(`[Cloudflare] 🚀 Постоянный HTTPS-туннель готов: ${url}`);
-        activateTunnel(url, 'cloudflare');
+        console.log(`[SshTunnel] 🚀 HTTPS туннель получен: ${url}`);
+        activateTunnel(url, 'localhost_run');
       }
     };
 
@@ -1475,35 +1485,35 @@ function startCloudflareTunnel() {
     proc.stderr.on('data', parseOutput);
 
     proc.on('close', (code) => {
-      console.log(`[Cloudflare] Соединение закрылось (код ${code}). Переподключение через 5 сек...`);
-      cloudflareProc = null;
-      if (activeTunnelSource === 'cloudflare') {
+      console.log(`[SshTunnel] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
+      sshTunnelProc = null;
+      if (activeTunnelSource === 'localhost_run') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
       }
-      setTimeout(startCloudflareTunnel, 5000);
+      setTimeout(startSshTunnel, 5000);
     });
 
     proc.on('error', (err) => {
-      console.warn('[Cloudflare Ошибка]:', err.message);
-      cloudflareProc = null;
-      setTimeout(startCloudflareTunnel, 10000);
+      console.warn('[SshTunnel Ошибка]:', err.message);
+      sshTunnelProc = null;
+      setTimeout(startSshTunnel, 10000);
     });
   } catch (err) {
-    console.error('[Cloudflare Сбой запуска]:', err.message);
-    cloudflareProc = null;
-    setTimeout(startCloudflareTunnel, 10000);
+    console.error('[SshTunnel Сбой запуска]:', err.message);
+    sshTunnelProc = null;
+    setTimeout(startSshTunnel, 10000);
   }
 }
 
 // Завершение процессов туннелей при остановке приложения
 process.on('SIGINT', () => {
-  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
+  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', () => {
-  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
+  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
@@ -1511,7 +1521,7 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startCloudflareTunnel();
+  startLocalTunnel();
 }
 
 // ========================================================
