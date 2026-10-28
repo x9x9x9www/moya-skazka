@@ -121,3 +121,53 @@ test('Агент: сквозной цикл runEditorialAgent', () => {
   assert.ok(result.story.questions[0].question.includes('Аэлита почувствовала') || result.story.questions[0].question.includes('почувствовала Аэлита'), 'Вопрос согласован по роду');
   assert.ok(result.story.metrics.editorial_checked, 'Метка прохождения редактуры выставлена');
 });
+
+test('Агент: интеграция одежды, любимой игрушки и особого пожелания родителя', () => {
+  const storyWithoutDetails = {
+    title: 'Путешествие Миши',
+    scenes: [
+      { index: 1, text: 'Миша вышел на тропинку и посмотрел по сторонам.' },
+      { index: 2, text: 'Впереди показались таинственные деревья.' },
+      { index: 3, text: 'Вместе они преодолели преграду.' },
+      { index: 4, text: 'На небе мягко засияли добрые звёзды перед сном.' },
+    ],
+    questions: [
+      { after_scene: 2, question: 'Что почувствовал Миша?' },
+      { after_scene: 4, question: 'Чему обрадовался Миша?' },
+    ],
+  };
+
+  const params = {
+    childName: 'Миша',
+    gender: 'boy',
+    age: 4,
+    appearance: {
+      clothingItem: 'жёлтый дождевик и сапожки',
+      clothingColor: 'солнечно-жёлтый',
+      toy: 'плюшевый динозаврик',
+    },
+    customWishes: 'построить домик из кораллов для морской черепашки',
+  };
+
+  const result = runEditorialAgent(storyWithoutDetails, params);
+
+  // Проверяем одежду в первой сцене
+  assert.ok(
+    result.story.scenes[0].text.toLowerCase().includes('дождевик') ||
+    result.story.scenes[0].text.toLowerCase().includes('сапожк'),
+    'Одежда героя добавлена в текст 1-й сцены'
+  );
+
+  // Проверяем любимую игрушку в первой сцене
+  assert.ok(
+    result.story.scenes[0].text.toLowerCase().includes('динозавр'),
+    'Любимая игрушка-спутник вплетена в 1-ю сцену'
+  );
+
+  // Проверяем особое пожелание родителя в 3-й сцене
+  assert.ok(
+    result.story.scenes[2].text.toLowerCase().includes('коралл') ||
+    result.story.scenes[2].text.toLowerCase().includes('черепаш'),
+    'Особое пожелание родителя исполнено в 3-й сцене'
+  );
+});

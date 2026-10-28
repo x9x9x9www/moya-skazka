@@ -70,22 +70,29 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 ### 3. STORY DNA (USE THE PROVIDED COMBINATION)
 The user message contains a chosen \`world_scale\`, \`narrative_engine\`, \`literary_voice\`, \`companion_quirk\`, \`opening_hook\`, and \`hero_anchor\`. Build the plot around them. Do not copy the descriptions literally; turn them into specific, sensory, inhabited details.
 
-### 4. CHARACTER BIBLE (CRITICAL)
+### 4. CHARACTER BIBLE & MANDATORY CLOTHING INTEGRATION (CRITICAL & STRICT)
 - Every character MUST be a separate object in \`characters[]\`. NEVER merge the hero and the companion into one object.
 - Required: exactly one \`role: "hero"\` (the child). Add one or two companions/secondary characters with \`role: "companion"\` or \`role: "friend"\`.
+- MANDATORY CLOTHING INTEGRATION IN RUSSIAN STORY TEXT:
+  * In Scene 1, you MUST explicitly introduce the child wearing their chosen clothing outfit and color (e.g. «в своём любимом солнечно-жёлтом дождевике...», «в мягкой пижамке со звёздами...»).
+  * Weave tactile interactions with clothing into the plot: reaching into pockets for a little tool, pulling up a warm hood, wiping boots, wrapping up in cozy sleeves.
+  * The child's clothing outfit is IMMUTABLE and stays identical across all 4 scenes and cover visual. NEVER invent a new outfit mid-story!
+- FAVORITE TOY & COMPANION CONTINUITY:
+  * The favorite toy comes to life as the companion. Keep its toy nature visible (plush texture, stitching, button eyes, wheels, worn ear).
+  * The companion toy MUST be at the child's side from Scene 1 to the final bedtime embrace in Scene 4.
+- SPECIAL WISHES OF THE PARENT (HIGHEST NARRATIVE PRIORITY):
+  * If special wishes are provided, they MUST be fulfilled and become the emotional peak of Scene 3.
 - \`visual_description\` must be immutable and highly specific: age, gender presentation, hair color and style, eye color, skin tone, exact clothing items and colors, footwear if visible; for the companion — exact species/object, material, size, colors, accessories, and the chosen quirk.
 - The hero MUST match the child's input: age, gender, hair, eyes, skin, clothing, and the favorite toy. Do not age the child up or change their clothes.
-- The favorite toy is the companion. Bring the toy to life, but keep its toy nature visible (plush texture, stitching, button eyes, chipped paint, wheels, worn ear, etc.). Apply the chosen \`companion_quirk\` naturally to the toy — never turn the toy into a different species (a toy car stays a car, a bunny stays a bunny).
-- Keep every character's appearance identical in every scene. Do not invent new outfits mid-story.
 
-### 5. FOUR SCENES, AGE CALIBRATION (РАЗДЕЛ 6 ТЗ)
-Write EXACTLY four scenes. Total reading time 3–5 minutes. Word targets (Russian words, all four scenes together):
+### 5. FOUR SCENES, AGE CALIBRATION (IMMUTABLE 4-SCENE STRUCTURE)
+Write EXACTLY four scenes (\`scenes\` array with length exactly 4). NEVER 3, NEVER 5. Total reading time 3–5 minutes. Word targets (Russian words, all four scenes together):
 - Age 2–3: 240–360 words; short musical sentences (5–8 words), repetitions, onomatopoeia, tactile words. Gentle, no real danger, recognition of simple feelings.
 - Age 4–5: 380–540 words; lively dialogue, sensory details, empathy, a small but real problem solved by kindness, helping a friend and ingenuity.
 - Age 6: 520–720 words; richer vocabulary, gentle humor, cause-and-effect, a choice with two kind alternatives.
 Scene roles:
-1. Hook & discovery: unusual sensory opening, the specific world matching interests, meeting the companion.
-2. Gentle problem / mix-up / mystery. This pause triggers question 1.
+1. Hook & discovery: unusual sensory opening, child in their specific clothing meets/wakes the toy companion in the themed world.
+2. Gentle problem / mix-up / mystery matching interests. This pause triggers question 1.
 3. Creative action / emotional resolution: the hero uses empathy, courage, teamwork, or a detail of their personality/toy/clothing to find a kind, heartwarming solution. If the parent provided special wishes, fulfill them here.
 4. Heartwarming resolution: sensory comfort, a memorable closing image, safe return, feelings of friendship, joy, and quiet warmth. This pause triggers question 2.
 Use 2–4 short paragraphs per scene, separated by "\\n\\n". Do not write stage directions, headings, or bullet points inside \`text\`.
@@ -329,15 +336,16 @@ export function translateClothingItem(item) {
   if (CLOTHING_ITEM_EN[clean]) {
     return CLOTHING_ITEM_EN[clean];
   }
-  if (clean.includes('дождевик')) return 'bright raincoat with a hood and tiny boots';
-  if (clean.includes('пижам')) return 'cozy bedtime pajama';
+  if (clean.includes('дождевик') || clean.includes('сапожк')) return 'raincoat with a hood and little boots';
+  if (clean.includes('пижам')) return 'cozy bedtime pajamas with gentle starry patterns';
+  if (clean.includes('кигуруми')) return 'cute soft dinosaur kigurumi onesie pajamas';
   if (clean.includes('плать')) return 'charming fairytale dress with gentle ruffles';
   if (clean.includes('свитер') || clean.includes('кофт')) return 'knitted sweater with soft yarn texture';
   if (clean.includes('комбинезон')) return 'cute denim overalls dungarees';
   if (clean.includes('толстовк') || clean.includes('худи')) return 'warm cozy hooded sweatshirt';
-  if (clean.includes('космонавт')) return 'playful astronaut suit';
-  if (clean.includes('супергеро')) return 'mini superhero costume';
-  if (clean.includes('манти') || clean.includes('волшебник')) return 'magical wizard robe with starry patterns';
+  if (clean.includes('космонавт') || clean.includes('скафандр')) return 'playful child astronaut space suit with soft patches';
+  if (clean.includes('супергеро')) return 'playful mini superhero costume with a soft cape';
+  if (clean.includes('манти') || clean.includes('волшебник') || clean.includes('маг')) return 'magical little wizard robe with starry embroidered patterns';
   if (clean.includes('футболк')) return 'comfortable soft t-shirt';
   if (clean.includes('куртк')) return 'warm cozy jacket';
   return `cute charming outfit (${clean})`;
@@ -358,6 +366,25 @@ export function translateClothingColor(color, clothingText = '') {
   if (text.includes('бел') || text.includes('светл')) return 'pure soft warm white';
   if (text.includes('оранж')) return 'warm sunny orange';
   return 'cozy';
+}
+
+export function formatFullClothingRus(appearance = {}) {
+  const item = (appearance.clothingItem || '').trim();
+  const color = (appearance.clothingColor || '').trim();
+
+  if (!item && !color) {
+    return 'уютный вязаный свитер';
+  }
+  if (item && color) {
+    const itemLower = item.toLowerCase();
+    const colorRoot = color.slice(0, 4).toLowerCase();
+    if (itemLower.includes(colorRoot)) {
+      return item;
+    }
+    return `${color} ${item}`;
+  }
+  if (item) return item;
+  return `${color} одежда`;
 }
 
 export function appearanceHints(appearance = {}) {
@@ -395,7 +422,7 @@ export function appearanceHints(appearance = {}) {
   const itemClean = appearance.clothingItem ? String(appearance.clothingItem).trim() : 'уютный свитер';
   const itemEn = CLOTHING_ITEM_EN[itemClean] || translateClothingItem(itemClean);
   const colorEn = CLOTHING_COLOR_EN[appearance.clothingColor] || translateClothingColor(appearance.clothingColor, itemClean);
-  const clothes = `${colorEn} ${itemEn}`;
+  const clothes = `${colorEn} ${itemEn}`.replace(/\b(bright|cozy|warm|cute)\s+\1\b/gi, '$1').replace(/\s+/g, ' ').trim();
   const toy = TOY_EN[appearance.toy] || translateToyItem(appearance.toy);
 
   const features = String(appearance.distinctiveFeatures || appearance.avatar_id || '').toLowerCase();
@@ -695,24 +722,32 @@ export function buildStoryPrompt(params = {}, options = {}) {
   const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
 
+  const fullClothingRus = formatFullClothingRus(params.appearance);
+
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ
 
-Ребёнок:
+1. ГЕРОЙ, ОДЕЖДА И ВНЕШНИЙ ВИД (ОБЯЗАТЕЛЬНО ДЛЯ СЮЖЕТА):
 - Имя: ${params.childName || 'Малыш'}
 - Пол: ${genderRus}
 - Падежные формы имени: Родительный (кого? чьё?): «сердце ${declinedName.gen}», Дательный (кому?): «навстречу ${declinedName.dat}», Творительный (с кем?): «вместе с ${declinedName.ins}».
 - ВАЖНЕЙШЕЕ ПРАВИЛО ГРАММАТИКИ: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала», «решила»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
+- ОДЕЖДА ГЕРОЯ (КРИТИЧЕСКИ ВАЖНО ВПЛЕСТИ В ТЕКСТ): ${fullClothingRus}.
+  * В Сцене 1 ОБЯЗАТЕЛЬНО покажи героя в этой одежде («${params.childName} в своём любимом ${fullClothingRus}...»).
+  * Сделай одежду осязаемой деталью сюжета: пусть герой спрячет что-то в кармашек, натянет капюшон, отряхнёт сапожки, почувствует тепло мягкой ткани или воротника.
+  * Герой сохраняет ЭТУ ЖЕ одежду во всех 4 сценах и на обложке!
+- Волосы, глаза и кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}.
+- Любимая игрушка-спутник: ${toy}.
+  * Игрушка-спутник оживает, сохраняя свою форму, и находится рядом с героем с самого начала Сцены 1 до финального сна в Сцене 4!
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)» или «(4)»)! Текст должен быть чистой художественной литературой без технических меток.
 - Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
 - Характер: ${params.personality || 'добрый, любознательный'}
-- Любимая игрушка-спутник: ${toy}
-- Внешность (русские значения): ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа, одежда: ${params.appearance?.clothingItem || (params.appearance?.clothingColor ? `${params.appearance.clothingColor} одежда` : 'уютный свитер')}
-- Внешность (точные английские подсказки для character bible): ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}${hints.glasses}; favorite toy is ${hints.toy}
+
+2. ТЕМА, ИНТЕРЕСЫ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
 - Тема: ${params.theme || 'Дружба'}
 - Интересы: ${(params.interests || []).join(', ') || 'приключения'}
-${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (ВЫСШИЙ ПРИОРИТЕТ ДЛЯ СЮЖЕТА): «${params.customWishes}». Обязательно вплети это пожелание в сюжет как ключевое событие или кульминацию!` : '- Особые пожелания: нет'}
+${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (ВЫСШИЙ ПРИОРИТЕТ ДЛЯ СЮЖЕТА): «${params.customWishes}». Обязательно вплети это пожелание в кульминацию Сцены 3 как главное доброе событие!` : '- Особые пожелания: нет'}
 
-ВЫБРАННАЯ ДНК ЭТОЙ СКАЗКИ (строй сюжет вокруг неё):
+3. ВЫБРАННАЯ ДНК ЭТОЙ СКАЗКИ (строй сюжет вокруг неё):
 1. Мир: ${dna.world_scale} — ${dna.world_description}
 2. Сюжетный движок: ${dna.narrative_engine} — ${dna.narrative_description}
 3. Литературный голос: ${dna.literary_voice}
@@ -720,10 +755,18 @@ ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (В�
 5. Открывающий сенсорный крючок первой сцены: «${dna.opening_hook}»
 6. Терапевтическое решение третьей сцены: ${dna.hero_anchor}.
 
-ТРЕБОВАНИЯ ПО ТЗ (РАЗДЕЛЫ 6 И 15):
+4. АНГЛИЙСКИЕ ПОДСКАЗКИ ДЛЯ CHARACTER BIBLE (characters[].visual_description):
+- hero: ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}${hints.glasses}
+- companion: living version of ${hints.toy} with ${dna.companion_quirk}
+
+5. ТРЕБОВАНИЯ ПО ТЗ (РАЗДЕЛЫ 6 И 15):
 - Ровно 4 сцены. Общий объём: ${band.total[0]}–${band.total[1]} русских слов. Ориентир на каждую сцену: ${band.perScene[0]}–${band.perScene[1]} слов. Стиль предложений: ${band.sentences}.
+- Сцена 1: Знакомство с миром, ${params.childName} в одежде (${fullClothingRus}) и встреча со спутником (${toy}).
+- Сцена 2: Добрая интрига / маленькая задача. Завершается действием и паузой для Вопроса 1.
+- Сцена 3: Кульминация и доброе решение: ${dna.hero_anchor}${params.customWishes ? `, исполнение пожелания «${params.customWishes}»` : ''}.
+- Сцена 4: Умиротворяющий сонный финал, мягкий свет звёзд, уют, покой перед сном. Завершается паузой для Вопроса 2.
 - Каждая сцена — это 2–4 небольших абзаца, а не одна короткая фраза. Не растягивай текст водой: добавляй сенсорные детали, диалоги и маленькие действия.
-- Один вопрос после сцены 2 и один после сцены 4. Вопросы — строго про переживания героев в этой истории под возраст ${band.label}.
+- Ровно один вопрос после сцены 2 и ровно один после сцены 4. Вопросы — строго про переживания героев в этой истории под возраст ${band.label}.
 - Герой и спутник — отдельные объекты в characters[]. Не склеивай их.
 - visual-поля — только английский, без описания внешности персонажей: рендерер добавит её сам по character_ids.
 - Никаких «Жил-был», «Однажды», «в одном волшебном лесу», никакой морали в финале.
@@ -840,7 +883,14 @@ function normalizeCharacters(rawCharacters, params) {
     issues.push('не найден companion — добавлен из любимой игрушки');
   }
 
+  const hints = appearanceHints(params.appearance);
   for (const c of characters) {
+    if (c.role === 'hero' || c.id === 'hero') {
+      if (!c.visual_description.toLowerCase().includes('wearing') && hints.clothes) {
+        c.visual_description = `${c.visual_description}, wearing ${hints.clothes}${hints.glasses}`.trim();
+        issues.push(`character hero: добавлена одежда из профиля (${hints.clothes})`);
+      }
+    }
     if (hasCyrillic(c.visual_description)) {
       issues.push(`character ${c.id}: visual_description должен быть на английском`);
     }

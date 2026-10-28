@@ -515,15 +515,66 @@ export function verifyNarrativeIntegrity(story, params = {}) {
 
   // 2. Проверка присутствия героя в тексте
   const fullText = scenes.map((s) => s.text).join(' ');
+  const isGirl = params.gender === 'girl' || childName.endsWith('а') || childName.endsWith('я');
+
   if (!fullText.includes(childName)) {
     issues.push(`Имя ребёнка «${childName}» отсутствовало в тексте`);
     if (scenes[0]) {
-      scenes[0].text = `В самый уютный и добрый день ${childName} почувствовал приближение настоящего чуда. ${scenes[0].text}`;
+      const verbFelt = isGirl ? 'почувствовала' : 'почувствовал';
+      scenes[0].text = `В самый уютный и добрый день ${childName} ${verbFelt} приближение настоящего чуда. ${scenes[0].text}`;
       fixes.push(`Имя «${childName}» аккуратно вплетено в начало первой сцены`);
     }
   }
 
-  // 3. Проверка сонного финала в 4-й сцене
+  // 3. Проверка и бережная интеграция одежды героя в первую сцену
+  const item = (params.appearance?.clothingItem || '').trim();
+  const color = (params.appearance?.clothingColor || '').trim();
+  let clothingRus = item;
+  if (item && color && !item.toLowerCase().includes(color.slice(0, 4).toLowerCase())) {
+    clothingRus = `${color} ${item}`;
+  } else if (!clothingRus) {
+    clothingRus = color ? `${color} одежда` : '';
+  }
+
+  if (clothingRus && scenes[0]) {
+    const clothingKeywords = [
+      'дождевик', 'сапожк', 'сапог', 'пижам', 'кигуруми', 'плать', 'свитер', 'кофт',
+      'комбинезон', 'толстовк', 'худи', 'скафандр', 'космонавт', 'супергеро', 'манти',
+      'куртк', 'шапочк', 'кармаш', 'капюшон', 'наряд',
+    ];
+    const hasClothingMention = clothingKeywords.some((w) => fullText.toLowerCase().includes(w));
+    if (!hasClothingMention) {
+      const verb = isGirl ? 'поправила' : 'поправил';
+      const pronoun = isGirl ? 'свою' : 'свой';
+      scenes[0].text += ` ${childName} с улыбкой ${verb} ${pronoun} ${clothingRus}, чувствуя уютное тепло и готовность к новому приключению.`;
+      fixes.push(`Одежда героя («${clothingRus}») бережно вплетена в первую сцену`);
+    }
+  }
+
+  // 4. Проверка и интеграция игрушки-спутника
+  const toyRus = (params.appearance?.toy || params.toy || '').trim();
+  if (toyRus && scenes[0]) {
+    const toyWords = toyRus.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    const hasToyMention = toyWords.some((w) => fullText.toLowerCase().includes(w.slice(0, -1)));
+    if (!hasToyMention) {
+      const verbHold = isGirl ? 'прижала' : 'прижал';
+      scenes[0].text += ` Рядом был любимый верный спутник — ${toyRus}, которого ${childName} ласково ${verbHold} к себе.`;
+      fixes.push(`Любимая игрушка-спутник («${toyRus}») вплетена в первую сцену`);
+    }
+  }
+
+  // 5. Проверка и интеграция особого пожелания родителя (customWishes) в кульминацию 3-й сцены
+  const wishes = (params.customWishes || '').trim();
+  if (wishes.length > 5 && scenes[2]) {
+    const wishWords = wishes.toLowerCase().split(/\s+/).filter((w) => w.length > 4);
+    const hasWishMention = wishWords.some((w) => fullText.toLowerCase().includes(w.slice(0, -1)));
+    if (!hasWishMention) {
+      scenes[2].text += ` Именно в этот миг сбылось самое заветное желание: ${wishes}.`;
+      fixes.push(`Особое пожелание родителя («${wishes}») исполнено в кульминации сцены 3`);
+    }
+  }
+
+  // 6. Проверка сонного финала в 4-й сцене
   const bedtimeKeywords = ['сон', 'звёзд', 'звезд', 'тепл', 'уют', 'тишин', 'спокойн', 'отдых', 'ноч', 'глазк', 'ласков'];
   const lastSceneText = (scenes[3]?.text || '').toLowerCase();
   const hasBedtimeMood = bedtimeKeywords.some((w) => lastSceneText.includes(w));
@@ -532,9 +583,8 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     fixes.push('В финал 4-й сцены добавлен умиротворяющий сонный аккорд');
   }
 
-  // 4. Вопросы для обсуждения с родителями
+  // 7. Вопросы для обсуждения с родителями
   const rawQuestions = Array.isArray(story.questions) ? [...story.questions] : [];
-  const isGirl = params.gender === 'girl' || childName.endsWith('а') || childName.endsWith('я');
 
   let questions = [];
   if (rawQuestions.length === 0) {
