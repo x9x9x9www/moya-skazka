@@ -1417,7 +1417,7 @@ async function activateTunnel(url, source) {
 }
 
 let currentTunnel = null;
-let sshTunnelProc = null;
+let cloudflareProc = null;
 
 async function startLocalTunnel() {
   console.log('[LocalTunnel] 🌐 Запуск туннеля через LocalTunnel...');
@@ -1443,31 +1443,31 @@ async function startLocalTunnel() {
       console.warn('[LocalTunnel Ошибка]', err.message);
     });
   } catch (err) {
-    console.warn('[LocalTunnel]:', err.message, '— параллельно активен SSH-туннель');
-    setTimeout(startLocalTunnel, 20000);
+    console.warn('[LocalTunnel]:', err.message);
+    setTimeout(startLocalTunnel, 30000);
   }
 }
 
-function startSshTunnel() {
-  if (sshTunnelProc) return;
-  console.log('[SshTunnel] 🌐 Запуск высокоскоростного SSH-туннеля через localhost.run...');
+function startCloudflareTunnel() {
+  if (cloudflareProc) return;
+  const cfBinary = path.join(BOT_DIR, 'cloudflared');
+  if (!fs.existsSync(cfBinary)) {
+    console.warn('[Cloudflare] Бинарник cloudflared не найден, запуск резервного LocalTunnel...');
+    startLocalTunnel();
+    return;
+  }
+  console.log('[Cloudflare] 🌐 Запуск быстрого и стабильного Cloudflare Tunnel...');
   try {
-    const proc = spawn('ssh', [
-      '-o', 'StrictHostKeyChecking=no',
-      '-o', 'ServerAliveInterval=30',
-      '-o', 'ExitOnForwardFailure=yes',
-      '-R', `80:localhost:${BRIDGE_PORT}`,
-      'nokey@localhost.run',
-    ]);
-    sshTunnelProc = proc;
+    const proc = spawn(cfBinary, ['tunnel', '--url', `http://localhost:${BRIDGE_PORT}`]);
+    cloudflareProc = proc;
 
     const parseOutput = (data) => {
       const text = data.toString();
-      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
       if (match) {
         const url = match[0];
-        console.log(`[SshTunnel] 🚀 HTTPS туннель готов: ${url}`);
-        activateTunnel(url, 'localhost_run');
+        console.log(`[Cloudflare] 🚀 Постоянный HTTPS-туннель готов: ${url}`);
+        activateTunnel(url, 'cloudflare');
       }
     };
 
@@ -1475,35 +1475,35 @@ function startSshTunnel() {
     proc.stderr.on('data', parseOutput);
 
     proc.on('close', (code) => {
-      console.log(`[SshTunnel] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
-      sshTunnelProc = null;
-      if (activeTunnelSource === 'localhost_run') {
+      console.log(`[Cloudflare] Соединение закрылось (код ${code}). Переподключение через 5 сек...`);
+      cloudflareProc = null;
+      if (activeTunnelSource === 'cloudflare') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
       }
-      setTimeout(startSshTunnel, 5000);
+      setTimeout(startCloudflareTunnel, 5000);
     });
 
     proc.on('error', (err) => {
-      console.warn('[SshTunnel Ошибка]:', err.message);
-      sshTunnelProc = null;
-      setTimeout(startSshTunnel, 10000);
+      console.warn('[Cloudflare Ошибка]:', err.message);
+      cloudflareProc = null;
+      setTimeout(startCloudflareTunnel, 10000);
     });
   } catch (err) {
-    console.error('[SshTunnel Сбой запуска]:', err.message);
-    sshTunnelProc = null;
-    setTimeout(startSshTunnel, 10000);
+    console.error('[Cloudflare Сбой запуска]:', err.message);
+    cloudflareProc = null;
+    setTimeout(startCloudflareTunnel, 10000);
   }
 }
 
 // Завершение процессов туннелей при остановке приложения
 process.on('SIGINT', () => {
-  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
+  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', () => {
-  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
+  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
   if (currentTunnel) try { currentTunnel.close(); } catch {}
   process.exit(0);
 });
@@ -1511,9 +1511,7 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  // Запускаем оба туннеля — первый успешный активируется и настраивает кнопку в Telegram
-  startLocalTunnel();
-  startSshTunnel();
+  startCloudflareTunnel();
 }
 
 // ========================================================
@@ -1543,8 +1541,11 @@ function getAppUrlWithApi(apiUrl) {
   return `${base}${sep}api_url=${encodeURIComponent(target)}`;
 }
 
+let lastMenuButtonUrl = '';
 async function updateChatMenuWithApi(apiUrl) {
   const targetUrl = getAppUrlWithApi(apiUrl);
+  if (targetUrl === lastMenuButtonUrl) return;
+  lastMenuButtonUrl = targetUrl;
   console.log(`[Bot] 📱 Настройка кнопки Telegram Mini App: ${targetUrl}`);
   const res = await callTelegram('setChatMenuButton', {
     menu_button: {

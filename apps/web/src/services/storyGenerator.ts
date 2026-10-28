@@ -249,10 +249,11 @@ export function getActiveApiUrl(): string {
 async function pollJob<T>(
   activeApi: string,
   jobId: string,
-  maxWaitMs = 180000,
+  maxWaitMs = 120000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<T> {
   const start = Date.now();
+  let consecutiveErrors = 0;
   while (Date.now() - start < maxWaitMs) {
     await new Promise((r) => setTimeout(r, 1200));
     try {
@@ -262,6 +263,7 @@ async function pollJob<T>(
         },
       });
       if (res.ok) {
+        consecutiveErrors = 0;
         const data = await res.json();
         if (data.stage && data.message && onProgress) {
           onProgress({
@@ -276,13 +278,23 @@ async function pollJob<T>(
         if (data.status === 'error') {
           throw new Error(data.error || 'Job failed');
         }
+      } else if (res.status === 404) {
+        consecutiveErrors++;
+        if (consecutiveErrors > 6) {
+          throw new Error('Задача генерации не найдена на сервере');
+        }
       }
     } catch (err: any) {
-      if (err.message && err.message.includes('Job failed')) throw err;
-      // Временные сетевые сбои игнорируем до следующего такта опроса
+      if (err.message && (err.message.includes('Job failed') || err.message.includes('Задача генерации не найдена'))) {
+        throw err;
+      }
+      consecutiveErrors++;
+      if (consecutiveErrors > 12) {
+        throw new Error('Потеряно соединение с сервером генерации сказок');
+      }
     }
   }
-  throw new Error('Job polling timed out');
+  throw new Error('Превышено время ожидания генерации сказки (таймаут)');
 }
 
 // Промпт и контракт сказки живут в packages/story-engine/src/index.mjs.
@@ -427,7 +439,7 @@ export async function callWellflowStory(
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 8000);
+    const initTimer = setTimeout(() => initCtrl.abort(), 4000);
 
     try {
       const response = await fetch(candidate.url, {
@@ -552,7 +564,7 @@ export async function generateDynamicStory(
   let storyData: any = null;
   let lastError: any = null;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       if (attempt > 1) {
         onProgress?.({
@@ -561,14 +573,14 @@ export async function generateDynamicStory(
           message: 'Связываемся со сказочной мастерской нейросетей...',
         });
       }
-      storyData = await callWellflowStory(params, 180000, onProgress);
+      storyData = await callWellflowStory(params, 120000, onProgress);
       if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
         break;
       }
     } catch (err: any) {
       lastError = err;
       console.warn(`[StoryGenerator] Попытка ${attempt} завершилась ошибкой:`, err);
-      if (attempt < 3) {
+      if (attempt < 2) {
         await new Promise((r) => setTimeout(r, 1500));
       }
     }

@@ -17,3 +17,4 @@ bot/generated/
 *.key
 *.secret
 credentials.json
+bot/cloudflared

@@ -7,9 +7,10 @@ test('первый туннель активируется', () => {
   assert.equal(shouldActivateTunnel('localtunnel', ''), true);
 });
 
-test('localtunnel важнее serveo', () => {
-  assert.equal(shouldActivateTunnel('localtunnel', 'serveo'), true);
-  assert.equal(shouldActivateTunnel('serveo', 'localtunnel'), false);
+test('cloudflare важнее serveo и localtunnel', () => {
+  assert.equal(shouldActivateTunnel('cloudflare', 'localtunnel'), true);
+  assert.equal(shouldActivateTunnel('cloudflare', 'serveo'), true);
+  assert.equal(shouldActivateTunnel('localtunnel', 'cloudflare'), false);
 });
 
 test('явный PUBLIC_BRIDGE_URL важнее любых туннелей', () => {
