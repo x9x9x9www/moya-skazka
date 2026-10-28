@@ -60,11 +60,18 @@ if (proxyUrl) {
         connect: {
           timeout: 60000,
         },
-        headersTimeout: 60000,
-        bodyTimeout: 150000,
+        headersTimeout: 180000,
+        bodyTimeout: 180000,
       })
     );
     console.log(`[Proxy] 🛡 Настроен системный прокси: ${proxyUrl}`);
+    // Удаляем из env, чтобы сокетные туннели (localtunnel) не блокировались HTTP-прокси
+    delete process.env.HTTP_PROXY;
+    delete process.env.HTTPS_PROXY;
+    delete process.env.http_proxy;
+    delete process.env.https_proxy;
+    delete process.env.ALL_PROXY;
+    delete process.env.all_proxy;
   } catch (err) {
     console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
   }
@@ -92,8 +99,8 @@ const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2'
 const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
 const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
-let publicTunnelUrl = process.env.PUBLIC_BRIDGE_URL || 'https://moya-skazka-live-api.loca.lt';
-let activeTunnelSource = process.env.PUBLIC_BRIDGE_URL ? 'env' : 'localtunnel';
+let publicTunnelUrl = '';
+let activeTunnelSource = '';
 let lastServeoUrl = '';
 let lastLocalTunnelUrl = '';
 
