@@ -721,33 +721,13 @@ export async function generateDynamicStory(
     }
   }
 
-  // Если серверный мост недоступен или вернул неполные данные:
-  // БЕСШОВНО активируем встроенный Story Engine, чтобы пользователь ВСЕГДА получал свою сказку!
+  // Если серверный мост недоступен или вернул неполные данные — честно сообщаем об ошибке
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.warn(
-      '[StoryGenerator] 🛡 Сервер недоступен (' + (lastError?.message || 'ошибка связи') + '). Активирован сверхнадёжный Story Engine для гарантированного создания книги!'
-    );
-    onProgress?.({
-      stage: 'writing',
-      progress: 55,
-      message: 'Создаём персональную сказку и волшебный сюжет...',
-    });
-    await new Promise((r) => setTimeout(r, 600));
-
-    onProgress?.({
-      stage: 'drawing',
-      progress: 85,
-      message: 'Подготавливаем сказочные 3D-иллюстрации...',
-    });
-    await new Promise((r) => setTimeout(r, 600));
-
-    onProgress?.({
-      stage: 'finishing',
-      progress: 100,
-      message: 'Ваша сказка готова!',
-    });
-
-    return createMockStory(params);
+    const errorMsg =
+      lastError?.message ||
+      'Не удалось связаться со сказочной мастерской нейросетей. Пожалуйста, убедитесь, что бот активен, и нажмите «Повторить попытку».';
+    console.error('[StoryGenerator] ❌ Генерация не удалась:', errorMsg);
+    throw new Error(errorMsg);
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));
