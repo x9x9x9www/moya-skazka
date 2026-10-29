@@ -17,8 +17,20 @@ export const STYLE_3D_PIXAR =
   'absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. ' +
   'Any books, signs, or labels in the scene are completely blank.';
 
-import { declineRussianName, removeAgeFromText, fixGenderAgreements } from './declension.mjs';
-export { declineRussianName, removeAgeFromText, fixGenderAgreements };
+import {
+  declineRussianName,
+  removeAgeFromText,
+  fixGenderAgreements,
+  getOPreposition,
+  countWords,
+} from './declension.mjs';
+export {
+  declineRussianName,
+  removeAgeFromText,
+  fixGenderAgreements,
+  getOPreposition,
+  countWords,
+};
 
 import {
   runEditorialAgent,
@@ -867,10 +879,6 @@ function asString(value) {
 
 function hasCyrillic(text) {
   return /[А-Яа-яЁё]/.test(text || '');
-}
-
-function countWords(text) {
-  return asString(text).split(/\s+/).filter(Boolean).length;
 }
 
 /**

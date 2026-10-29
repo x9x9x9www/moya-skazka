@@ -4,6 +4,29 @@
  */
 
 /**
+ * Определение правильного предлога («о» или «об») перед словом в русском языке.
+ * Перед чистыми гласными (а, и, о, у, э) используется «об»,
+ * перед согласными и йотированными гласными (е, ё, ю, я) — «о».
+ * @param {string} word
+ * @returns {'об' | 'о'}
+ */
+export function getOPreposition(word) {
+  const first = (word || '').trim().charAt(0).toLowerCase();
+  return ['а', 'и', 'о', 'у', 'э'].includes(first) ? 'об' : 'о';
+}
+
+/**
+ * Подсчёт реальных слов в тексте (кириллица, латиница, слова с дефисом).
+ * Исключает стоящие отдельно знаки пунктуации (тире «—», многоточия «…»).
+ * @param {string} text
+ * @returns {number}
+ */
+export function countWords(text) {
+  if (!text || typeof text !== 'string') return 0;
+  return (text.match(/[а-яёА-ЯЁa-zA-Z0-9-]+/gu) || []).length;
+}
+
+/**
  * Склонение русского имени по падежам
  * @param {string} name - Имя ребёнка (например, «Аэлита», «Миша», «Марк»)
  * @param {'boy' | 'girl' | string} gender - Пол ребёнка
@@ -20,6 +43,7 @@ export function declineRussianName(name, gender = 'boy') {
   const lastTwo = lower.slice(-2);
   const stem = trimmed.slice(0, -1);
   const stemTwo = trimmed.slice(0, -2);
+  const prep = getOPreposition(trimmed);
 
   // 1. Имена на -ия (София, Мария, Амелия, Аглая...)
   if (lastTwo === 'ия') {
@@ -29,7 +53,7 @@ export function declineRussianName(name, gender = 'boy') {
       dat: `${stemTwo}ии`,
       acc: `${stemTwo}ию`,
       ins: `${stemTwo}ией`,
-      prep: `об ${stemTwo}ии`,
+      prep: `${prep} ${stemTwo}ии`,
     };
   }
 
@@ -45,7 +69,7 @@ export function declineRussianName(name, gender = 'boy') {
       dat: `${stem}е`,
       acc: `${stem}у`,
       ins: `${stem}${isSibilant ? 'ей' : 'ой'}`,
-      prep: `об ${stem}е`,
+      prep: `${prep} ${stem}е`,
     };
   }
 
@@ -57,7 +81,7 @@ export function declineRussianName(name, gender = 'boy') {
       dat: `${stem}е`,
       acc: `${stem}ю`,
       ins: `${stem}ей`,
-      prep: `об ${stem}е`,
+      prep: `${prep} ${stem}е`,
     };
   }
 
@@ -108,7 +132,7 @@ export function declineRussianName(name, gender = 'boy') {
         dat: `${stem}ю`,
         acc: `${stem}я`,
         ins: `${stem}ем`,
-        prep: `о ${stem}е`,
+        prep: `${prep} ${stem}е`,
       };
     }
     if (lastChar === 'ь') {
@@ -118,7 +142,7 @@ export function declineRussianName(name, gender = 'boy') {
         dat: `${stem}ю`,
         acc: `${stem}я`,
         ins: `${stem}ем`,
-        prep: `о ${stem}е`,
+        prep: `${prep} ${stem}е`,
       };
     }
     return {
@@ -127,7 +151,7 @@ export function declineRussianName(name, gender = 'boy') {
       dat: `${trimmed}у`,
       acc: `${trimmed}а`,
       ins: `${trimmed}ом`,
-      prep: `о ${trimmed}е`,
+      prep: `${prep} ${trimmed}е`,
     };
   }
 
@@ -138,7 +162,7 @@ export function declineRussianName(name, gender = 'boy') {
     dat: trimmed,
     acc: trimmed,
     ins: trimmed,
-    prep: `о ${trimmed}`,
+    prep: `${prep} ${trimmed}`,
   };
 }
 
@@ -176,10 +200,11 @@ export function fixGenderAgreements(text, arg2 = 'Герой', arg3 = 'boy') {
   const CYR_PRE = '(?<![а-яёА-ЯЁ])';
   const CYR_POST = '(?![а-яёА-ЯЁ])';
 
-  // Исправляем несклонённое имя после слов «Сердце», «ладошка», «глаза», «следы» и т.п.
+  // Исправляем несклонённое имя после предлогов и маркеров
   clean = clean.replace(new RegExp(`${CYR_PRE}(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.gen}`);
   clean = clean.replace(new RegExp(`${CYR_PRE}(вместе с|рядом с|вслед за)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.ins}`);
   clean = clean.replace(new RegExp(`${CYR_PRE}(навстречу|к)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.dat}`);
+  clean = clean.replace(new RegExp(`${CYR_PRE}(о|об|обо)\\s+${childName}${CYR_POST}`, 'gi'), declined.prep);
 
   if (gender === 'girl') {
     // Список мужских глаголов, ошибочно генерируемых моделями для девочек
@@ -190,9 +215,20 @@ export function fixGenderAgreements(text, arg2 = 'Герой', arg3 = 'boy') {
       ['побежал', 'побежала'],
       ['пошел', 'пошла'],
       ['пошёл', 'пошла'],
+      ['подошел', 'подошла'],
+      ['подошёл', 'подошла'],
+      ['пришел', 'пришла'],
+      ['пришёл', 'пришла'],
+      ['ушел', 'ушла'],
+      ['ушёл', 'ушла'],
+      ['зашел', 'зашла'],
+      ['зашёл', 'зашла'],
       ['увидел', 'увидела'],
+      ['услышал', 'услышала'],
       ['обрадовался', 'обрадовалась'],
       ['взял', 'взяла'],
+      ['поднял', 'подняла'],
+      ['опустил', 'опустила'],
       ['справился', 'справилась'],
       ['решил', 'решила'],
       ['доказал', 'доказала'],
@@ -202,13 +238,34 @@ export function fixGenderAgreements(text, arg2 = 'Герой', arg3 = 'boy') {
       ['воскликнул', 'воскликнула'],
       ['вздохнул', 'вздохнула'],
       ['посмотрел', 'посмотрела'],
-      ['услышал', 'услышала'],
+      ['взглянул', 'взглянула'],
       ['проснулся', 'проснулась'],
       ['заснул', 'заснула'],
       ['испугался', 'испугалась'],
       ['нашёл', 'нашла'],
       ['нашел', 'нашла'],
       ['заметил', 'заметила'],
+      ['подумал', 'подумала'],
+      ['сказал', 'сказала'],
+      ['ответил', 'ответила'],
+      ['спросил', 'спросила'],
+      ['засмеялся', 'засмеялась'],
+      ['прижал', 'прижала'],
+      ['обнял', 'обняла'],
+      ['погладил', 'погладила'],
+      ['понял', 'поняла'],
+      ['открыл', 'открыла'],
+      ['закрыл', 'закрыла'],
+      ['кивнул', 'кивнула'],
+      ['присел', 'присела'],
+      ['остановился', 'остановилась'],
+      ['поблагодарил', 'поблагодарила'],
+      ['догадался', 'догадалась'],
+      ['прикоснулся', 'прикоснулась'],
+      ['дотронулся', 'дотронулась'],
+      ['протянул', 'протянула'],
+      ['зевнул', 'зевнула'],
+      ['укутался', 'укуталась'],
     ];
 
     for (const [masc, fem] of verbReplacements) {

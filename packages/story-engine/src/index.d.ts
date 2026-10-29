@@ -149,6 +149,8 @@ export interface DeclinedName {
 }
 
 export function declineRussianName(name: string, gender?: 'boy' | 'girl' | string): DeclinedName;
+export function getOPreposition(word: string): 'об' | 'о';
+export function countWords(text: string): number;
 export function removeAgeFromText(text: string): string;
 export function fixGenderAgreements(text: string, childName?: string, gender?: 'boy' | 'girl' | string): string;
 

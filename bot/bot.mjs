@@ -17,8 +17,6 @@ import {
   buildScenePrompt,
   fallbackQuestions,
   declineRussianName,
-  removeAgeFromText,
-  fixGenderAgreements,
 } from '../packages/story-engine/src/index.mjs';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import localtunnel from 'localtunnel';
@@ -476,10 +474,10 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     const interest = params.interests?.[0] || 'волшебные звёзды';
     const wishes = params.customWishes ? ` Рядом был любимый спутник — ${params.customWishes}.` : '';
     const hair = params.appearance?.hairColor
-      ? `${params.appearance.hairLength || ''} ${params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
+      ? `${params.appearance.hairLength || ''} ${params.appearance.hairType || params.appearance.hairStructure || ''} ${params.appearance.hairColor} волосы`
       : 'аккуратные волосы';
-    const clothes = params.appearance?.clothingDescription
-      ? `${params.appearance.clothingDescription} (${params.appearance.clothingColor || 'любимого цвета'})`
+    const clothes = (params.appearance?.clothingItem || params.appearance?.clothingDescription)
+      ? `${params.appearance.clothingItem || params.appearance.clothingDescription} (${params.appearance.clothingColor || 'любимого цвета'})`
       : 'уютная одежда';
 
     const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';

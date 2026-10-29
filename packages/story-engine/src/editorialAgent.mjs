@@ -15,7 +15,7 @@
  * 7. Очистка от AI-канцеляризмов, клише и пугающих слов перед сном.
  */
 
-import { declineRussianName, removeAgeFromText, fixGenderAgreements } from './declension.mjs';
+import { declineRussianName, removeAgeFromText, fixGenderAgreements, countWords } from './declension.mjs';
 
 const CYR_PRE = '(?<![а-яёА-ЯЁ0-9a-zA-Z])';
 const CYR_POST = '(?![а-яёА-ЯЁ0-9a-zA-Z])';
@@ -714,7 +714,7 @@ export function runEditorialAgent(story, params = {}) {
   });
 
   // Шаг 5: Обновление метаданных и подсчёта слов
-  const sceneWords = edited.scenes.map((s) => (s.text.match(/[а-яёА-ЯЁa-zA-Z0-9-]+/gu) || []).length);
+  const sceneWords = edited.scenes.map((s) => countWords(s.text));
   const totalWords = sceneWords.reduce((sum, n) => sum + n, 0);
 
   edited.metrics = {

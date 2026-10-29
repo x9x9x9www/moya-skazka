@@ -9,25 +9,43 @@ test('Склонение женских имён на -а (Аэлита)', () =>
   assert.equal(d.dat, 'Аэлите');
   assert.equal(d.acc, 'Аэлиту');
   assert.equal(d.ins, 'Аэлитой');
+  assert.equal(d.prep, 'об Аэлите');
 });
 
 test('Склонение имён на -а с шипящей основой (Даша, Миша)', () => {
   const d = declineRussianName('Даша', 'girl');
   assert.equal(d.gen, 'Даши');
   assert.equal(d.dat, 'Даше');
+  assert.equal(d.prep, 'о Даше');
 
   const m = declineRussianName('Миша', 'boy');
   assert.equal(m.gen, 'Миши');
   assert.equal(m.dat, 'Мише');
   assert.equal(m.ins, 'Мишей');
+  assert.equal(m.prep, 'о Мише');
 });
 
-test('Склонение мужских имён на согласный (Марк, Лев)', () => {
+test('Склонение мужских имён на согласный (Марк, Лев, Иван)', () => {
   const d = declineRussianName('Марк', 'boy');
   assert.equal(d.nom, 'Марк');
   assert.equal(d.gen, 'Марка');
   assert.equal(d.dat, 'Марку');
   assert.equal(d.ins, 'Марком');
+  assert.equal(d.prep, 'о Марке');
+
+  const ivan = declineRussianName('Иван', 'boy');
+  assert.equal(ivan.prep, 'об Иване');
+
+  const oleg = declineRussianName('Олег', 'boy');
+  assert.equal(oleg.prep, 'об Олеге');
+});
+
+test('Склонение имён на -я и -ия (Настя, Мария)', () => {
+  const n = declineRussianName('Настя', 'girl');
+  assert.equal(n.prep, 'о Насте');
+
+  const m = declineRussianName('Мария', 'girl');
+  assert.equal(m.prep, 'о Марии');
 });
 
 test('Очистка текста от возраста в скобках', () => {
