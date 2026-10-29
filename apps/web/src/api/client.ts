@@ -239,48 +239,63 @@ class ApiClient {
   }
 
   // 12. Анализ фото ребёнка для автоподбора параметров внешности (без сохранения фото)
-  public async analyzeChildPhoto(imageBase64: string): Promise<{
+  public async analyzeChildPhoto(
+    imageBase64: string,
+    context?: { knownGender?: string; knownName?: string; knownAge?: number }
+  ): Promise<{
     status: 'ok' | 'fallback';
     analysis: {
       gender?: 'boy' | 'girl';
       estimatedAge?: number;
+      approxAge?: number;
       hairColor?: string;
       hairLength?: 'короткие' | 'длинные';
       hairStructure?: 'прямые' | 'кудрявые';
       hairType?: string;
       eyeColor?: string;
       skinTone?: string;
+      clothingItem?: string;
       clothingDescription?: string;
       clothingColor?: string;
       confidenceTip?: string;
       avatar_id?: string;
       distinctiveFeatures?: string;
+      hasGlasses?: boolean;
     };
   }> {
     try {
       const res: any = await this.request('/ai/analyze-photo', {
         method: 'POST',
-        body: JSON.stringify({ imageBase64 }),
+        body: JSON.stringify({
+          imageBase64,
+          knownGender: context?.knownGender,
+          knownName: context?.knownName,
+          knownAge: context?.knownAge,
+        }),
       });
       if (res && res.analysis) return res;
       return { status: 'ok', analysis: res };
     } catch (err: any) {
       console.warn('[ApiClient] Ошибка analyzeChildPhoto, возврат фоллбэка:', err.message);
+      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
+      const fbGender = isGirl ? 'girl' : 'boy';
       return {
         status: 'fallback',
         analysis: {
-          gender: 'boy',
-          estimatedAge: 4,
+          gender: fbGender,
+          estimatedAge: context?.knownAge || 4,
+          approxAge: context?.knownAge || 4,
           hairColor: 'русые',
-          hairLength: 'короткие',
+          hairLength: isGirl ? 'длинные' : 'короткие',
           hairStructure: 'прямые',
-          hairType: 'короткие',
+          hairType: isGirl ? 'длинные' : 'короткие',
           eyeColor: 'карие',
           skinTone: 'персиковая',
-          avatar_id: 'boy_brown',
-          clothingDescription: 'уютный свитер',
-          clothingColor: 'изумрудный',
-          confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+          avatar_id: `${fbGender}_brown`,
+          clothingItem: isGirl ? 'платьице' : 'уютный свитер',
+          clothingDescription: isGirl ? 'платьице' : 'уютный свитер',
+          clothingColor: isGirl ? 'нежно-розовый' : 'небесно-голубой',
+          confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их в один клик.',
         },
       };
     }
@@ -289,7 +304,8 @@ class ApiClient {
   // 13. Безопасный анализ фото ребенка для автосоздания персонажа (Zero-Storage Vision)
   public async analyzeCharacterPhoto(
     imageBase64: string,
-    mimeType: string = 'image/jpeg'
+    mimeType: string = 'image/jpeg',
+    context?: { knownGender?: string; knownName?: string; knownAge?: number }
   ): Promise<{
     gender?: 'boy' | 'girl';
     approxAge?: number;
@@ -298,25 +314,38 @@ class ApiClient {
     eyeColor?: 'карие' | 'голубые' | 'зелёные' | 'серые';
     skinTone?: 'светлая' | 'персиковая' | 'смуглая';
     distinctiveFeatures?: string;
+    hasGlasses?: boolean;
+    clothingItem?: string;
+    clothingColor?: string;
     avatar_id?: string;
     error?: 'FACE_NOT_DETECTED' | string;
     message?: string;
   }> {
+    const payload = {
+      imageBase64,
+      mimeType,
+      knownGender: context?.knownGender,
+      knownName: context?.knownName,
+      knownAge: context?.knownAge,
+    };
     try {
       // 1. Пробуем маршрут /character/analyze-photo
       const res: any = await this.request('/character/analyze-photo', {
         method: 'POST',
-        body: JSON.stringify({ imageBase64, mimeType }),
+        body: JSON.stringify(payload),
       });
       const data = res?.analysis || res;
       return {
-        gender: data.gender || 'boy',
-        approxAge: data.approxAge || data.estimatedAge || 4,
+        gender: data.gender || context?.knownGender || 'boy',
+        approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
         hairColor: data.hairColor || 'русые',
         hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
         eyeColor: data.eyeColor || 'карие',
         skinTone: data.skinTone || 'персиковая',
         distinctiveFeatures: data.distinctiveFeatures || '',
+        hasGlasses: data.hasGlasses || false,
+        clothingItem: data.clothingItem,
+        clothingColor: data.clothingColor,
         avatar_id: data.avatar_id,
         error: data.error,
         message: data.message,
@@ -326,30 +355,38 @@ class ApiClient {
       try {
         const alt: any = await this.request('/ai/analyze-photo', {
           method: 'POST',
-          body: JSON.stringify({ imageBase64, mimeType }),
+          body: JSON.stringify(payload),
         });
         const data = alt?.analysis || alt;
         return {
-          gender: data.gender || 'boy',
-          approxAge: data.approxAge || data.estimatedAge || 4,
+          gender: data.gender || context?.knownGender || 'boy',
+          approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
           hairColor: data.hairColor || 'русые',
           hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
           eyeColor: data.eyeColor || 'карие',
           skinTone: data.skinTone || 'персиковая',
           distinctiveFeatures: data.distinctiveFeatures || '',
+          hasGlasses: data.hasGlasses || false,
+          clothingItem: data.clothingItem,
+          clothingColor: data.clothingColor,
           avatar_id: data.avatar_id,
+          error: data.error,
+          message: data.message,
         };
-      } catch (innerErr: any) {
-        console.warn('[ApiClient] Фоллбэк автоподбора персонажа при недоступности сети:', innerErr.message);
+      } catch (err2: any) {
+        console.warn('[ApiClient] Ошибка analyzeCharacterPhoto:', err2.message);
+        const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
+        const fbGender = isGirl ? 'girl' : 'boy';
         return {
-          gender: 'boy',
-          approxAge: 4,
+          gender: fbGender,
+          approxAge: context?.knownAge || 4,
           hairColor: 'русые',
-          hairType: 'короткие',
+          hairType: isGirl ? 'длинные' : 'короткие',
           eyeColor: 'карие',
           skinTone: 'персиковая',
-          avatar_id: 'boy_brown',
-          distinctiveFeatures: 'милая открытая улыбка',
+          distinctiveFeatures: '',
+          hasGlasses: false,
+          avatar_id: `${fbGender}_brown`,
         };
       }
     }
@@ -359,7 +396,8 @@ class ApiClient {
   public async generateCharacterAvatar(
     imageBase64: string,
     outfit?: string,
-    mimeType: string = 'image/jpeg'
+    mimeType: string = 'image/jpeg',
+    context?: { knownGender?: string; knownName?: string; knownAge?: number }
   ): Promise<{
     status: 'ok' | 'fallback';
     avatarUrl: string;
@@ -372,12 +410,22 @@ class ApiClient {
       eyeColor?: string;
       skinTone?: string;
       distinctiveFeatures?: string;
+      clothingItem?: string;
+      clothingColor?: string;
+      hasGlasses?: boolean;
     };
   }> {
     try {
       const res: any = await this.request('/character/generate-avatar', {
         method: 'POST',
-        body: JSON.stringify({ imageBase64, outfit, mimeType }),
+        body: JSON.stringify({
+          imageBase64,
+          outfit,
+          mimeType,
+          knownGender: context?.knownGender,
+          knownName: context?.knownName,
+          knownAge: context?.knownAge,
+        }),
       });
       if (res && res.avatarUrl) {
         return {
@@ -390,16 +438,19 @@ class ApiClient {
       throw new Error('Ответ сервера не содержит avatarUrl');
     } catch (err: any) {
       console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка, fallback к автоанализу:', err.message);
-      // Fallback: анализируем черты через Vision и подбираем локальный 3D аватар
-      const visionRes = await this.analyzeCharacterPhoto(imageBase64, mimeType);
+      // Fallback: анализируем черты через Vision с учётом контекста
+      const visionRes = await this.analyzeCharacterPhoto(imageBase64, mimeType, context);
+      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
       const traits = {
-        gender: visionRes.gender || 'boy',
-        approxAge: visionRes.approxAge || 4,
+        gender: visionRes.gender || (isGirl ? 'girl' : 'boy'),
+        approxAge: visionRes.approxAge || context?.knownAge || 4,
         hairColor: visionRes.hairColor || 'русые',
-        hairType: visionRes.hairType || 'кудрявые',
-        eyeColor: visionRes.eyeColor || 'голубые',
-        skinTone: visionRes.skinTone || 'светлая',
-        distinctiveFeatures: visionRes.distinctiveFeatures || '',
+        hairType: visionRes.hairType || (isGirl ? 'длинные' : 'короткие'),
+        eyeColor: visionRes.eyeColor || 'карие',
+        skinTone: visionRes.skinTone || 'персиковая',
+        distinctiveFeatures: visionRes.distinctiveFeatures || (visionRes.hasGlasses ? 'очки' : ''),
+        clothingItem: visionRes.clothingItem,
+        clothingColor: visionRes.clothingColor,
       };
       const avatarId = resolveChildAvatarKey({
         gender: traits.gender,

@@ -327,20 +327,28 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         img.src = rawBase64;
       });
 
-      // Запуск серверного конвейера: Vision анализ + Zero-Storage + 3D Pixar аватар
+      // Запуск серверного конвейера: быстрый Vision анализ + подбор 3D Pixar аватара
       const res = await api.generateCharacterAvatar(
         optimizedBase64,
         appearance.clothingItem,
-        'image/jpeg'
+        'image/jpeg',
+        {
+          knownGender: data.gender,
+          knownName: data.childName,
+          knownAge: data.age,
+        }
       );
 
       const traits = res.traits || {};
-      const targetGender = (traits.gender as 'boy' | 'girl') || data.gender || 'boy';
+      const targetGender = (data.gender as 'boy' | 'girl') || (traits.gender as 'boy' | 'girl') || 'boy';
       const targetHair = traits.hairColor || appearance.hairColor || 'русые';
       const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
       const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';
       const targetEye = traits.eyeColor || appearance.eyeColor || 'голубые';
       const targetFeatures = traits.distinctiveFeatures || appearance.distinctiveFeatures || '';
+      const targetClothingItem = traits.clothingItem || appearance.clothingItem || (targetGender === 'girl' ? 'платьице' : 'уютный свитер');
+      const targetClothingColor = traits.clothingColor || appearance.clothingColor || (targetGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой');
+
       const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
         gender: targetGender,
         hairColor: targetHair,
@@ -357,6 +365,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         eyeColor: targetEye,
         skinTone: targetSkin,
         distinctiveFeatures: targetFeatures,
+        clothingItem: targetClothingItem,
+        clothingColor: targetClothingColor,
       };
 
       const patch: Partial<WizardHeroData> = {

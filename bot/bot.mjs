@@ -154,7 +154,9 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   }
 }
 
-async function callWellflowDirect(messages, label) {
+async function callWellflowDirect(messages, label, options = {}) {
+  const maxTokens = options.max_tokens || 4500;
+  const timeoutMs = options.timeoutMs || 150000;
   let res;
   try {
     res = await fetchWithTimeout(
@@ -169,10 +171,10 @@ async function callWellflowDirect(messages, label) {
           model: WELLFLOW_TEXT_MODEL,
           messages,
           response_format: { type: 'json_object' },
-          max_tokens: 4500,
+          max_tokens: maxTokens,
         }),
       },
-      150000
+      timeoutMs
     );
   } catch (error) {
     const cause = error.cause ? ` (${error.cause.code || error.cause.message || error.cause})` : '';
@@ -190,8 +192,8 @@ async function callWellflowDirect(messages, label) {
   return content;
 }
 
-async function callTextChat(messages, label) {
-  return await callWellflowDirect(messages, label);
+async function callTextChat(messages, label, options = {}) {
+  return await callWellflowDirect(messages, label, options);
 }
 
 const callWellflowChat = callTextChat;
@@ -1147,11 +1149,15 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     req.method === 'POST';
 
   if (isAnalyzePhoto) {
+    let parsedBody = {};
     try {
       let bodyStr = '';
       for await (const chunk of req) bodyStr += chunk;
-      const parsedBody = JSON.parse(bodyStr || '{}');
+      parsedBody = JSON.parse(bodyStr || '{}');
       const imageBase64 = parsedBody.imageBase64 || parsedBody.image;
+      const knownGender = parsedBody.knownGender || parsedBody.gender || null;
+      const knownName = parsedBody.knownName || parsedBody.name || null;
+      const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
 
       if (!imageBase64) {
         res.writeHead(400, {
@@ -1164,20 +1170,23 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       if (AI_MOCK_MODE) {
         console.log('[PhotoVision] ⚡️ Режим тестирования (AI_MOCK_MODE): мгновенный возврат тестового профиля');
+        const mockGender = knownGender || 'boy';
         const mockAnalysis = {
-          gender: 'boy',
-          approxAge: 4,
-          estimatedAge: 4,
+          gender: mockGender,
+          approxAge: knownAge || 4,
+          estimatedAge: knownAge || 4,
           hairColor: 'русые',
-          hairLength: 'короткие',
+          hairLength: mockGender === 'girl' ? 'длинные' : 'короткие',
           hairStructure: 'прямые',
-          hairType: 'короткие',
+          hairType: mockGender === 'girl' ? 'длинные' : 'короткие',
           eyeColor: 'карие',
           skinTone: 'персиковая',
-          clothingDescription: 'уютная футболка',
-          clothingColor: 'небесно-голубой',
+          clothingItem: mockGender === 'girl' ? 'платьице' : 'уютный свитер',
+          clothingDescription: mockGender === 'girl' ? 'платьице' : 'уютный свитер',
+          clothingColor: mockGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой',
           distinctiveFeatures: '',
-          avatar_id: 'boy_brown',
+          hasGlasses: false,
+          avatar_id: `${mockGender}_brown`,
           confidenceTip: 'Внешность малыша определена (3D Pixar аватар подобран)!',
         };
         res.writeHead(200, {
@@ -1194,35 +1203,43 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         return;
       }
 
-      const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
-Внимательно посмотри на фото ребёнка и определи его визуальные черты для мультяшного 3D Pixar персонажа.
-Выбирай строго из указанных вариантов:
-- gender: "boy" или "girl"
-- estimatedAge: число от 2 до 6 (приблизительный возраст)
+      const genderHint = knownGender
+        ? `Пол ребёнка уже точно известен: ${knownGender === 'girl' ? 'девочка' : 'мальчик'}.`
+        : (knownName && (knownName.endsWith('а') || knownName.endsWith('я'))
+          ? `Имя ребёнка: ${knownName} (девочка).`
+          : '');
+
+      const visionPrompt = `Ты детский фото-стилист для 3D Pixar анимации. Внимательно взгляни на фото ребёнка и определи его визуальные черты. ${genderHint}
+
+Выбери строго из разрешённых вариантов:
+- gender: ${knownGender ? `"${knownGender}"` : `"boy" или "girl"`}
+- estimatedAge: число от 2 до 6
 - hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
 - hairLength: строго "короткие" или "длинные"
 - hairStructure: строго "прямые" или "кудрявые"
 - eyeColor: строго один из: "карие" | "голубые" | "зелёные" | "серые"
 - skinTone: строго один из: "светлая" | "персиковая" | "смуглая"
-- clothingDescription: короткое приятное описание одежды на фото (например: "жёлтая футболка", "синяя толстовка", "розовое платьице", "светлый свитер")
-- clothingColor: основной цвет одежды ("солнечно-жёлтый", "небесно-голубой", "нежно-розовый", "изумрудный", "терракотовый")
-- confidenceTip: тёплое доброе сообщение родителю о том, что удалось определить (1 короткое предложение на русском)
+- hasGlasses: true если ребёнок в очках, иначе false
+- clothingItem: строго один из: "уютный свитер" | "платьице" | "комбинезончик" | "толстовка" | "дождевик и сапожки" | "пижамка со звёздами"
+- clothingColor: строго один из: "солнечно-жёлтый" | "небесно-голубой" | "изумрудный" | "нежно-розовый" | "терракотовый"
+- confidenceTip: короткое тёплое сообщение родителю на русском (1 предложение)
 
-Ответь ИСКЛЮЧИТЕЛЬНО валидным JSON-объектом:
+ОТВЕТЬ ТОЛЬКО ЧИСТЫМ JSON БЕЗ РАССУЖДЕНИЙ:
 {
-  "gender": "boy",
+  "gender": "${knownGender || 'boy'}",
   "estimatedAge": 4,
-  "hairColor": "светлые",
+  "hairColor": "русые",
   "hairLength": "короткие",
   "hairStructure": "прямые",
-  "eyeColor": "голубые",
-  "skinTone": "светлая",
-  "clothingDescription": "синяя футболка",
+  "eyeColor": "карие",
+  "skinTone": "персиковая",
+  "hasGlasses": false,
+  "clothingItem": "уютный свитер",
   "clothingColor": "небесно-голубой",
-  "confidenceTip": "Определили светлые волосы, голубые глазки и синюю футболку."
+  "confidenceTip": "Определили русые волосы, карие глазки и уютную одежду."
 }`;
 
-      const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+      let dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
       const messages = [
         {
           role: 'user',
@@ -1233,7 +1250,8 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         },
       ];
 
-      const raw = await callWellflowChat(messages, '[PhotoVision]');
+      // Быстрый вызов Vision с лимитом токенов для скорости (до 2-4 секунд)
+      const raw = await callWellflowChat(messages, '[PhotoVision]', { max_tokens: 280, timeoutMs: 30000 });
       let parsed = {};
       try {
         parsed = JSON.parse(raw);
@@ -1261,12 +1279,45 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
           : 'прямые';
       const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'карие';
       const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'персиковая';
-      const gender = parsed.gender === 'girl' ? 'girl' : 'boy';
+      const gender = knownGender || (parsed.gender === 'girl' ? 'girl' : 'boy');
       const estimatedAge =
-        Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6 ? Number(parsed.estimatedAge) : 4;
+        Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6
+          ? Number(parsed.estimatedAge)
+          : (knownAge || 4);
 
-      const avatarId = resolveChildAvatarKey({ gender, ...parsed });
+      const hasGlasses = Boolean(
+        parsed.hasGlasses === true ||
+        String(parsed.distinctiveFeatures || '').toLowerCase().includes('очк')
+      );
+      const distinctiveFeatures = hasGlasses ? 'очки' : (parsed.distinctiveFeatures || '');
+
+      // Привязка одежды к каталогу интерфейса
+      const validItems = ['уютный свитер', 'платьице', 'комбинезончик', 'толстовка', 'дождевик и сапожки', 'пижамка со звёздами'];
+      let clothingItem = validItems.find((v) => v === parsed.clothingItem);
+      if (!clothingItem) {
+        const desc = String(parsed.clothingDescription || parsed.clothingItem || '').toLowerCase();
+        if (desc.includes('плать')) clothingItem = 'платьице';
+        else if (desc.includes('дождевик') || desc.includes('сапожк')) clothingItem = 'дождевик и сапожки';
+        else if (desc.includes('комбинезон')) clothingItem = 'комбинезончик';
+        else if (desc.includes('пижам')) clothingItem = 'пижамка со звёздами';
+        else if (desc.includes('толстовк') || desc.includes('худи')) clothingItem = 'толстовка';
+        else clothingItem = gender === 'girl' ? 'платьице' : 'уютный свитер';
+      }
+
+      const validColors = ['солнечно-жёлтый', 'небесно-голубой', 'изумрудный', 'нежно-розовый', 'терракотовый'];
+      let clothingColor = validColors.find((c) => c === parsed.clothingColor);
+      if (!clothingColor) {
+        const rawCol = String(parsed.clothingColor || '').toLowerCase();
+        if (rawCol.includes('жёлт') || rawCol.includes('желт')) clothingColor = 'солнечно-жёлтый';
+        else if (rawCol.includes('голуб') || rawCol.includes('син')) clothingColor = 'небесно-голубой';
+        else if (rawCol.includes('зелён') || rawCol.includes('изумруд')) clothingColor = 'изумрудный';
+        else if (rawCol.includes('розов') || rawCol.includes('красн')) clothingColor = 'нежно-розовый';
+        else clothingColor = gender === 'girl' ? 'нежно-розовый' : 'небесно-голубой';
+      }
+
+      const avatarId = resolveChildAvatarKey({ gender, hairColor, skinTone, distinctiveFeatures });
       const hairType = hairStructure === 'кудрявые' ? 'кудрявые' : (hairLength === 'длинные' ? 'длинные' : 'короткие');
+
       const result = {
         gender,
         approxAge: estimatedAge,
@@ -1277,11 +1328,13 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         hairType,
         eyeColor,
         skinTone,
-        distinctiveFeatures: parsed.distinctiveFeatures || '',
+        distinctiveFeatures,
+        hasGlasses,
         avatar_id: avatarId,
-        clothingDescription: parsed.clothingDescription || 'уютная футболка',
-        clothingColor: parsed.clothingColor || 'небесно-голубой',
-        confidenceTip: parsed.confidenceTip || 'Внешность малыша определена!',
+        clothingItem,
+        clothingDescription: clothingItem,
+        clothingColor,
+        confidenceTip: parsed.confidenceTip || `Определили ${hairColor} ${hairType} волосы, ${eyeColor} глазки и ${clothingColor} одежду!`,
       };
 
       res.writeHead(200, {
@@ -1290,22 +1343,30 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       });
       res.end(JSON.stringify({ status: 'ok', analysis: result, ...result }));
     } catch (err) {
-      console.warn('[PhotoVision] Ошибка анализа фото:', err.message);
+      console.warn('[PhotoVision] ⚠️ Ошибка анализа фото:', err.message);
+      const knownGender = parsedBody.knownGender || parsedBody.gender || null;
+      const knownName = parsedBody.knownName || parsedBody.name || null;
+      const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
+      const fbGender = knownGender || (knownName && (knownName.endsWith('а') || knownName.endsWith('я')) ? 'girl' : 'boy');
+      const fbAge = knownAge && knownAge >= 2 && knownAge <= 6 ? knownAge : 4;
+
       const fallbackResult = {
-        gender: 'boy',
-        approxAge: 4,
-        estimatedAge: 4,
+        gender: fbGender,
+        approxAge: fbAge,
+        estimatedAge: fbAge,
         hairColor: 'русые',
-        hairLength: 'короткие',
+        hairLength: fbGender === 'girl' ? 'длинные' : 'короткие',
         hairStructure: 'прямые',
-        hairType: 'короткие',
+        hairType: fbGender === 'girl' ? 'длинные' : 'короткие',
         eyeColor: 'карие',
         skinTone: 'персиковая',
         distinctiveFeatures: '',
-        avatar_id: 'boy_brown',
-        clothingDescription: 'уютный свитер',
-        clothingColor: 'изумрудный',
-        confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их вручную.',
+        hasGlasses: false,
+        avatar_id: `${fbGender}_brown`,
+        clothingItem: fbGender === 'girl' ? 'платьице' : 'уютный свитер',
+        clothingDescription: fbGender === 'girl' ? 'платьице' : 'уютный свитер',
+        clothingColor: fbGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой',
+        confidenceTip: 'Установили базовые параметры внешности — вы можете скорректировать их в один клик.',
       };
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',

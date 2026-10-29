@@ -273,8 +273,12 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
       setPhotoPreview(optimizedBase64);
 
-      // Отправляем в AI Vision API
-      const res = await api.analyzeChildPhoto(optimizedBase64);
+      // Отправляем в быстрый AI Vision API с передачей известного контекста
+      const res = await api.analyzeChildPhoto(optimizedBase64, {
+        knownGender: gender,
+        knownName: name.trim(),
+        knownAge: age,
+      });
       if (res && res.analysis) {
         const a: any = res.analysis;
         if (a.hairColor) setHairColor(a.hairColor);
@@ -282,8 +286,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
         if (a.hairStructure) setHairStructure(a.hairStructure);
         if (a.eyeColor) setEyeColor(a.eyeColor);
         if (a.skinTone) setSkinTone(a.skinTone);
-        if (a.gender) setGender(a.gender);
-        if (a.distinctiveFeatures) setDistinctiveFeatures(a.distinctiveFeatures);
+        // Не перезаписываем пол, если родитель уже явно выбрал девочку/мальчика
+        if (a.gender && !gender) setGender(a.gender);
+        if (a.distinctiveFeatures) {
+          setDistinctiveFeatures(a.distinctiveFeatures);
+        } else if (a.hasGlasses) {
+          setDistinctiveFeatures('милые круглые очки');
+        }
         if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
           setAge(Number(a.estimatedAge));
         }

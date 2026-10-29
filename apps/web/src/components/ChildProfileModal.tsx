@@ -86,16 +86,24 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
           setIsAnalyzingPhoto(true);
           try {
-            const res = await api.analyzeChildPhoto(compressedDataUrl);
+            const res = await api.analyzeChildPhoto(compressedDataUrl, {
+              knownGender: gender,
+              knownName: name,
+              knownAge: age,
+            });
             if (res && res.analysis) {
               const a = res.analysis;
-              if (a.gender === 'boy' || a.gender === 'girl') setGender(a.gender);
+              if (a.gender && !gender) setGender(a.gender);
               if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
                 setAge(Number(a.estimatedAge));
               }
               if (a.hairColor) setHairColor(a.hairColor);
               if (a.skinTone) setSkinTone(a.skinTone);
-              if (a.distinctiveFeatures) setDistinctiveFeatures(a.distinctiveFeatures);
+              if (a.distinctiveFeatures) {
+                setDistinctiveFeatures(a.distinctiveFeatures);
+              } else if (a.hasGlasses) {
+                setDistinctiveFeatures('милые круглые очки');
+              }
               if (a.hairLength || a.hairStructure) {
                 if (a.hairStructure === 'кудрявые') setHairType('кудрявые');
                 else if (a.hairLength === 'длинные') setHairType('длинные');
