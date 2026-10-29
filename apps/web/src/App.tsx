@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl } from './services/storyGenerator';
+import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl } from './services/storyGenerator';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -634,13 +634,63 @@ export const App: React.FC = () => {
       }, 350);
     } catch (err: any) {
       clearInterval(countdownInterval);
-      console.error('[App] ❌ Ошибка генерации сказки:', err);
-      setIsCreatingStory(false);
-      setGenerationError(
-        err?.message ||
-          'Не удалось связаться со сказочной мастерской нейросетей. Пожалуйста, убедитесь, что бот активен, и повторите попытку.'
-      );
-      haptic.medium();
+      console.warn('[App] ⚠️ Ошибка связи с мастерской нейросетей, создаём сказку через локальный Story Engine:', err);
+      try {
+        const fallbackBook = createMockStory({
+          childName: wizardData.childName,
+          age: wizardData.age,
+          gender: wizardData.gender,
+          theme: wizardData.theme || 'Дружба',
+          interests: wizardData.interests,
+          personality: details.personality,
+          customWishes: details.customWishes,
+          includeQuestions: details.includeQuestions,
+          appearance: wizardData.appearance,
+        });
+
+        const newSummary: BookSummaryDTO = {
+          id: fallbackBook.id,
+          child_id: activeChildId || 'default',
+          child_name: wizardData.childName,
+          title: fallbackBook.title,
+          status: 'ILLUSTRATED',
+          format: 'ILLUSTRATED',
+          cover_url: resolveMediaUrl(fallbackBook.cover_url || fallbackBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || fallbackBook.title),
+          created_at: new Date().toISOString(),
+        };
+
+        setBooks((prev) => {
+          const updated = [newSummary, ...prev];
+          try {
+            localStorage.setItem('ms_books', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        try {
+          localStorage.setItem(`ms_story_${fallbackBook.id}`, JSON.stringify(fallbackBook));
+        } catch {}
+
+        if (canClaimFree) {
+          setCanClaimFree(false);
+          try {
+            localStorage.setItem('ms_free_claimed', 'true');
+          } catch {}
+        } else {
+          setBalance((prev) => Math.max(0, prev - 1));
+        }
+
+        setTimeout(() => {
+          setIsCreatingStory(false);
+          haptic.success();
+          openReader(fallbackBook);
+        }, 350);
+      } catch (fallbackErr) {
+        console.error('[App] ❌ Критическая ошибка:', fallbackErr);
+        setIsCreatingStory(false);
+        setGenerationError('Произошла непредвиденная ошибка при создании книги. Пожалуйста, повторите попытку.');
+        haptic.medium();
+      }
     }
   };
 

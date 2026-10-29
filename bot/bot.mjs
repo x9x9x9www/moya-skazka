@@ -18,7 +18,7 @@ import {
   fallbackQuestions,
   declineRussianName,
 } from '../packages/story-engine/src/index.mjs';
-import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import { Agent, ProxyAgent, setGlobalDispatcher } from 'undici';
 import localtunnel from 'localtunnel';
 
 // Автоматическая загрузка переменных из .env
@@ -1929,6 +1929,12 @@ async function callTelegram(method, params = {}) {
     }
     const causeMsg = err.cause?.message || err.cause?.code || '';
     const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
+    if (details.includes('ECONNREFUSED') || details.includes('connect error') || details.includes('Client network socket disconnected')) {
+      console.warn('[Proxy] ⚠️ Сбой соединения через прокси, переключаемся на прямое соединение...');
+      try {
+        setGlobalDispatcher(new Agent({ connect: { timeout: 15000 } }));
+      } catch {}
+    }
     console.error(`[Bot] Ошибка вызова ${method}:`, details);
     return null;
   }
