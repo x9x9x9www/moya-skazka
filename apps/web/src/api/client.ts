@@ -25,6 +25,20 @@ export function getApiBaseUrl(): string {
   return '';
 }
 
+export function createTimeoutSignal(ms = 15000): AbortSignal | undefined {
+  if (typeof AbortSignal !== 'undefined' && typeof (AbortSignal as any).timeout === 'function') {
+    try {
+      return (AbortSignal as any).timeout(ms);
+    } catch {}
+  }
+  if (typeof AbortController !== 'undefined') {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new Error(`Timeout of ${ms}ms exceeded`)), ms);
+    return controller.signal;
+  }
+  return undefined;
+}
+
 class ApiClient {
   private token: string | null = localStorage.getItem('auth_token');
 
@@ -266,6 +280,7 @@ class ApiClient {
     try {
       const res: any = await this.request('/ai/analyze-photo', {
         method: 'POST',
+        signal: createTimeoutSignal(15000),
         body: JSON.stringify({
           imageBase64,
           knownGender: context?.knownGender,
@@ -332,6 +347,7 @@ class ApiClient {
       // 1. Пробуем маршрут /character/analyze-photo
       const res: any = await this.request('/character/analyze-photo', {
         method: 'POST',
+        signal: createTimeoutSignal(15000),
         body: JSON.stringify(payload),
       });
       const data = res?.analysis || res;
@@ -351,44 +367,47 @@ class ApiClient {
         message: data.message,
       };
     } catch (err: any) {
-      // 2. Если первый маршрут дал сбой (например, в мосте зарегистрирован только /ai/analyze-photo)
-      try {
-        const alt: any = await this.request('/ai/analyze-photo', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        const data = alt?.analysis || alt;
-        return {
-          gender: data.gender || context?.knownGender || 'boy',
-          approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
-          hairColor: data.hairColor || 'русые',
-          hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
-          eyeColor: data.eyeColor || 'карие',
-          skinTone: data.skinTone || 'персиковая',
-          distinctiveFeatures: data.distinctiveFeatures || '',
-          hasGlasses: data.hasGlasses || false,
-          clothingItem: data.clothingItem,
-          clothingColor: data.clothingColor,
-          avatar_id: data.avatar_id,
-          error: data.error,
-          message: data.message,
-        };
-      } catch (err2: any) {
-        console.warn('[ApiClient] Ошибка analyzeCharacterPhoto:', err2.message);
-        const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
-        const fbGender = isGirl ? 'girl' : 'boy';
-        return {
-          gender: fbGender,
-          approxAge: context?.knownAge || 4,
-          hairColor: 'русые',
-          hairType: isGirl ? 'длинные' : 'короткие',
-          eyeColor: 'карие',
-          skinTone: 'персиковая',
-          distinctiveFeatures: '',
-          hasGlasses: false,
-          avatar_id: `${fbGender}_brown`,
-        };
+      const isTimeout = err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('aborted');
+      if (!isTimeout) {
+        // 2. Если первый маршрут дал 404 (например, в мосте зарегистрирован только /ai/analyze-photo)
+        try {
+          const alt: any = await this.request('/ai/analyze-photo', {
+            method: 'POST',
+            signal: createTimeoutSignal(15000),
+            body: JSON.stringify(payload),
+          });
+          const data = alt?.analysis || alt;
+          return {
+            gender: data.gender || context?.knownGender || 'boy',
+            approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
+            hairColor: data.hairColor || 'русые',
+            hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
+            eyeColor: data.eyeColor || 'карие',
+            skinTone: data.skinTone || 'персиковая',
+            distinctiveFeatures: data.distinctiveFeatures || '',
+            hasGlasses: data.hasGlasses || false,
+            clothingItem: data.clothingItem,
+            clothingColor: data.clothingColor,
+            avatar_id: data.avatar_id,
+            error: data.error,
+            message: data.message,
+          };
+        } catch {}
       }
+      console.warn('[ApiClient] analyzeCharacterPhoto не ответил вовремя, мгновенный фоллбэк:', err.message);
+      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
+      const fbGender = isGirl ? 'girl' : 'boy';
+      return {
+        gender: fbGender,
+        approxAge: context?.knownAge || 4,
+        hairColor: 'русые',
+        hairType: isGirl ? 'длинные' : 'короткие',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        distinctiveFeatures: '',
+        hasGlasses: false,
+        avatar_id: `${fbGender}_brown`,
+      };
     }
   }
 
@@ -418,6 +437,7 @@ class ApiClient {
     try {
       const res: any = await this.request('/character/generate-avatar', {
         method: 'POST',
+        signal: createTimeoutSignal(15000),
         body: JSON.stringify({
           imageBase64,
           outfit,
@@ -437,27 +457,21 @@ class ApiClient {
       }
       throw new Error('Ответ сервера не содержит avatarUrl');
     } catch (err: any) {
-      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка, fallback к автоанализу:', err.message);
-      // Fallback: анализируем черты через Vision с учётом контекста
-      const visionRes = await this.analyzeCharacterPhoto(imageBase64, mimeType, context);
+      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, мгновенный подбор 3D пресета:', err.message);
       const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
+      const fbGender: 'boy' | 'girl' = isGirl ? 'girl' : 'boy';
       const traits = {
-        gender: visionRes.gender || (isGirl ? 'girl' : 'boy'),
-        approxAge: visionRes.approxAge || context?.knownAge || 4,
-        hairColor: visionRes.hairColor || 'русые',
-        hairType: visionRes.hairType || (isGirl ? 'длинные' : 'короткие'),
-        eyeColor: visionRes.eyeColor || 'карие',
-        skinTone: visionRes.skinTone || 'персиковая',
-        distinctiveFeatures: visionRes.distinctiveFeatures || (visionRes.hasGlasses ? 'очки' : ''),
-        clothingItem: visionRes.clothingItem,
-        clothingColor: visionRes.clothingColor,
+        gender: fbGender,
+        approxAge: context?.knownAge || 4,
+        hairColor: 'русые',
+        hairType: isGirl ? 'длинные' : 'короткие',
+        eyeColor: 'карие',
+        skinTone: 'персиковая',
+        distinctiveFeatures: '',
+        clothingItem: isGirl ? 'платьице' : 'уютный свитер',
+        clothingColor: isGirl ? 'нежно-розовый' : 'небесно-голубой',
       };
-      const avatarId = resolveChildAvatarKey({
-        gender: traits.gender,
-        hairColor: traits.hairColor,
-        skinTone: traits.skinTone,
-        distinctiveFeatures: traits.distinctiveFeatures,
-      });
+      const avatarId = resolveChildAvatarKey(traits);
       return {
         status: 'fallback',
         avatarUrl: resolveChildAvatar({ avatar_id: avatarId }),

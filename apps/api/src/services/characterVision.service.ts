@@ -360,6 +360,21 @@ export interface GenerateCharacterAvatarResult {
   };
 }
 
+const ALL_AVATAR_KEYS = [
+  'boy_blonde',
+  'boy_brown',
+  'boy_dark',
+  'boy_ginger',
+  'boy_glasses',
+  'boy_tan',
+  'girl_blonde',
+  'girl_brown',
+  'girl_dark',
+  'girl_ginger',
+  'girl_glasses',
+  'girl_tan',
+];
+
 export function resolveChildAvatarKey(params: {
   gender?: string;
   hairColor?: string;
@@ -367,11 +382,23 @@ export function resolveChildAvatarKey(params: {
   distinctiveFeatures?: string;
   avatar_id?: string;
 }): string {
-  const gender = params.gender === 'girl' ? 'girl' : 'boy';
+  const avatarId = (params.avatar_id || '').toLowerCase().trim();
+  if (ALL_AVATAR_KEYS.includes(avatarId)) {
+    return avatarId;
+  }
+
+  const gender =
+    params.gender === 'girl'
+      ? 'girl'
+      : params.gender === 'boy'
+      ? 'boy'
+      : avatarId.startsWith('girl_') || avatarId.includes('girl')
+      ? 'girl'
+      : 'boy';
+
   const hair = (params.hairColor || '').toLowerCase();
   const skin = (params.skinTone || '').toLowerCase();
   const features = (params.distinctiveFeatures || '').toLowerCase();
-  const avatarId = (params.avatar_id || '').toLowerCase();
 
   if (features.includes('очк') || avatarId.includes('glasses')) {
     return `${gender}_glasses`;
@@ -379,13 +406,19 @@ export function resolveChildAvatarKey(params: {
   if (skin.includes('смугл') || avatarId.includes('tan')) {
     return `${gender}_tan`;
   }
-  if (hair.includes('светл') || hair.includes('блонд')) {
+  if (hair.includes('светл') || hair.includes('блонд') || avatarId.includes('blonde')) {
     return `${gender}_blonde`;
   }
-  if (hair.includes('рыж')) {
+  if (hair.includes('рыж') || avatarId.includes('ginger')) {
     return `${gender}_ginger`;
   }
-  if (hair.includes('тёмн') || hair.includes('темн') || hair.includes('черн') || hair.includes('брюнет')) {
+  if (
+    hair.includes('тёмн') ||
+    hair.includes('темн') ||
+    hair.includes('черн') ||
+    hair.includes('брюнет') ||
+    avatarId.includes('dark')
+  ) {
     return `${gender}_dark`;
   }
   return `${gender}_brown`;

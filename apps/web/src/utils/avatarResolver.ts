@@ -32,11 +32,26 @@ export const ALL_AVATAR_KEYS = [
 export function resolveChildAvatarKey(params?: ChildAvatarParams | null): string {
   if (!params) return 'boy_brown';
   const appearance = params.appearance || params;
-  const gender = (params.gender || appearance.gender) === 'girl' ? 'girl' : 'boy';
+  const avatarId = (appearance.avatar_id || params.avatar_id || '').toLowerCase().trim();
+
+  // 0. Если передан точный канонический ID из 12 аватаров, возвращаем его сразу
+  if ((ALL_AVATAR_KEYS as readonly string[]).includes(avatarId)) {
+    return avatarId;
+  }
+
+  const rawGender = params.gender || appearance.gender;
+  const gender =
+    rawGender === 'girl'
+      ? 'girl'
+      : rawGender === 'boy'
+      ? 'boy'
+      : avatarId.startsWith('girl_') || avatarId.includes('girl')
+      ? 'girl'
+      : 'boy';
+
   const hair = (appearance.hairColor || params.hairColor || '').toLowerCase();
   const skin = (appearance.skinTone || params.skinTone || '').toLowerCase();
   const features = (appearance.distinctiveFeatures || params.distinctiveFeatures || '').toLowerCase();
-  const avatarId = (appearance.avatar_id || params.avatar_id || '').toLowerCase();
 
   // 1. Приоритет: наличие очков
   if (features.includes('очк') || avatarId.includes('glasses')) {
@@ -49,17 +64,18 @@ export function resolveChildAvatarKey(params?: ChildAvatarParams | null): string
   }
 
   // 3. Цвет волос
-  if (hair.includes('светл') || hair.includes('блонд')) {
+  if (hair.includes('светл') || hair.includes('блонд') || avatarId.includes('blonde')) {
     return `${gender}_blonde`;
   }
-  if (hair.includes('рыж')) {
+  if (hair.includes('рыж') || avatarId.includes('ginger')) {
     return `${gender}_ginger`;
   }
   if (
     hair.includes('тёмн') ||
     hair.includes('темн') ||
     hair.includes('черн') ||
-    hair.includes('брюнет')
+    hair.includes('брюнет') ||
+    avatarId.includes('dark')
   ) {
     return `${gender}_dark`;
   }

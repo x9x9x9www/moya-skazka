@@ -496,6 +496,10 @@ export const App: React.FC = () => {
   };
 
   const activeChild = children.find((c) => c.id === activeChildId) || null;
+  const hasChildProfile = Boolean(
+    (activeChild && activeChild.name?.trim()) ||
+    (wizardData.childName?.trim() && wizardData.age && (wizardData.appearance?.toy || wizardData.appearance?.avatar_id || wizardData.appearance?.avatar_url))
+  );
 
   // Поллинг статуса фоновой генерации книги
   useEffect(() => {
@@ -559,6 +563,7 @@ export const App: React.FC = () => {
   const handleCreateStorySubmit = async (details: {
     personality: string;
     storyMood?: string;
+    theme?: string;
     customWishes: string;
     includeQuestions: boolean;
   }) => {
@@ -568,6 +573,11 @@ export const App: React.FC = () => {
       setCurrentScreen('shop');
       setActiveTab('shop');
       return;
+    }
+
+    const chosenTheme = details.theme || wizardData.theme || 'Дружба';
+    if (details.theme && details.theme !== wizardData.theme) {
+      setWizardData((prev) => ({ ...prev, theme: details.theme || 'Дружба' }));
     }
 
     setLastGenerationDetails(details);
@@ -595,7 +605,12 @@ export const App: React.FC = () => {
       currentUser?.id ||
       (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
       'user_demo';
-    const resolvedAvatar = resolveChildAvatar(wizardData.appearance || wizardData);
+    const resolvedAvatar = resolveChildAvatar({
+      ...wizardData.appearance,
+      gender: wizardData.gender,
+      avatar_url: wizardData.appearance?.avatar_url,
+      avatar_id: wizardData.appearance?.avatar_id,
+    });
     const appearanceWithAvatar = {
       ...wizardData.appearance,
       avatar_url: wizardData.appearance?.avatar_url || resolvedAvatar,
@@ -609,9 +624,9 @@ export const App: React.FC = () => {
           childName: wizardData.childName,
           age: wizardData.age,
           gender: wizardData.gender,
-          theme: wizardData.theme || 'Дружба',
+          theme: chosenTheme,
           interests: wizardData.interests,
-          personality: details.personality,
+          personality: details.personality || 'Добрый',
           storyMood: details.storyMood || 'Творчество',
           customWishes: details.customWishes,
           includeQuestions: details.includeQuestions,
@@ -765,7 +780,7 @@ export const App: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'home') setCurrentScreen('home');
     else if (tab === 'create') {
-      setCurrentScreen('wizard_hero');
+      setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
     } else if (tab === 'books') setCurrentScreen('library');
     else if (tab === 'shop') setCurrentScreen('shop');
     else if (tab === 'friends') setCurrentScreen('referrals');
@@ -787,7 +802,7 @@ export const App: React.FC = () => {
           activeChild={activeChild}
           balance={balance}
           onBack={() => {
-            if (currentScreen === 'wizard_details') setCurrentScreen('wizard_hero');
+            if (currentScreen === 'wizard_details') setCurrentScreen(hasChildProfile ? 'home' : 'wizard_hero');
             else setCurrentScreen('home');
           }}
           onOpenChildModal={() => setChildModalOpen(true)}
@@ -969,7 +984,7 @@ export const App: React.FC = () => {
             balance={balance}
             dailyIdea={dailyIdea}
             booksCount={books.length}
-            onStartCreateStory={() => setCurrentScreen('wizard_hero')}
+            onStartCreateStory={() => setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero')}
             onNavigateTab={handleTabChange}
             onRefreshIdea={refreshLocalDailyIdea}
             onSaveIdea={() => {
@@ -977,7 +992,7 @@ export const App: React.FC = () => {
                 setWizardData((prev) => ({ ...prev, theme: dailyIdea.theme }));
               }
               haptic.success();
-              setCurrentScreen('wizard_hero');
+              setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
             }}
           />
         )}
@@ -998,6 +1013,7 @@ export const App: React.FC = () => {
             isSubmitting={isCreatingStory}
             remainingSeconds={remainingSeconds}
             creationMessage={creationMessage}
+            onEditHero={() => setCurrentScreen('wizard_hero')}
             onSubmit={handleCreateStorySubmit}
           />
         )}
@@ -1168,7 +1184,7 @@ export const App: React.FC = () => {
                 openReader(generated);
               }
             }}
-            onCreateNewStory={() => setCurrentScreen('wizard_hero')}
+            onCreateNewStory={() => setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero')}
             onUpgradeBook={(id) => {
               setSelectedBookForUpgrade(id);
               setUpgradeModalOpen(true);
@@ -1261,6 +1277,8 @@ export const App: React.FC = () => {
               interests: (c.interests as string[]) || prev.interests,
               appearance: {
                 ...prev.appearance,
+                avatar_url: app.avatar_url || prev.appearance.avatar_url,
+                avatar_id: app.avatar_id || prev.appearance.avatar_id,
                 hairColor: app.hairColor || prev.appearance.hairColor,
                 hairType: app.hairType || prev.appearance.hairType,
                 hairLength: app.hairLength || prev.appearance.hairLength,

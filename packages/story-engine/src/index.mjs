@@ -227,81 +227,8 @@ Use 2 short paragraphs per scene separated by "\\n\\n".
 }`;
 
 // --------------------------------------------------------
-// 3. Story DNA: миры, движки, спутники, крючки
+// 3. Story DNA: динамическая генерация миров, спутников и крючков
 // --------------------------------------------------------
-const WORLD_SCALES = [
-  {
-    type: 'Micro-World (Микромир)',
-    desc: 'герой уменьшается до размеров напёрстка и исследует часовой городок внутри старых настенных часов, оранжерею из росинки под земляничным листом или Пуговичную гавань под диваном',
-  },
-  {
-    type: 'Everyday Domestic Magic (Домашняя магия)',
-    desc: 'обычные домашние вещи живут тайной жизнью: сонный чайник заваривает облака, потерянная варежка открыла зимнюю почту, а на подоконнике светит маяк для ночных мотыльков',
-  },
-  {
-    type: 'Grand Workshop (Мастерская стихий)',
-    desc: 'за кухонной дверью работает Пекарня тёплых ветров, Мельница смешивания красок для осенней листвы, Док полировки вечерних звёзд или Мастерская по вязанию снеговых шарфов',
-  },
-  {
-    type: 'Secret Expedition (Тайная экспедиция)',
-    desc: 'чердачная обсерватория со старинным медным телескопом, субмарина из скорлупы грецкого ореха в садовой лейке или оранжерея звенящих стеклянных цветов',
-  },
-  {
-    type: 'Tiny Weather Station (Крошечная погодная станция)',
-    desc: 'на балконе спрятана станция, где улитки-синоптики настраивают утренний туман, а пуговицы-барометры показывают «немного волшебства»',
-  },
-];
-
-const NARRATIVE_ENGINES = [
-  {
-    type: 'Whimsical Detective (Детектив и загадка)',
-    desc: 'случилось забавное необъяснимое событие: тени танцуют вразнобой, утреннее эхо запуталось в ветвях, все ложки поменялись местами. Герои идут по трём осязаемым уликам к доброй разгадке',
-  },
-  {
-    type: 'Ingenious Invention (Хитроумный механизм)',
-    desc: 'герои мастерят необычный механизм из простых вещей — жёлудей, лент, колёсиков, мыльных пузырей, — чтобы решить добрую задачу',
-  },
-  {
-    type: 'The Great Preparation (Тайная подготовка)',
-    desc: 'герои готовят миниатюрный праздник фонариков, запускают ночной поезд светлячков или настраивают будильник для сонного солнца',
-  },
-  {
-    type: 'Playful Mix-Up (Весёлая путаница)',
-    desc: 'чудаковатый персонаж перепутал инструкции: покрасил шишки синим вместо неба, собрал эхо в баночки из-под варенья, — и герой бережно всё распутывает',
-  },
-  {
-    type: 'Skill Exchange (Обмен умениями)',
-    desc: 'ребёнок учит спутника простому человеческому навыку по возрасту — завязать узелок, тихо посчитать, подуть на горячий чай, — и это неожиданно спасает день',
-  },
-  {
-    type: 'Gentle Homecoming (Доброе возвращение)',
-    desc: 'герои помогают заблудившемуся существу или потерянной вещи найти своё место, но не через опасное приключение, а через внимательность, тепло и маленькие подсказки',
-  },
-];
-
-// Важно: это профессии, аксессуары и милые недостатки, а НЕ новые виды.
-// Игрушка остаётся игрушкой (машинка — машинкой, зайка — зайкой).
-const COMPANION_QUIRKS = [
-  'близорукий мастер пуговиц: носит круглые медные очки и вечно мастерит что-то из пуговиц',
-  'крошечный садовник в соломенной шляпе, который от радости чихает золотыми искрами',
-  'заводной часовщик с крошечными гаечными ключиками в кармашке бархатного жилета',
-  'стеснительный ночной библиотекарь, который боится темноты, пока не замечает, что его собственный фонарик светится',
-  'шёлковый почтальон с маленькой кожаной сумкой для самых добрых писем',
-  'маленький капитан в бумажной треуголке, который обожает считать звёзды',
-  'рассеянный синоптик с крошечным барометром, который путает «пасмурно» и «пушисто»',
-  'застенчивый художник, который рисует только тёплые цвета и боится громких звуков',
-];
-
-const SENSORY_HOOKS = [
-  'Под мягким ковриком тихонько щёлкнула крошечная латунная шестерёнка.',
-  'Из приоткрытого ящичка комода донёсся звон хрустального колокольчика и аромат сушёной земляники.',
-  'Тёплый вечерний ветерок принёс в комнату шорох конфетной фольги и озорной солнечный зайчик.',
-  'На подоконнике сама собой покачнулась деревянная катушка с синими нитками, словно зовя за собой.',
-  'В чашке с вечерним чаем всплыл круглый пузырёк, в котором отразился крошечный сказочный маяк.',
-  'Под подушкой что-то приятно защекотало, будто маленькое пёрышко шепнуло секрет.',
-  'В прихожей тихо звякнула связка ключей, хотя никто не подходил к двери.',
-  'На книжной полке сама собой раскрылась книга, и из неё вылетела тёплая пыльца.',
-];
 
 // --------------------------------------------------------
 // 4. Английские подсказки внешности
@@ -694,7 +621,13 @@ function getThemedWorld(params, random) {
     return pick(pool, random);
   }
 
-  return pick(WORLD_SCALES, random);
+  const child = params.childName || 'Герой';
+  const mood = params.storyMood || params.mood || 'Приключение';
+  const themeName = (params.theme || mood).trim();
+  return {
+    type: `Fairytale Realm of ${themeName} (Волшебный мир: ${themeName})`,
+    desc: `удивительное сказочное пространство темы «${themeName}», где ${child} исследует чудеса, решает добрые задачи и радуется вместе с друзьями`,
+  };
 }
 
 function getThemedCompanionQuirk(params, random) {
@@ -776,7 +709,8 @@ function getThemedCompanionQuirk(params, random) {
     return pick(dogQuirks, random);
   }
 
-  return pick(COMPANION_QUIRKS, random);
+  const toyName = (params.appearance?.toy || params.toy || 'верный друг').trim();
+  return `верный и добрый спутник (${toyName}): ласково подмигивает пуговичным глазком, согревает ладошку и всегда готов прийти на выручку`;
 }
 
 function getThemedHook(params, random) {
@@ -808,11 +742,12 @@ function getThemedHook(params, random) {
   if (interests.some((i) => i.includes('животн')) || interests.some((i) => i.includes('природ'))) {
     return 'В приоткрытую форточку заглянул пушистый рыжий солнечный лучик и мягко пощекотал носик.';
   }
-  if (theme.includes('сон')) {
+  const mood = (params.storyMood || params.mood || '').toLowerCase();
+  if (theme.includes('сон') || mood.includes('сон')) {
     return 'В сумерках тихо зазвенел хрустальный колокольчик, зовя за собой в мягкую страну добрых снов.';
   }
 
-  return pick(SENSORY_HOOKS, random);
+  return 'Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению.';
 }
 
 function getHeroAnchor(params, hints) {
@@ -954,7 +889,6 @@ export function getPersonalityProfile(trait = 'Добрый', theme = '', mood =
 
 export function chooseStoryDna(params = {}, random = Math.random) {
   const world = getThemedWorld(params, random);
-  const engine = pick(NARRATIVE_ENGINES, random);
   const quirk = getThemedCompanionQuirk(params, random);
   const hook = getThemedHook(params, random);
   const hints = appearanceHints(params.appearance);
@@ -965,8 +899,8 @@ export function chooseStoryDna(params = {}, random = Math.random) {
   return {
     world_scale: world.type,
     world_description: world.desc,
-    narrative_engine: engine.type,
-    narrative_description: engine.desc,
+    narrative_engine: moodProfile.moodLabel,
+    narrative_description: `${moodProfile.engineFocus}. ${moodProfile.conflictType}`,
     literary_voice: profile.voice,
     personality_profile: profile,
     mood_profile: moodProfile,
@@ -994,6 +928,20 @@ export function buildStoryPrompt(params = {}, options = {}) {
 
   const fullClothingRus = formatFullClothingRus(params.appearance);
 
+  const mood = params.storyMood || params.mood || '';
+  const isBedtime = mood === 'Спокойный сон' || (params.theme || '').toLowerCase().includes('сон');
+
+  let scene4Requirement = '- Сцена 4: Тёплый радостный дневной финал, общий праздник дружбы и взаимовыручки, крепкие объятия с друзьями, улыбки и благодарность. Завершается паузой для Вопроса 2.';
+  if (isBedtime) {
+    scene4Requirement = '- Сцена 4: Умиротворяющий сонный финал, мягкий свет звёзд, уют, покой перед сном. Завершается паузой для Вопроса 2.';
+  } else if (mood === 'Творчество') {
+    scene4Requirement = '- Сцена 4: Радостный дневной финал, гордость за созданное, показ творений друзьям, восхищение и творческое вдохновение под ярким солнцем. Завершается паузой для Вопроса 2.';
+  } else if (mood === 'Приключение') {
+    scene4Requirement = '- Сцена 4: Торжественный дневной финал, победное возвращение из похода, общий праздник открытий с друзьями, звонкий смех и восторг. Завершается паузой для Вопроса 2.';
+  } else if (mood === 'Юмор и смех') {
+    scene4Requirement = '- Сцена 4: Задорный весёлый финал, общий искренний хохот над доброй путаницей, солнечные улыбки и озорное празднование. Завершается паузой для Вопроса 2.';
+  }
+
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ
 
 1. ГЕРОЙ, ОДЕЖДА И ВНЕШНИЙ ВИД (ОБЯЗАТЕЛЬНО ДЛЯ СЮЖЕТА):
@@ -1007,7 +955,7 @@ export function buildStoryPrompt(params = {}, options = {}) {
   * Герой сохраняет ЭТУ ЖЕ одежду во всех 4 сценах и на обложке!
 - Волосы, глаза и кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}.
 - Любимая игрушка-спутник: ${toy}.
-  * Игрушка-спутник оживает, сохраняя свою форму, и находится рядом с героем с самого начала Сцены 1 до финального сна в Сцене 4!
+  * Игрушка-спутник оживает, сохраняя свою форму, и находится рядом с героем с самого начала Сцены 1 до ${isBedtime ? 'финального сна' : 'победного финала'} в Сцене 4!
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)» или «(4)»)! Текст должен быть чистой художественной литературой без технических меток.
 - Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
 - ХАРАКТЕР И ТЕМПЕРАМЕНТ РЕБЁНКА: ${dna.personality_profile?.traitLabel || params.personality || 'Добрый'}
@@ -1040,14 +988,14 @@ ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (В�
 - Сцена 1: Знакомство с миром, ${params.childName} в одежде (${fullClothingRus}) и встреча со спутником (${toy}).
 - Сцена 2: Добрая интрига / маленькая задача. Завершается действием и паузой для Вопроса 1.
 - Сцена 3: Кульминация и доброе решение: ${dna.hero_anchor}${params.customWishes ? `, исполнение пожелания «${params.customWishes}»` : ''}.
-- Сцена 4: Умиротворяющий сонный финал, мягкий свет звёзд, уют, покой перед сном. Завершается паузой для Вопроса 2.
+${scene4Requirement}
 - Каждая сцена — это 2–4 небольших абзаца, а не одна короткая фраза. Не растягивай текст водой: добавляй сенсорные детали, диалоги и маленькие действия.
 - СМЫСЛ И МОРАЛЬ: Сказка обязана нести добрый смысл и ценность (дружба, смелость, чуткость), но раскрываться они должны через ПОСТУПОК и ВЫБОР героя в Сцене 3, а НЕ через сухие нотации в конце. Категорически запрещены дидактические поучения («И понял малыш, что...»).
 - Никаких заезженных штампов («Жил-был», «Однажды», «в одном волшебном лесу»).
 - Ровно один вопрос после сцены 2 и ровно один после сцены 4. Вопросы — строго про переживания героев в этой истории под возраст ${band.label}.
 - Герой и спутник — отдельные объекты в characters[]. Не склеивай их.
 - visual-поля — только английский, без описания внешности персонажей: рендерер добавит её сам по character_ids.
-- Сказка должна быть тёплой, безопасной и пригодной для чтения перед сном.
+${isBedtime ? '- Сказка должна быть тёплой, безопасной и пригодной для чтения перед сном.' : '- Сказка должна быть бодрой, вдохновляющей, наполненной дневной радостью и солнечной энергией.'}
 ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты, миры и спутников из последних сказок:\n${recent.map((t) => `- «${t}»`).join('\n')}\n` : ''}
 Верни только валидный JSON по контракту из системной инструкции.`;
 
@@ -1075,11 +1023,14 @@ export function normalizeBlueprint(raw, params = {}) {
   const s3 = scenes.scene_3_climax || {};
   const s4 = scenes.scene_4_bedtime_calm || {};
 
+  const mood = params.storyMood || params.mood || '';
+  const isBedtime = mood === 'Спокойный сон' || (theme || '').toLowerCase().includes('сон');
+
   return {
     psychological_profile: {
       age_focus: asString(psych.age_focus) || `Особенности возраста ${Number(params.age) || 4} лет: наглядность, эмоциональная безопасность, осязаемость`,
       character_strength: asString(psych.character_strength) || `Чуткость, доброта и внимание к окружающим`,
-      therapeutic_goal: asString(psych.therapeutic_goal) || `Мягкая поддержка уверенности и спокойствия перед сном`,
+      therapeutic_goal: asString(psych.therapeutic_goal) || (isBedtime ? `Мягкая поддержка уверенности и спокойствия перед сном` : `Радостная поддержка инициативы, дружбы и уверенности`),
     },
     creative_concept: {
       core_metaphor: asString(concept.core_metaphor) || `Уютное открытие волшебства дружбы в мире темы «${theme}»`,
@@ -1104,14 +1055,14 @@ export function normalizeBlueprint(raw, params = {}) {
         triumph_moment: asString(s3.triumph_moment) || `Радостная улыбка и тёплые объятия с ${toy}`,
       },
       scene_4_bedtime_calm: {
-        calming_imagery: asString(s4.calming_imagery) || `Мягкое мерцание звёзд, уютные сумерки и тихое дыхание ночи`,
-        grounding_gesture: asString(s4.grounding_gesture) || `${child} крепко прижимает к себе ${toy} и сладко зевает`,
-        pause_hook: asString(s4.pause_hook) || `Пауза перед самым глубоким и добрым сном`,
+        calming_imagery: asString(s4.calming_imagery || s4.resolution_imagery) || (isBedtime ? `Мягкое мерцание звёзд, уютные сумерки и тихое дыхание ночи` : `Яркие солнечные лучи, праздничные улыбки друзей и радостный смех`),
+        grounding_gesture: asString(s4.grounding_gesture) || (isBedtime ? `${child} крепко прижимает к себе ${toy} и сладко зевает` : `Радостные победные объятия с ${toy}, улыбки и общее ликование`),
+        pause_hook: asString(s4.pause_hook) || (isBedtime ? `Пауза перед самым глубоким и добрым сном` : `Пауза перед совместным обсуждением победы`),
       },
     },
     pedagogical_focus: {
       question_1_theme: asString(ped.question_1_theme) || `Один простой вопрос о чувствах героя во время встречи с загадкой`,
-      question_2_theme: asString(ped.question_2_theme) || `Один тёплый вопрос о том, что подарило герою самое нежное спокойствие`,
+      question_2_theme: asString(ped.question_2_theme) || (isBedtime ? `Один тёплый вопрос о том, что подарило герою самое нежное спокойствие` : `Один вдохновляющий вопрос о радости от общего успеха`),
     },
   };
 }
@@ -1129,6 +1080,9 @@ export function buildArchitectPrompt(params = {}, options = {}) {
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
   const fullClothingRus = formatFullClothingRus(params.appearance);
+
+  const mood = params.storyMood || params.mood || '';
+  const isBedtime = mood === 'Спокойный сон' || (params.theme || '').toLowerCase().includes('сон');
 
   const user = `ЗАДАЧА: Спроектировать «Архитектурный паспорт сказки» (Story Blueprint).
 
@@ -1188,9 +1142,9 @@ ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты из недавних с
       "triumph_moment": "радостное совместное торжество с ${toy}"
     },
     "scene_4_bedtime_calm": {
-      "calming_imagery": "успокаивающие сенсорные образы (тихий свет, мягкое тепло)",
-      "grounding_gesture": "объятие с ${toy}, укутывание, покой перед сном",
-      "pause_hook": "пауза для финального вопроса перед сном"
+      "calming_imagery": "${isBedtime ? 'успокаивающие сенсорные образы (тихий свет, мягкое тепло)' : 'яркие праздничные дневные образы (радостный смех, показ творений или победный триумф под солнцем)'}",
+      "grounding_gesture": "${isBedtime ? `объятие с ${toy}, укутывание, покой перед сном` : `радостные победные объятия с ${toy}, улыбки друзей и торжество`}",
+      "pause_hook": "${isBedtime ? 'пауза для финального вопроса перед сном' : 'пауза для финального вопроса родителю'}"
     }
   },
   "pedagogical_focus": {
@@ -1220,6 +1174,9 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 
   const bp = normalizeBlueprint(blueprint, params);
 
+  const mood = params.storyMood || params.mood || '';
+  const isBedtime = mood === 'Спокойный сон' || (params.theme || '').toLowerCase().includes('сон');
+
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ НА ОСНОВЕ АРХИТЕКТУРНОГО ПАСПОРТА
 
 1. УТВЕРЖДЁННЫЙ АРХИТЕКТУРНЫЙ ПАСПОРТ СКАЗКИ (STORY BLUEPRINT):
@@ -1244,7 +1201,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
   - Решение героя: ${bp.scene_by_scene_blueprint.scene_3_climax.child_decision}
   - Исполнение пожелания: ${bp.scene_by_scene_blueprint.scene_3_climax.wish_fulfillment}
   - Момент совместной радости: ${bp.scene_by_scene_blueprint.scene_3_climax.triumph_moment}
-• Сцена 4 (Умиротворение перед сном):
+• Сцена 4 (${isBedtime ? 'Умиротворение перед сном' : 'Радостный финал и праздник друзей'}):
   - Успокаивающие образы: ${bp.scene_by_scene_blueprint.scene_4_bedtime_calm.calming_imagery}
   - Заземляющий жест уюта: ${bp.scene_by_scene_blueprint.scene_4_bedtime_calm.grounding_gesture}
   - Пауза под вопрос 2: ${bp.scene_by_scene_blueprint.scene_4_bedtime_calm.pause_hook}
@@ -1259,7 +1216,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 - Падежные формы имени: Родительный («сердце ${declinedName.gen}»), Дательный («навстречу ${declinedName.dat}»), Творительный («вместе с ${declinedName.ins}»)
 - ГРАММАТИЧЕСКОЕ ПРАВИЛО: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
 - Одежда героя: ${fullClothingRus} (обязательно вплести осязаемо в Сцену 1, сохранять во всех сценах)
-- Любимая игрушка-спутник: ${toy} (рядом от первой фразы до засыпания)
+- Любимая игрушка-спутник: ${toy} (рядом от первой фразы до ${isBedtime ? 'засыпания' : 'победного финала'})
 - Волосы, глаза, кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)»)!
 - Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
@@ -1672,7 +1629,7 @@ ${JSON.stringify(story)}`;
 // --------------------------------------------------------
 // 11. Fallback-вопросы (последняя линия обороны)
 // --------------------------------------------------------
-export function fallbackQuestions(heroName = 'герой') {
+export function fallbackQuestions(heroName = 'герой', isBedtime = false) {
   return [
     {
       after_scene: 2,
@@ -1683,7 +1640,9 @@ export function fallbackQuestions(heroName = 'герой') {
     {
       after_scene: 4,
       question: `Кто помог ${heroName} стать смелее?`,
-      parent_hint: 'Дайте ребёнку договорить. Можно вместе вспомнить самый тёплый момент сказки и пожелать добрых снов.',
+      parent_hint: isBedtime
+        ? 'Дайте ребёнку договорить. Можно вместе вспомнить самый тёплый момент сказки и пожелать добрых снов.'
+        : 'Дайте ребёнку договорить. Можно вместе вспомнить самый радостный момент сказки и отпраздновать победу.',
       skill_tag: 'imagination',
     },
   ];

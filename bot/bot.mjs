@@ -438,12 +438,13 @@ async function generateWellflowStoryAI(params) {
   try {
     let story = normalizeStory(raw, input, dna);
 
-    // Адаптивная проверка длины по возрасту ребенка: не вызываем лишний repair, если объем идеален
+    // Адаптивная проверка длины по возрасту ребенка: не вызываем лишний repair, если объем отклоняется незначительно (<25%)
     const childAge = Number(input.age) || 4;
     const minWords = childAge <= 3 ? 190 : (childAge <= 5 ? 270 : 360);
-    if (story.metrics.total_words < minWords) {
+    const severeShortageThreshold = Math.round(minWords * 0.75);
+    if (story.metrics.total_words < severeShortageThreshold) {
       console.warn(
-        `[StoryEngine] 📏 Текст короче минимума для возраста ${childAge}: ${story.metrics.total_words} < ${minWords}, запускаем length repair`
+        `[StoryEngine] 📏 Текст существенно короче минимума для возраста ${childAge}: ${story.metrics.total_words} < ${severeShortageThreshold} (базовый минимум: ${minWords}), запускаем length repair`
       );
       try {
         const lengthRepair = buildLengthRepairPrompt(story, story.metrics.target);
@@ -529,14 +530,44 @@ async function generateWellflowStoryAI(params) {
   }
 }
 
+export const ALL_AVATAR_KEYS = [
+  'boy_blonde',
+  'boy_brown',
+  'boy_dark',
+  'boy_ginger',
+  'boy_glasses',
+  'boy_tan',
+  'girl_blonde',
+  'girl_brown',
+  'girl_dark',
+  'girl_ginger',
+  'girl_glasses',
+  'girl_tan',
+];
+
 export function resolveChildAvatarKey(params) {
   if (!params) return 'boy_brown';
   const appearance = params.appearance || params;
-  const gender = (params.gender || appearance.gender) === 'girl' ? 'girl' : 'boy';
-  const hair = (appearance.hairColor || params.hairColor || '').toLowerCase();
-  const skin = (appearance.skinTone || params.skinTone || '').toLowerCase();
-  const features = (appearance.distinctiveFeatures || params.distinctiveFeatures || '').toLowerCase();
-  const avatarId = (appearance.avatar_id || params.avatar_id || '').toLowerCase();
+  const avatarId = String(appearance.avatar_id || params.avatar_id || '').toLowerCase().trim();
+
+  // 0. Если передан точный канонический ID из 12 аватаров, возвращаем его сразу
+  if (ALL_AVATAR_KEYS.includes(avatarId)) {
+    return avatarId;
+  }
+
+  const rawGender = params.gender || appearance.gender;
+  const gender =
+    rawGender === 'girl'
+      ? 'girl'
+      : rawGender === 'boy'
+      ? 'boy'
+      : avatarId.startsWith('girl_') || avatarId.includes('girl')
+      ? 'girl'
+      : 'boy';
+
+  const hair = String(appearance.hairColor || params.hairColor || '').toLowerCase();
+  const skin = String(appearance.skinTone || params.skinTone || '').toLowerCase();
+  const features = String(appearance.distinctiveFeatures || params.distinctiveFeatures || '').toLowerCase();
 
   // 1. Очки
   if (features.includes('очк') || avatarId.includes('glasses')) {
@@ -547,13 +578,19 @@ export function resolveChildAvatarKey(params) {
     return `${gender}_tan`;
   }
   // 3. Цвет волос
-  if (hair.includes('светл') || hair.includes('блонд')) {
+  if (hair.includes('светл') || hair.includes('блонд') || avatarId.includes('blonde')) {
     return `${gender}_blonde`;
   }
-  if (hair.includes('рыж')) {
+  if (hair.includes('рыж') || avatarId.includes('ginger')) {
     return `${gender}_ginger`;
   }
-  if (hair.includes('тёмн') || hair.includes('темн') || hair.includes('черн') || hair.includes('брюнет')) {
+  if (
+    hair.includes('тёмн') ||
+    hair.includes('темн') ||
+    hair.includes('черн') ||
+    hair.includes('брюнет') ||
+    avatarId.includes('dark')
+  ) {
     return `${gender}_dark`;
   }
   // 4. По умолчанию для русых / шатенов
@@ -1739,7 +1776,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         },
       ];
 
-      const raw = await callWellflowChat(messages, '[AvatarVision]');
+      const raw = await callWellflowChat(messages, '[AvatarVision]', { timeoutMs: 15000 });
 
       // Шаг Б (Zero-Storage): Буфер imageBase64 немедленно обнуляется из памяти
       dataUrl = null;
@@ -2014,7 +2051,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       ];
 
       // Быстрый вызов Vision с лимитом токенов для скорости (до 2-4 секунд)
-      const raw = await callWellflowChat(messages, '[PhotoVision]', { max_tokens: 280, timeoutMs: 30000 });
+      const raw = await callWellflowChat(messages, '[PhotoVision]', { max_tokens: 280, timeoutMs: 15000 });
       let parsed = {};
       try {
         parsed = JSON.parse(raw);

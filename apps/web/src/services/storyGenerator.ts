@@ -92,13 +92,21 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
 
   // Тематические миры и единый спутник
   const t = theme.toLowerCase();
+  const storyMood = params.storyMood || (params as any).mood || '';
+  const isBedtimeMood = storyMood === 'Спокойный сон' || t.includes('сон') || t.includes('ночь');
   const wLower = (params.customWishes || '').toLowerCase();
-  let worldName = 'Волшебная поляна';
+  let worldName = isBedtimeMood ? 'Волшебная поляна' : 'Волшебная страна открытий';
   let companionName = companionToy;
-  let goalText = 'помочь крошечным лесным колокольчикам найти дорогу ко сну';
-  let trialText = 'мягкий вечерний туман спрятал тропинку к полянке с колокольчиками';
+  let goalText = isBedtimeMood
+    ? 'помочь крошечным лесным колокольчикам найти дорогу ко сну'
+    : 'раскрыть великую тайну солнечной поляны и помочь лесным друзьям';
+  let trialText = isBedtimeMood
+    ? 'мягкий вечерний туман спрятал тропинку к полянке с колокольчиками'
+    : 'извилистая тропинка петляла среди высоких волшебных трав, скрывая путь к разгадке';
   let victoryText = `${declined.nom} ласково зажгла свой волшебный фонарик доброты, а верный спутник озарил каждый листик тёплым золотым сиянием`;
-  let climaxText = 'все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу';
+  let climaxText = isBedtimeMood
+    ? 'все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу'
+    : 'поляна озарилась тысячами ярких искр, а лесные жители устроили весёлый праздник в честь друзей';
   let coverUrl = resolveAssetUrl('/illustrations/demo/cover.jpg');
 
   if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
@@ -107,15 +115,19 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
     goalText = 'помочь маленькой звёздочке найти путь к её маме Большой Медведице';
     trialText = 'звёздное облачко мягкой серебристой пыли закрыло мерцающую небесную тропу';
     victoryText = `${declined.nom} ласково ${vSmiled} и подняла ручки к небу, а ${companionName} полетел вперёд и указал верный путь`;
-    climaxText = 'небосвод озарился тёплым светом радости, и звёздочка счастливо замерцала в объятиях мамы';
+    climaxText = isBedtimeMood
+      ? 'небосвод озарился тёплым светом радости, и звёздочка счастливо заснула в объятиях мамы'
+      : 'небосвод озарился фейерверком радости, и звёздочка весело закружилась в танце дружбы';
     coverUrl = resolveAssetUrl('/illustrations/cover_star.jpg');
   } else if (t.includes('дино') || t.includes('древн') || t.includes('джунгл')) {
     worldName = 'Зелёная Долина';
     companionName = companionToy.includes('Лучик') ? 'Динозаврик Тоша' : companionToy;
-    goalText = 'найти для маленького динозаврика самую уютную полянку с тёплыми цветами';
+    goalText = isBedtimeMood
+      ? 'найти для маленького динозаврика самую уютную полянку с тёплыми цветами для отдыха'
+      : 'найти для маленького динозаврика древний кристалл дружбы';
     trialText = 'широкий ручеёк преградил путь, и мостик из листьев казался слишком далёким';
     victoryText = `${declined.nom} нашла надёжные гладкие камушки и бережно перевела друзей на другой берег`;
-    climaxText = 'долина расцвела изумрудным светом, согревая всех ласковым вечерним теплом';
+    climaxText = 'долина расцвела изумрудным светом, согревая всех ласковым теплом';
     coverUrl = resolveAssetUrl('/illustrations/cover_dino.jpg');
   } else if (t.includes('мор') || t.includes('океан') || t.includes('вод') || t.includes('рыб') || t.includes('черепах') || wLower.includes('черепах') || wLower.includes('мор')) {
     worldName = 'Лазурная Бухта';
@@ -123,7 +135,9 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
     goalText = 'помочь маленькой морской черепашке благополучно добраться до тёплого кораллового рифа';
     trialText = 'игривые морские волны закружили ласковую тропинку из сияющих ракушек';
     victoryText = `${declined.nom} ласково ${isGirl ? 'протянула' : 'протянул'} руку помощи, бережно ${isGirl ? 'обняла' : 'обнял'} черепашку и ${isGirl ? 'указала' : 'указал'} путь к ласковому песчаному берегу`;
-    climaxText = 'весь океан мягко озарился сиянием изумрудных ракушек, а благодарная черепашка радостно помахала лапкой';
+    climaxText = isBedtimeMood
+      ? 'весь океан мягко убаюкал сиянием изумрудных ракушек, а сонная черепашка сладко закрыла глазки'
+      : 'весь океан мягко озарился сиянием изумрудных ракушек, а благодарная черепашка радостно помахала лапкой и позвала играть';
     coverUrl = resolveAssetUrl('/illustrations/cover_forest.jpg');
   } else if (t.includes('лес') || t.includes('животн') || t.includes('звер')) {
     worldName = 'Изумрудный Лес';
@@ -145,6 +159,12 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   const scene2Img = resolveAssetUrl('/illustrations/demo/scene_2.jpg');
   const scene3Img = resolveAssetUrl('/illustrations/demo/scene_3.jpg');
   const scene4Img = resolveAssetUrl('/illustrations/demo/scene_4.jpg');
+
+  const finaleBedtimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось тихим теплом и радостью. Приключение счастливо завершилось, ${companionName} уютно устроился рядом, напевая нежную колыбельную. На небе мягко засияли добрые звёзды. Самое время сладко закрыть глазки и уснуть.`;
+  const finaleDaytimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось ликованием и солнечным теплом. Приключение завершилось настоящей победой добра! ${declined.nom} и ${companionName} дали друг другу пять и весело засмеялись. Впереди их ждало ещё множество удивительных открытий, новых игр и счастливых моментов!`;
+
+  const finaleBedtimePrompt = `3D Pixar style scene 4: peaceful cozy bedtime finale, starry night sky, child sleeping peacefully, glowing warm light`;
+  const finaleDaytimePrompt = `3D Pixar style scene 4: joyful daytime finale, smiling child celebrating victory with friend, bright sunlight, happy vibrant colors`;
 
   const rawScenes = [
     {
@@ -171,9 +191,9 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
     {
       id: 'scene_4',
       scene_index: 4,
-      text: `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось тихим теплом и радостью. Приключение счастливо завершилось, ${companionName} уютно устроился рядом, напевая нежную колыбельную. На небе мягко засияли добрые звёзды. Самое время сладко закрыть глазки и уснуть.`,
+      text: isBedtimeMood ? finaleBedtimeText : finaleDaytimeText,
       image_url: scene4Img,
-      image_prompt: `3D Pixar style scene 4: peaceful cozy bedtime finale, starry night sky, child sleeping peacefully, glowing warm light`,
+      image_prompt: isBedtimeMood ? finaleBedtimePrompt : finaleDaytimePrompt,
     },
   ];
 
@@ -196,7 +216,9 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
           id: 'q_2',
           after_scene: 4,
           question: `Кто помог ${declined.dat} стать смелее?`,
-          parent_hint: 'Подчеркните важность заботы, доброты и взаимной поддержки перед сном.',
+          parent_hint: isBedtimeMood
+            ? 'Подчеркните важность заботы, доброты и взаимной поддержки перед сном.'
+            : 'Подчеркните важность заботы, доброты, смелости и взаимной поддержки в жизни и дружбе.',
           skill_tag: 'reflection',
         },
       ]
@@ -490,6 +512,21 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 120000):
     pollBase: string;
   }> = [];
 
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    candidates.push({
+      url: 'http://localhost:4040/api/v1/ai/generate-image',
+      headers: { 'Content-Type': 'application/json' },
+      body: { prompt, type: 'scene' },
+      pollBase: 'http://localhost:4040',
+    });
+    candidates.push({
+      url: 'http://127.0.0.1:4040/api/v1/ai/generate-image',
+      headers: { 'Content-Type': 'application/json' },
+      body: { prompt, type: 'scene' },
+      pollBase: 'http://127.0.0.1:4040',
+    });
+  }
+
   if (activeApi) {
     candidates.push({
       url: `${activeApi}/api/v1/ai/generate-image`,
@@ -511,13 +548,18 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 120000):
 
   try {
     for (const candidate of candidates) {
+      const initCtrl = new AbortController();
+      const initTimer = setTimeout(() => initCtrl.abort(), 3500);
+
       try {
         const res = await fetch(candidate.url, {
           method: 'POST',
           headers: candidate.headers,
           body: JSON.stringify(candidate.body),
-          signal: controller.signal,
+          signal: initCtrl.signal,
         });
+        clearTimeout(initTimer);
+
         if (res.ok || res.status === 202) {
           const data = await res.json();
           if (data.jobId) {
@@ -535,6 +577,7 @@ export async function generateWellflowImage(prompt: string, timeoutMs = 120000):
           }
         }
       } catch {
+        clearTimeout(initTimer);
         // try next candidate
       }
     }
@@ -613,10 +656,7 @@ export async function callWellflowStory(
     }
   };
 
-  if (activeApi) addCandidate(activeApi);
-  if (DEFAULT_API_BRIDGE_URL && !DEFAULT_API_BRIDGE_URL.includes('loca.lt')) {
-    addCandidate(DEFAULT_API_BRIDGE_URL);
-  }
+  // 1. Immediately prioritize local port or current origin to avoid stale tunnel delays
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     addCandidate('http://localhost:4040');
     addCandidate('http://127.0.0.1:4040');
@@ -624,13 +664,17 @@ export async function callWellflowStory(
   if (typeof window !== 'undefined' && !window.location.hostname.includes('github.io')) {
     candidates.push({ url: '/api/v1/ai/generate-story', pollBase: '' });
   }
+  if (activeApi) addCandidate(activeApi);
+  if (DEFAULT_API_BRIDGE_URL && !DEFAULT_API_BRIDGE_URL.includes('loca.lt')) {
+    addCandidate(DEFAULT_API_BRIDGE_URL);
+  }
 
   let jobId: string | null = null;
   let workingPollBase = '';
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 12000);
+    const initTimer = setTimeout(() => initCtrl.abort(), 2500);
 
     try {
       const response = await fetch(candidate.url, {

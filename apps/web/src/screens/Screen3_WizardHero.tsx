@@ -144,30 +144,6 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     { id: 'Спорт и мяч', icon: <SportBallIcon className="w-6 h-6" />, label: 'Спорт' },
   ];
 
-  // Расширенный список популярных и терапевтических тем (без сырых эмодзи)
-  const themesList = [
-    { id: 'Дружба и верность', label: 'Дружба и верность' },
-    { id: 'Доброта и забота', label: 'Доброта и забота' },
-    { id: 'Смелость и победа над страхами', label: 'Смелость и отвага' },
-    { id: 'Спокойный и сладкий сон', label: 'Спокойный сон' },
-    { id: 'Волшебные сны и звездопад', label: 'Волшебные сны' },
-    { id: 'Тёплые объятия и нежность', label: 'Тепло и уют' },
-    { id: 'Заколдованный лес и тайны', label: 'Заколдованный лес' },
-    { id: 'Космическое путешествие', label: 'Космос и звёзды' },
-    { id: 'Морские глубины и киты', label: 'Подводный мир' },
-    { id: 'Страна дружелюбных динозавров', label: 'Остров динозавров' },
-    { id: 'Город добрых машинок', label: 'Город машинок' },
-    { id: 'Замок маленьких фей и магов', label: 'Замок фей' },
-    { id: 'Капризы и управление эмоциями', label: 'Капризы и эмоции' },
-    { id: 'Честность и искренность', label: 'Честность и правда' },
-    { id: 'Умение делиться и дружить', label: 'Умение делиться' },
-    { id: 'Любознательность и открытия', label: 'Любознательность' },
-    { id: 'Порядок и уборка игрушек', label: 'Уборка игрушек' },
-    { id: 'Любовь к детскому садику', label: 'Любимый садик' },
-    { id: 'Смелый поход к врачу', label: 'Поход к врачу' },
-    { id: 'Появление братика или сестрёнки', label: 'Братик или сестрёнка' },
-    { id: 'Бережное отношение к природе', label: 'Забота о природе' },
-  ];
 
   // Быстрые подсказки-идеи для игрушки-спутника с векторными иконками
   const companionToys = [
@@ -387,9 +363,21 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       setVisionSuccess('✨ Герой ожил по фото!');
     } catch (err: any) {
       console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
+      // Fallback: подбираем красивый 3D-пресет аватара, чтобы пользователь не остался без образа
+      const targetGender = (data.gender as 'boy' | 'girl') || (data.childName && (data.childName.endsWith('а') || data.childName.endsWith('я')) ? 'girl' : 'boy');
+      const fallbackAvatarId = resolveChildAvatarKey({
+        gender: targetGender,
+        hairColor: appearance.hairColor || 'русые',
+        skinTone: appearance.skinTone || 'светлая',
+        distinctiveFeatures: appearance.distinctiveFeatures || '',
+      });
+      updateAppearance({
+        avatar_id: fallbackAvatarId,
+        avatar_url: undefined,
+      });
+      setShowManualAppearance(true);
       setVisionError(
-        err?.message ||
-          'Не удалось создать аватар по фото. Попробуйте другой снимок или настройте героя вручную.'
+        'Не удалось обработать фото или время ответа истекло. Мы подобрали 3D-образ, а вы можете скорректировать детали!'
       );
     } finally {
       setIsAnalyzing(false);
@@ -1176,43 +1164,6 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* Главная тема сказки */}
-      {/* ========================================================================= */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-stone-700">Главная тема сказки</label>
-          <span className="text-[11px] text-stone-400">выберите или введите свою</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {themesList.map((item) => {
-            const isSelected = data.theme === item.id || data.theme === item.label;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onChange({ ...data, theme: item.id })}
-                className={`inline-flex items-center justify-center px-3.5 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
-                  isSelected
-                    ? 'bg-brand-500 text-white border-brand-500 shadow-sm scale-[1.02]'
-                    : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="pt-1">
-          <input
-            type="text"
-            value={data.theme}
-            onChange={(e) => onChange({ ...data, theme: e.target.value })}
-            placeholder="Или введите свою тему (например: Первый полёт на самолёте, Поход в цирк...)"
-            className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-sm placeholder:text-stone-400 placeholder:font-normal"
-          />
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* Кнопка Далее */}

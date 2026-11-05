@@ -92,7 +92,13 @@ test('Агент: проверка целостности сказки и воп
   assert.equal(integrity.story.questions[0].after_scene, 2, 'Вопрос 1 после сцены 2');
   assert.equal(integrity.story.questions[1].after_scene, 4, 'Вопрос 2 после сцены 4');
   assert.ok(!integrity.story.scenes[1].text.includes('Как зовут машинку?'), 'Дубль вопроса удален из сцены');
-  assert.ok(integrity.story.scenes[3].text.includes('звёзд') || integrity.story.scenes[3].text.includes('сон'), 'Сонный финал в сцене 4');
+  assert.ok(integrity.story.scenes[3].text.length > 0, 'Сцена 4 сформирована');
+  assert.ok(!integrity.story.questions[1].parent_hint.includes('сон'), 'Дневной вопрос 2 не содержит наставления ко сну');
+
+  // Проверка сонного финала при явном указании storyMood: Спокойный сон
+  const integrityBedtime = verifyNarrativeIntegrity(brokenStory, { childName: 'Лев', gender: 'boy', storyMood: 'Спокойный сон' });
+  assert.ok(integrityBedtime.story.scenes[3].text.includes('звёзд') || integrityBedtime.story.scenes[3].text.includes('сон'), 'Сонный финал в сцене 4 только при Спокойный сон');
+  assert.ok(integrityBedtime.story.questions[1].parent_hint.includes('сон'), 'Сонный вопрос 2 содержит наставление ко сну');
 });
 
 test('Агент: сквозной цикл runEditorialAgent', () => {

@@ -55,4 +55,18 @@ describe('resolveChildAvatar (12 3D Pixar avatars resolver)', () => {
     expect(resolveChildAvatar({ gender: 'girl', hairColor: 'русые' })).toContain('girl_brown.webp');
     expect(resolveChildAvatar({ gender: 'boy', hairColor: 'шатен' })).toContain('boy_brown.webp');
   });
+
+  it('канонический avatar_id разрешается точно в соответствующий пресет', () => {
+    expect(resolveChildAvatar({ avatar_id: 'girl_blonde' })).toContain('girl_blonde.webp');
+    expect(resolveChildAvatar({ avatar_id: 'boy_dark' })).toContain('boy_dark.webp');
+    expect(resolveChildAvatar({ appearance: { avatar_id: 'girl_ginger' } })).toContain('girl_ginger.webp');
+    expect(resolveChildAvatar({ avatar_id: 'girl_glasses' })).toContain('girl_glasses.webp');
+    expect(resolveChildAvatar({ avatar_id: 'boy_tan' })).toContain('boy_tan.webp');
+  });
+
+  it('прямой avatar_url имеет абсолютный приоритет над пресетом', () => {
+    expect(resolveChildAvatar({ avatar_url: 'https://example.com/avatar.webp' })).toBe('https://example.com/avatar.webp');
+    expect(resolveChildAvatar({ avatarUrl: 'data:image/webp;base64,123' })).toBe('data:image/webp;base64,123');
+    expect(resolveChildAvatar({ appearance: { avatar_url: '/media/avatar.webp' } })).toBe('/media/avatar.webp');
+  });
 });

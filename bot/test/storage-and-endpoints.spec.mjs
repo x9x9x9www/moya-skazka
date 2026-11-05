@@ -36,6 +36,16 @@ test('resolveAvatarReferenceUrl строит канонический URL пре
     appearance: { distinctiveFeatures: 'круглые очки' },
   });
   assert.equal(resGirl, 'https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_glasses.webp');
+
+  const resExactPreset = resolveAvatarReferenceUrl({
+    appearance: { avatar_id: 'boy_dark' },
+  });
+  assert.equal(resExactPreset, 'https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_dark.webp');
+
+  const resGirlBlonde = resolveAvatarReferenceUrl({
+    appearance: { avatar_id: 'girl_blonde' },
+  });
+  assert.equal(resGirlBlonde, 'https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_blonde.webp');
 });
 
 test('buildCoverPrompt и buildScenePrompt включают ссылку на референсный аватар для консистентности лица', () => {

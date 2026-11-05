@@ -611,17 +611,49 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     }
   }
 
-  // 6. Проверка сонного финала в 4-й сцене
-  const bedtimeKeywords = ['сон', 'звёзд', 'звезд', 'тепл', 'уют', 'тишин', 'спокойн', 'отдых', 'ноч', 'глазк', 'ласков'];
-  const lastSceneText = (scenes[3]?.text || '').toLowerCase();
-  const hasBedtimeMood = bedtimeKeywords.some((w) => lastSceneText.includes(w));
-  if (!hasBedtimeMood && scenes[3]) {
-    scenes[3].text += ` На ночном небе мягко засияли добрые звёзды, укутывая мир теплом и тишиной перед самым сладким сном.`;
-    fixes.push('В финал 4-й сцены добавлен умиротворяющий сонный аккорд');
+  // 6. Проверка финала в 4-й сцене (сонный аккорд ТОЛЬКО при «Спокойный сон», иначе — дневной радостный финал)
+  const isBedtimeMood =
+    params.storyMood === 'Спокойный сон' ||
+    params.mood === 'Спокойный сон' ||
+    (params.theme || '').toLowerCase().includes('сон');
+  if (isBedtimeMood && scenes[3]) {
+    const bedtimeKeywords = ['сон', 'звёзд', 'звезд', 'тепл', 'уют', 'тишин', 'спокойн', 'отдых', 'ноч', 'глазк', 'ласков'];
+    const lastSceneText = (scenes[3].text || '').toLowerCase();
+    const hasBedtimeMood = bedtimeKeywords.some((w) => lastSceneText.includes(w));
+    if (!hasBedtimeMood) {
+      scenes[3].text += ` На ночном небе мягко засияли добрые звёзды, укутывая мир теплом и тишиной перед самым сладким сном.`;
+      fixes.push('В финал 4-й сцены добавлен умиротворяющий сонный аккорд');
+    }
+  } else if (!isBedtimeMood && scenes[3]) {
+    // Для дневных историй очищаем случайные сонные клише
+    const bedtimePhrases = [
+      /перед самым сладким сном\.?/gi,
+      /пора сладко спать и закрывать глазки\.?/gi,
+      /укутывая мир теплом и тишиной перед сном\.?/gi,
+    ];
+    let patched = scenes[3].text;
+    for (const rx of bedtimePhrases) {
+      if (rx.test(patched)) {
+        patched = patched.replace(rx, 'радуясь общему успеху и новому счастливому дню.');
+        fixes.push('Удалено неуместное упоминание сна из дневного финала 4-й сцены');
+      }
+    }
+    scenes[3].text = patched;
   }
 
   // 7. Вопросы для обсуждения с родителями
   const rawQuestions = Array.isArray(story.questions) ? [...story.questions] : [];
+
+  const canonicalQ2 = {
+    after_scene: 4,
+    question: isBedtimeMood
+      ? `Что помогло ${childName} почувствовать спокойствие и уют перед сном?`
+      : `Что подарило ${childName} самую большую радость от общего успеха в этом приключении?`,
+    parent_hint: isBedtimeMood
+      ? 'Сделайте акцент на чувстве безопасности, уюта и тёплом настрое на сон.'
+      : 'Сделайте акцент на радости победы, взаимной поддержке и уверенности в своих силах.',
+    skill_tag: isBedtimeMood ? 'emotions' : 'reflection',
+  };
 
   let questions = [];
   if (rawQuestions.length === 0) {
@@ -632,23 +664,13 @@ export function verifyNarrativeIntegrity(story, params = {}) {
         parent_hint: 'Обсудите с ребёнком ценность взаимовыручки и умения поддерживать друзей.',
         skill_tag: 'empathy',
       },
-      {
-        after_scene: 4,
-        question: `Что помогло ${childName} почувствовать спокойствие и радость в конце сказки?`,
-        parent_hint: 'Сделайте акцент на чувстве безопасности и тёплом настрое на сон.',
-        skill_tag: 'emotions',
-      },
+      canonicalQ2,
     ];
     fixes.push('Сформированы канонические вопросы для родителя после сцен 2 и 4');
   } else if (rawQuestions.length === 1) {
     questions = [
       { ...rawQuestions[0], after_scene: 2 },
-      {
-        after_scene: 4,
-        question: `Что помогло ${childName} почувствовать спокойствие и радость в конце сказки?`,
-        parent_hint: 'Сделайте акцент на чувстве безопасности и тёплом настрое на сон.',
-        skill_tag: 'emotions',
-      },
+      canonicalQ2,
     ];
     fixes.push('Дополнен недостающий второй вопрос после сцены 4');
   } else {
