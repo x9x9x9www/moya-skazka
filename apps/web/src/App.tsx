@@ -572,6 +572,7 @@ export const App: React.FC = () => {
   // Обработчик создания сказки из визарда: уникальная генерация на каждый запуск
   const handleCreateStorySubmit = async (details: {
     personality: string;
+    storyMood?: string;
     customWishes: string;
     includeQuestions: boolean;
   }) => {
@@ -589,7 +590,7 @@ export const App: React.FC = () => {
     setJobProgress(15);
     updateCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет и character bible...');
-    const TOTAL_ESTIMATED_SEC = 160;
+    const TOTAL_ESTIMATED_SEC = 45;
     setRemainingSeconds(TOTAL_ESTIMATED_SEC);
     haptic.medium();
 
@@ -601,7 +602,7 @@ export const App: React.FC = () => {
       setRemainingSeconds(left);
       const stage = creationStageRef.current;
       const stageCeiling = stage === 'writing' ? 44 : stage === 'drawing' ? 89 : 98;
-      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.4) : prev));
+      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.8) : prev));
     }, 500);
 
     try {
@@ -614,6 +615,7 @@ export const App: React.FC = () => {
           theme: wizardData.theme || 'Дружба',
           interests: wizardData.interests,
           personality: details.personality,
+          storyMood: details.storyMood || 'Творчество',
           customWishes: details.customWishes,
           includeQuestions: details.includeQuestions,
           appearance: wizardData.appearance,

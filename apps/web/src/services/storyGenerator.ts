@@ -8,6 +8,7 @@ export interface GenerateStoryParams {
   theme: string;
   interests: string[];
   personality: string;
+  storyMood?: string;
   customWishes?: string | null;
   includeQuestions: boolean;
   appearance?: {
@@ -575,6 +576,7 @@ export async function callWellflowStory(
     theme: params.theme,
     appearance: params.appearance,
     personality: params.personality,
+    storyMood: params.storyMood,
     customWishes: params.customWishes,
     includeQuestions: params.includeQuestions,
     gender: params.gender,
@@ -745,27 +747,28 @@ export async function generateDynamicStory(
 
   let storyData: any = null;
   let lastError: any = null;
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      if (attempt > 1) {
-        onProgress?.({
-          stage: 'writing',
-          progress: 24,
-          message: 'Связываемся со сказочной мастерской нейросетей...',
-        });
-      }
-      storyData = await callWellflowStory(params, 240000, onProgress);
-      if (storyData && Array.isArray(storyData.scenes) && storyData.scenes.length >= 4) {
-        break;
-      }
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`[StoryGenerator] Попытка ${attempt} завершилась ошибкой:`, err);
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 1000));
-      }
+  try {
+    storyData = await callWellflowStory(params, 180000, onProgress);
+  } catch (err: any) {
+    lastError = err;
+    console.warn('[StoryGenerator] Ошибка вызова callWellflowStory:', err.message);
+    // Пробуем восстановить готовую сказку через latest-story, если связь оборвалась
+    const apiBase = getActiveApiUrl();
+    if (apiBase && params.childName) {
+      try {
+        const checkRes = await fetch(
+          `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}&_t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (checkRes.ok) {
+          const data = await checkRes.json();
+          if (data?.status === 'ready' && data?.story?.scenes?.length >= 4) {
+            storyData = data.story;
+          }
+        }
+      } catch {}
     }
+    if (!storyData) throw err;
   }
 
   // Если серверный мост недоступен или вернул неполные данные — честно сообщаем об ошибке

@@ -157,3 +157,28 @@ test('buildStoryFromBlueprintPrompt строит промпт сказочник
   assert.ok(user.includes('дельфинёнок Плеск'));
   assert.ok(user.includes('Ракушка не может открыться без доброй песенки'));
 });
+
+test('buildArchitectPrompt для темы «Мода и стиль» с настроением «Творчество» не содержит клише про замерзание и мороз', () => {
+  const params = {
+    childName: 'Петр',
+    age: 2,
+    gender: 'boy',
+    theme: 'Мода и Стиль',
+    personality: 'Добрый',
+    storyMood: 'Творчество',
+    appearance: {
+      clothingItem: 'изумрудный свитер',
+      toy: 'плюшевый медвежонок',
+    },
+  };
+
+  const { system, user, dna } = buildArchitectPrompt(params);
+
+  assert.ok(system.includes('STRICT BAN ON CLICHÉS'));
+  assert.ok(system.includes('NEVER introduce freezing animals'));
+  assert.ok(user.includes('Мода и Стиль'));
+  assert.ok(user.includes('Творчество и созидание'));
+  assert.ok(dna.world_scale.includes('Atelier of Whimsical Style') || dna.world_description.includes('бархата'));
+  assert.ok(!user.includes('согреть озябшие лапки'));
+  assert.ok(!user.includes('поделиться последней земляничкой'));
+});

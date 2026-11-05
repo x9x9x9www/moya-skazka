@@ -482,7 +482,7 @@ async function generateWellflowImageAI(prompt, retries = 2) {
       if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || attempt === retries) {
         throw err;
       }
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
     }
   }
 }
@@ -704,7 +704,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     })),
   ];
 
-  console.log(`[StoryEngine] 🎨 Запуск генерации 5 изображений для «${story.title}» (пул concurrency: 2)...`);
+  console.log(`[StoryEngine] 🎨 Запуск параллельной генерации 5 изображений для «${story.title}» (пул concurrency: 5)...`);
 
   let completedImages = 0;
   const executeImageJob = async (job) => {
@@ -738,7 +738,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   };
 
   const imageQueue = [...imageTasks];
-  const workers = Array.from({ length: Math.min(2, imageQueue.length) }, async () => {
+  const workers = Array.from({ length: Math.min(5, imageQueue.length) }, async () => {
     while (imageQueue.length > 0) {
       const job = imageQueue.shift();
       if (job) await executeImageJob(job);
@@ -1572,13 +1572,26 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       const childKey = (params.childName || '').trim().toLowerCase();
 
-      // Защита от дубликатов: если генерация для этого ребенка уже идет, возвращаем активный jobId
+      // Защита от дубликатов: если генерация для этого ребенка уже идет или завершена, возвращаем результат
       if (childKey) {
+        // Проверяем, не готова ли уже сказка для этого ребенка
+        const cached = recentReadyStories.get(childKey);
+        if (cached && Date.now() - cached.readyAt < 15 * 60 * 1000 && cached.story?.scenes?.length >= 4) {
+          console.log(`[API Bridge] ⚡️ Возвращаем готовую сказку из кэша для «${params.childName}»`);
+          sendJsonResponse(
+            res,
+            200,
+            { status: 'ready', story: cached.story, jobId: cached.jobId, message: 'Сказка готова!' },
+            origin
+          );
+          return;
+        }
+
         const existingJob = [...jobs.entries()].find(
           ([id, j]) =>
             j.status === 'pending' &&
             j.childKey === childKey &&
-            Date.now() - j.createdAt < 120000
+            Date.now() - j.createdAt < 300000
         );
         if (existingJob) {
           console.log(`[API Bridge] ⚡️ Переиспользуем активную задачу ${existingJob[0]} для «${params.childName}»`);

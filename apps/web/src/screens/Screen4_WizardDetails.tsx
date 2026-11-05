@@ -10,7 +10,7 @@ interface Screen4WizardDetailsProps {
   isSubmitting: boolean;
   remainingSeconds?: number;
   creationMessage?: string;
-  onSubmit: (details: { personality: string; customWishes: string; includeQuestions: boolean }) => void;
+  onSubmit: (details: { personality: string; storyMood?: string; customWishes: string; includeQuestions: boolean }) => void;
 }
 
 export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
@@ -22,15 +22,24 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   onSubmit,
 }) => {
   const [personality, setPersonality] = useState('Добрый');
+  const [storyMood, setStoryMood] = useState('Творчество');
   const [customWishes, setCustomWishes] = useState('');
   const [includeQuestions, setIncludeQuestions] = useState(true);
 
   const personalities = ['Добрый', 'Любопытный', 'Смелый', 'Весёлый', 'Спокойный'];
 
+  const storyMoods = [
+    { id: 'Творчество', label: 'Творчество', emoji: '🎨', desc: 'созидать, мастерить, свой стиль' },
+    { id: 'Приключение', label: 'Приключение', emoji: '🚀', desc: 'исследование и добрая тайна' },
+    { id: 'Юмор и смех', label: 'Юмор и смех', emoji: '✨', desc: 'озорная игра и улыбки' },
+    { id: 'Спокойный сон', label: 'Спокойный сон', emoji: '🌙', desc: 'уютное тепло перед сном' },
+    { id: 'Дружба', label: 'Дружба', emoji: '🤝', desc: 'поддержка и взаимовыручка' },
+  ];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
-    onSubmit({ personality, customWishes, includeQuestions });
+    onSubmit({ personality, storyMood, customWishes, includeQuestions });
   };
 
   return (
@@ -65,6 +74,38 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
                 }`}
               >
                 {item}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Настроение и направленность сказки */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-stone-700">
+            Настроение сказки
+          </label>
+          <span className="text-[11px] text-brand-700 font-medium">
+            {storyMoods.find((m) => m.id === storyMood)?.desc}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {storyMoods.map((item) => {
+            const isSelected = storyMood === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setStoryMood(item.id)}
+                className={`px-3.5 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                    : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100 active:scale-95'
+                }`}
+              >
+                <span>{item.emoji}</span>
+                <span>{item.label}</span>
               </button>
             );
           })}

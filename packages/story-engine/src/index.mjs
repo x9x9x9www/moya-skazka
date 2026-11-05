@@ -69,8 +69,10 @@ You DO NOT write the full literary story text. Instead, you design a comprehensi
 2. CHARACTER INTEGRATION:
    - The child's personality is not a passive label; it is the unique superpower that unlocks the story's gentle climax.
    - The toy companion retains its toy nature (plush texture, stitches, wheels, button eyes) while coming alive as a loyal sidekick.
-3. CUSTOM THEME DEPTH:
-   - Avoid generic cliché plots. Deconstruct the theme into 3–4 tactile physical attributes and sensory moments.
+3. CUSTOM THEME & MOOD DEPTH (STRICT BAN ON CLICHÉS):
+   - The conflict, setting, and tactile actions MUST DERIVE 100% FROM THE CHOSEN THEME AND STORY MOOD.
+   - ABSOLUTE BAN ON CLICHÉS: NEVER introduce freezing animals, shivering from cold, getting lost in dark woods, or fear of darkness UNLESS the parent explicitly chose a winter/cold/darkness theme!
+   - In themes like "Fashion and Style" or "Circus" or "Cars", the action is about creativity, designing, playful mix-up, invention, or friendly cooperation — NOT about shivering or surviving the elements!
 4. FOUR-SCENE DRAMATURGY:
    - Scene 1: Hook, atmosphere, child in their specific clothing, meeting/waking the toy.
    - Scene 2: Gentle mystery or playful challenge, ending with a natural pause for Question 1.
@@ -108,6 +110,7 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
   * Кастомная тема имеет НАИВЫСШИЙ ПРИОРИТЕТ над общими категориями («волшебство», «природа»).
   * В КАЖДОЙ из 4 страниц ОБЯЗАТЕЛЬНО должны присутствовать минимум 2–3 физических осязаемых атрибута этой темы.
   * КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО игнорировать кастомную тему или сводить её к абстрактному фону!
+  * КАТЕГОРИЧЕСКИЙ ЗАПРЕТ НА КЛИШЕ «СПАСЕНИЕ ОТ ХОЛОДА»: ЗАПРЕЩЕНО вставлять замерзающих зверей, озябшие лапки или обогрев от мороза, если только тема напрямую не про зиму или снег! Вся интрига и действие должны на 100% происходить внутри выбранной темы («Мода и стиль» — примерка, создание стиля, показ, праздник; «Цирк» — фокусы, трюки; «Машинки» — ремонт, трасса).
 - FORBIDDEN openings: "Жил-был", "Однажды", "В некотором царстве", "В одном волшебном лесу", "Как-то раз". Start directly in media res with a sensory sound, texture, smell, movement, or line of dialogue.
 - MEANING & MORAL: Every fairytale must have a clear, heartwarming meaning (friendship, kindness, perseverance, mutual aid, curiosity, courage). The moral MUST be expressed through the child's own courageous, kind, or ingenious ACTION in Scene 3, NEVER through preachy didactic lectures at the end.
 - No brands, no real people, no pop-culture references, no advertisements.
@@ -528,6 +531,12 @@ function getThemedWorld(params, random) {
       desc: 'заснеженная сказочная деревушка с наряженными пушистыми ёлками, сияющими тёплыми гирляндами, морозными узорами и хрустящим искрящимся снегом',
     };
   }
+  if (theme.includes('мод') || theme.includes('стил') || theme.includes('наряд') || theme.includes('костюм') || theme.includes('портн')) {
+    return {
+      type: 'Atelier of Whimsical Style (Мастерская сказочного стиля)',
+      desc: 'уютная солнечная мастерская с рулонами бархата и шелка, сияющими пуговицами-звёздочками, мягкими мерными лентами и зеркалами в золотых рамах',
+    };
+  }
   if (theme.includes('цирк')) {
     return {
       type: 'Magic Big Top Circus (Волшебный цирк)',
@@ -809,25 +818,77 @@ function getThemedHook(params, random) {
 function getHeroAnchor(params, hints) {
   const wishes = (params.customWishes || '').trim();
   if (wishes.length > 5) {
-    return `пожелание родителя («${wishes}»), соединённое с добротой героя и заботой о друге`;
+    return `пожелание родителя («${wishes}»), соединённое с характером героя и заботой о друге`;
   }
   const theme = (params.theme || 'Дружба').toLowerCase();
-  if (theme.includes('смел')) {
-    return `смелый шаг вперёд: глубокий спокойный вдох, тёплое пожатие лапки спутника (${hints.toy}) и ласковое слово, рассеивающее страх`;
+  const mood = (params.storyMood || params.mood || '').toLowerCase();
+  if (theme.includes('мод') || theme.includes('стил') || mood.includes('творч')) {
+    return `творческое вдохновение: герой находит идеальное сочетание деталей, помогает другу обрести уверенность и красиво раскрыть свой стиль`;
   }
-  if (theme.includes('сон')) {
+  if (theme.includes('смел') || mood.includes('приключ')) {
+    return `смелый шаг вперёд: глубокий спокойный вдох, тёплое пожатие лапки спутника (${hints.toy}) и ласковое слово, рассеивающее любые сомнения`;
+  }
+  if (theme.includes('сон') || mood.includes('сон')) {
     return `успокаивающий сонный жест: тихая колыбельная песенка, мягкое укутывание друга и тёплые объятия в ${hints.clothes}`;
+  }
+  if (mood.includes('юмор') || mood.includes('смех') || mood.includes('весел')) {
+    return `добрая находчивость и улыбка: весёлая игра со спутником (${hints.toy}), превращающая любую путаницу в радостный общий смех`;
   }
   if (theme.includes('каприз') || theme.includes('эмоци')) {
     return `умение выдохнуть и обнять: герой сжимает лапку ${hints.toy}, глубоко дышит, и сердитая тучка превращается в улыбку`;
   }
   if (theme.includes('забот') || theme.includes('добр')) {
-    return `чуткая забота: протянутая рука помощи, готовность поделиться и согреть маленького друга`;
+    return `чуткая поддержка: протянутая рука помощи, готовность разделить радость и вовремя поддержать друга`;
   }
-  return `искренняя доброта и сообразительность: тёплые объятия, ласковая поддержка спутника (${hints.toy}) и уютное тепло ${hints.clothes}`;
+  return `искренняя доброта и сообразительность: дружеская поддержка спутника (${hints.toy}), совместное открытие и радость успеха`;
 }
 
-export function getPersonalityProfile(trait = 'Добрый', theme = '') {
+export function getMoodProfile(mood = '', theme = '') {
+  const m = String(mood || '').toLowerCase();
+  const th = String(theme || '').toLowerCase();
+
+  if (m.includes('творчеств') || m.includes('созидан') || th.includes('мод') || th.includes('стил')) {
+    return {
+      moodLabel: 'Творчество и созидание',
+      engineFocus: 'Созидание, придумывание нового, подбор уникального стиля, конструирование или украшение',
+      conflictType: 'Творческая задача или подготовка к празднику: создание необычного наряда/изобретения/шедевра, где каждому другу находится его идеальный образ или роль',
+      climaxAct: 'Герой находит нестандартное красивое решение, объединяя фантазию и заботу о друзьях (показ мод, преображение, завершение творческого шедевра)',
+    };
+  }
+  if (m.includes('приключен') || m.includes('поиск') || m.includes('исследован')) {
+    return {
+      moodLabel: 'Приключение и поиск',
+      engineFocus: 'Увлекательное исследование, следование по добрым приметам и следам, разгадка дружелюбной тайны',
+      conflictType: 'Таинственная находка, карта или добрая загадка мира темы, требующая внимания и смекалки',
+      climaxAct: 'Герой делает смелый шаг, разгадывает секрет и открывает удивительное место или находит потерянное сокровище дружбы',
+    };
+  }
+  if (m.includes('юмор') || m.includes('смех') || m.includes('весел') || m.includes('путаниц')) {
+    return {
+      moodLabel: 'Весёлая путаница и смех',
+      engineFocus: 'Забавные комичные ситуации, озорная детская игра, добрые недоразумения и заразительный смех',
+      conflictType: 'Смешная путаница (перепутались шляпы или роли, забавные повадки спутника, комичные звуки и неожиданности)',
+      climaxAct: 'Герой и друзья с улыбкой распутывают забавную путаницу, доказывая, что юмор и хорошее настроение решают любые сложности',
+    };
+  }
+  if (m.includes('сон') || m.includes('спокойн') || m.includes('уют') || th.includes('сон')) {
+    return {
+      moodLabel: 'Уютный и спокойный сон',
+      engineFocus: 'Медитативный, убаюкивающий ритм, мягкие звуки, согревающее тепло и плавное засыпание',
+      conflictType: 'Мирная вечерняя забота: помочь сонной звёздочке зажечь тихий маячок, застелить мягкие постельки или спеть колыбельную',
+      climaxAct: 'Тишина и покой опускаются на сказочный мир, герой нежно обнимает своего спутника и сладко засыпает',
+    };
+  }
+  // По умолчанию: Дружба и взаимовыручка
+  return {
+    moodLabel: 'Дружба и забота',
+    engineFocus: 'Искренняя дружба, командная игра, взаимное доверие и радость быть вместе',
+    conflictType: 'Важная совместная задача для друзей: помочь подготовить общий сюрприз или поддержать друга в его начинании',
+    climaxAct: 'Общий триумф дружбы, где каждый чувствует себя нужным, любимым и счастливым',
+  };
+}
+
+export function getPersonalityProfile(trait = 'Добрый', theme = '', mood = '') {
   const t = String(trait).toLowerCase();
   const th = String(theme).toLowerCase();
 
@@ -860,7 +921,7 @@ export function getPersonalityProfile(trait = 'Добрый', theme = '') {
       traitLabel: 'Смелый (отважный первооткрыватель)',
       voice: 'Вдохновляющий, динамичный тон первооткрывателя: неизвестное оказывается дружелюбным и понятным',
       guidelines: [
-        'Покажи преодоление маленького детского сомнения или страха (непонятный ночной шорох, таинственная дверца, шаг на новый мостик).',
+        'Покажи преодоление маленького детского сомнения или страха (непонятный ночной шорох, таинственная дверца, шаг на новый мостик или сцена).',
         'Страх быстро рассеивается: герой делает глубокий вдох, крепче сжимает лапку друга и убеждается, что мир полон дружелюбия («страшная тень оказалась веткой яблони с птичкой»).',
         'Смысл и мораль: Истинная смелость — это не отсутствие страха, а готовность сделать добрый шаг вперёд и прийти на выручку другу.',
       ],
@@ -872,7 +933,7 @@ export function getPersonalityProfile(trait = 'Добрый', theme = '') {
       traitLabel: 'Спокойный (чуткий созерцатель и мечтатель)',
       voice: 'Бархатный, медитативный, убаюкивающий тон: покой, дыхание, мягкие текстуры, тихое удивление',
       guidelines: [
-        'Сделай акцент на тактильном комфорте и умиротворяющих звуках (шелест листьев, тепло чая, мерцание звёзд, ровное спокойное дыхание).',
+        'Сделай акцент на тактильном комфорте и умиротворяющих звуках (шелест листьев, шелковистая ткань, мерцание звёзд, ровное спокойное дыхание).',
         'Плавный, размеренный ритм без резких потрясений, создающий глубокое чувство безопасности и нежного тепла.',
         'Смысл и мораль: Спокойствие, гармония и душевный мир — это великая целительная сила, укутывающая теплом перед сном.',
       ],
@@ -882,11 +943,11 @@ export function getPersonalityProfile(trait = 'Добрый', theme = '') {
   // По умолчанию: Добрый
   return {
     traitLabel: 'Добрый (чуткий и заботливый друг)',
-    voice: 'Тёплый, сердечный, осязаемый тон с акцентом на искреннюю заботу и взаимопомощь',
+    voice: 'Тёплый, сердечный, осязаемый тон с акцентом на искреннюю поддержку, командную помощь и принятие',
     guidelines: [
-      'Покажи тонкую эмпатию героя: способность заметить, что спутник или лесной житель загрустил, и вовремя прийти на помощь.',
-      'Трогательные жесты заботы: согреть озябшие лапки, поделиться последней земляничкой, сказать тёплое ласковое слово.',
-      'Смысл и мораль: Самое главное чудо на свете — это чуткое сердце, сочувствие и готовность бескорыстно согреть того, кто рядом.',
+      'Покажи тонкую эмпатию героя: способность заметить переживания или трудность друга и вовремя прийти на выручку в общем деле темы.',
+      'Трогательные жесты заботы, подходящие под мир истории: ободрить, подставить плечо, помочь смастерить или наладить то, что не получалось, поделиться нужной деталью.',
+      'Смысл и мораль: Самое главное чудо на свете — это чуткое сердце, взаимовыручка и радость от общего доброго дела.',
     ],
   };
 }
@@ -898,7 +959,8 @@ export function chooseStoryDna(params = {}, random = Math.random) {
   const hook = getThemedHook(params, random);
   const hints = appearanceHints(params.appearance);
   const trait = params.personality || 'Добрый';
-  const profile = getPersonalityProfile(trait, params.theme || '');
+  const moodProfile = getMoodProfile(params.storyMood || params.mood, params.theme || '');
+  const profile = getPersonalityProfile(trait, params.theme || '', params.storyMood || params.mood);
 
   return {
     world_scale: world.type,
@@ -907,6 +969,7 @@ export function chooseStoryDna(params = {}, random = Math.random) {
     narrative_description: engine.desc,
     literary_voice: profile.voice,
     personality_profile: profile,
+    mood_profile: moodProfile,
     companion_quirk: quirk,
     opening_hook: hook,
     hero_anchor: getHeroAnchor(params, hints),
@@ -1079,8 +1142,11 @@ ${(dna.personality_profile?.guidelines || ['Сделай акцент на до�
 - Одежда героя: ${fullClothingRus} (сохраняется во всех сценах)
 - Любимая игрушка-спутник: ${toy} (живой компаньон с повадкой: «${dna.companion_quirk}»)
 
-2. ТЕМА И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
-- Главная тема: «${params.theme || 'Дружба'}» (должна определять весь мир и осязаемые детали)
+2. ТЕМА, НАСТРОЕНИЕ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
+- Главная тема: «${params.theme || 'Дружба'}» (строго определяет весь мир, предметы и задачу сюжета)
+- Настроение и направленность сказки: «${dna.mood_profile?.moodLabel || 'Дружба и забота'}»
+  * Сюжетный фокус: ${dna.mood_profile?.engineFocus || 'Искренняя дружба и совместная радость'}
+  * Направленность конфликта: ${dna.mood_profile?.conflictType || 'Добрая задача для друзей'}
 - Интересы ребёнка: ${(params.interests || []).join(', ') || 'приключения и открытия'}
 ${params.customWishes ? `- Особые пожелания родителя (ВЫСШИЙ ПРИОРИТЕТ): «${params.customWishes}»` : '- Особые пожелания родителя: нет'}
 
@@ -1112,14 +1178,14 @@ ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты из недавних с
       "toy_awakening": "как оживает или включается ${toy}"
     },
     "scene_2_intrigue": {
-      "gentle_mystery": "добрая загадка или маленькая задачка по теме",
-      "emotional_beat": "эмоциональное состояние ребёнка (любопытство, удивление)",
+      "gentle_mystery": "добрая загадка или творческая задачка по теме «${params.theme || 'Дружба'}» в духе «${dna.mood_profile?.moodLabel || 'Дружба'}»",
+      "emotional_beat": "эмоциональное состояние ребёнка (любопытство, озорство, интерес)",
       "pause_hook": "пауза для первого вопроса родителю"
     },
     "scene_3_climax": {
-      "child_decision": "добрый поступок ребёнка, решающий ситуацию",
-      "wish_fulfillment": "${params.customWishes ? `воплощение пожелания: ${params.customWishes}` : 'кульминация дружбы и доброты'}",
-      "triumph_moment": "радостное совместное открытие с ${toy}"
+      "child_decision": "созидательный поступок героя через характер (${dna.personality_profile?.traitLabel || params.personality || 'Добрый'}): ${dna.mood_profile?.climaxAct || 'доброе решение'}",
+      "wish_fulfillment": "${params.customWishes ? `воплощение пожелания: ${params.customWishes}` : 'кульминация радости и дружбы'}",
+      "triumph_moment": "радостное совместное торжество с ${toy}"
     },
     "scene_4_bedtime_calm": {
       "calming_imagery": "успокаивающие сенсорные образы (тихий свет, мягкое тепло)",
@@ -1159,6 +1225,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 1. УТВЕРЖДЁННЫЙ АРХИТЕКТУРНЫЙ ПАСПОРТ СКАЗКИ (STORY BLUEPRINT):
 - Центральная метафора: ${bp.creative_concept.core_metaphor}
 - Мир сказки: ${bp.creative_concept.world_description}
+- Настроение и направленность: ${dna.mood_profile?.moodLabel || 'Дружба и забота'} (${dna.mood_profile?.engineFocus || 'совместное доброе дело'})
 - Роль и повадка спутника (${toy}): ${bp.creative_concept.companion_role}
 - Терапевтическая цель: ${bp.psychological_profile.therapeutic_goal}
 - Сильная сторона героя: ${bp.psychological_profile.character_strength}
