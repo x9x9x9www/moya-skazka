@@ -87,8 +87,49 @@ export interface NormalizedStory {
   };
 }
 
+export interface StoryBlueprint {
+  psychological_profile: {
+    age_focus: string;
+    character_strength: string;
+    therapeutic_goal: string;
+  };
+  creative_concept: {
+    core_metaphor: string;
+    world_description: string;
+    companion_role: string;
+  };
+  scene_by_scene_blueprint: {
+    scene_1_hook: {
+      setting: string;
+      sensory_hook: string;
+      clothing_action: string;
+      toy_awakening: string;
+    };
+    scene_2_intrigue: {
+      gentle_mystery: string;
+      emotional_beat: string;
+      pause_hook: string;
+    };
+    scene_3_climax: {
+      child_decision: string;
+      wish_fulfillment: string;
+      triumph_moment: string;
+    };
+    scene_4_bedtime_calm: {
+      calming_imagery: string;
+      grounding_gesture: string;
+      pause_hook: string;
+    };
+  };
+  pedagogical_focus: {
+    question_1_theme: string;
+    question_2_theme: string;
+  };
+}
+
 export const STORY_ENGINE_VERSION: string;
 export const STYLE_3D_PIXAR: string;
+export const ARCHITECT_SYSTEM_PROMPT: string;
 export const STORY_SYSTEM_PROMPT: string;
 
 export function appearanceHints(appearance?: ChildAppearance): {
@@ -107,6 +148,19 @@ export function buildStoryPrompt(
   params?: Partial<StoryParams>,
   options?: { random?: () => number; dna?: StoryDnaChoice }
 ): { system: string; user: string; dna: StoryDnaChoice };
+
+export function buildArchitectPrompt(
+  params?: Partial<StoryParams>,
+  options?: { random?: () => number; dna?: StoryDnaChoice }
+): { system: string; user: string; dna: StoryDnaChoice };
+
+export function buildStoryFromBlueprintPrompt(
+  params?: Partial<StoryParams>,
+  blueprint?: Partial<StoryBlueprint> | Record<string, any>,
+  options?: { random?: () => number; dna?: StoryDnaChoice }
+): { system: string; user: string; dna: StoryDnaChoice };
+
+export function normalizeBlueprint(raw: unknown, params?: Partial<StoryParams>): StoryBlueprint;
 
 export class StoryValidationError extends Error {
   issues: string[];
@@ -166,6 +220,7 @@ export function formatRussianDialogues(text: string): string;
 export function applyYoification(text: string): string;
 export function applyTypographySpacing(text: string): string;
 export function sanitizeToneAndPurity(text: string): string;
+export function simplifyChildQuestion(text: string): string;
 export function verifyNarrativeIntegrity(story: unknown, params?: Partial<StoryParams>): {
   valid: boolean;
   issues: string[];

@@ -182,14 +182,14 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
         {
           id: 'q_1',
           after_scene: 2,
-          question: `Куда ${declined.nom} и ${companionName} отправились в начале пути?`,
-          parent_hint: 'Обсудите с малышом, как приятно и важно помогать тем, кто попал в беду.',
+          question: `Что почувствовал${isGirl ? 'а' : ''} ${declined.nom}, когда началось приключение?`,
+          parent_hint: 'Спросите ребёнка о его чувствах и эмоциях в начале пути.',
           skill_tag: 'empathy',
         },
         {
           id: 'q_2',
           after_scene: 4,
-          question: `Как доброта и дружба помогли ${declined.dat} в этом приключении?`,
+          question: `Кто помог ${declined.dat} стать смелее?`,
           parent_hint: 'Подчеркните важность заботы, доброты и взаимной поддержки перед сном.',
           skill_tag: 'reflection',
         },
@@ -266,6 +266,24 @@ export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
   };
 }
 
+const badApiUrls = new Set<string>();
+
+export function markApiUrlFailed(url?: string | null) {
+  if (!url) return;
+  const clean = url.replace(/\/$/, '');
+  badApiUrls.add(clean);
+  try {
+    const cached = localStorage.getItem('ms_api_url');
+    if (cached && cached.replace(/\/$/, '') === clean) {
+      localStorage.removeItem('ms_api_url');
+    }
+  } catch {}
+}
+
+export function resetBadApiUrls() {
+  badApiUrls.clear();
+}
+
 export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
     const searchParams = new URLSearchParams(window.location.search);
@@ -279,10 +297,12 @@ export function getActiveApiUrl(): string {
     }
     if (paramUrl) {
       const clean = paramUrl.replace(/\/$/, '');
-      try {
-        localStorage.setItem('ms_api_url', clean);
-      } catch {}
-      return clean;
+      if (!badApiUrls.has(clean)) {
+        try {
+          localStorage.setItem('ms_api_url', clean);
+        } catch {}
+        return clean;
+      }
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
@@ -290,10 +310,11 @@ export function getActiveApiUrl(): string {
         cached &&
         !cached.includes('192a1eaba3c1ee78') &&
         !cached.includes('b4e24b393c4c2c70') &&
-        !cached.includes('loca.lt')
+        !cached.includes('loca.lt') &&
+        !badApiUrls.has(cached.replace(/\/$/, ''))
       ) {
         return cached.replace(/\/$/, '');
-      } else if (cached) {
+      } else if (cached && badApiUrls.has(cached.replace(/\/$/, ''))) {
         localStorage.removeItem('ms_api_url');
       }
     } catch {}
@@ -329,13 +350,20 @@ async function pollJob<T>(
         }
       }
 
-      const res = await fetch(`${currentBase}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}`, {
+      // Всегда опрашиваем с меткой времени _t и cache: 'no-store', чтобы Safari/WebKit не кэшировал статус
+      const pollUrl = `${currentBase}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}&_t=${Date.now()}`;
+      const res = await fetch(pollUrl, {
+        method: 'GET',
+        cache: 'no-store',
         headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
           'Bypass-Tunnel-Reminder': 'true',
           'X-Pinggy-No-Screen': 'true',
           'ngrok-skip-browser-warning': 'true',
         },
       });
+
       if (res.ok) {
         consecutiveErrors = 0;
         const data = await res.json();
@@ -359,23 +387,38 @@ async function pollJob<T>(
         }
       } else if (res.status === 404) {
         consecutiveErrors++;
-        if (consecutiveErrors > 20) {
+        if (consecutiveErrors > 25) {
           throw new Error('Задача генерации не найдена на сервере');
         }
+      } else {
+        consecutiveErrors++;
       }
     } catch (err: any) {
       if (err.message && (err.message.includes('Job failed') || err.message.includes('Задача генерации не найдена'))) {
         throw err;
       }
       consecutiveErrors++;
-      if (consecutiveErrors > 30) {
+      if (consecutiveErrors % 5 === 0 && onProgress) {
+        onProgress({
+          stage: 'finishing',
+          progress: 88,
+          message: 'Сказка почти готова... Проверяем связь со сказочной мастерской...',
+        });
+      }
+      if (consecutiveErrors > 40) {
         // Пробуем аварийный запрос последней готовой сказки перед падением
         if (childName) {
           try {
             const fallbackRes = await fetch(
-              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}`,
+              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}&_t=${Date.now()}`,
               {
-                headers: { 'Bypass-Tunnel-Reminder': 'true' },
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Bypass-Tunnel-Reminder': 'true',
+                },
               }
             );
             if (fallbackRes.ok) {
@@ -396,9 +439,15 @@ async function pollJob<T>(
   if (childName) {
     try {
       const fallbackRes = await fetch(
-        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}`,
+        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}&_t=${Date.now()}`,
         {
-          headers: { 'Bypass-Tunnel-Reminder': 'true' },
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Bypass-Tunnel-Reminder': 'true',
+          },
         }
       );
       if (fallbackRes.ok) {
@@ -514,7 +563,7 @@ export function getRecentBooksBlacklist(): string[] {
  */
 export async function callWellflowStory(
   params: GenerateStoryParams,
-  timeoutMs = 180000,
+  timeoutMs = 240000,
   onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<any> {
   const overallStart = Date.now();
@@ -561,13 +610,15 @@ export async function callWellflowStory(
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 4500);
+    const initTimer = setTimeout(() => initCtrl.abort(), 12000);
 
     try {
       const response = await fetch(candidate.url, {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store',
           'Bypass-Tunnel-Reminder': 'true',
           'X-Pinggy-No-Screen': 'true',
           'ngrok-skip-browser-warning': 'true',
@@ -593,15 +644,11 @@ export async function callWellflowStory(
           return data;
         }
       } else {
-        if (candidate.pollBase === activeApi) {
-          try { localStorage.removeItem('ms_api_url'); } catch {}
-        }
+        markApiUrlFailed(candidate.pollBase);
       }
     } catch (err: any) {
       clearTimeout(initTimer);
-      if (candidate.pollBase === activeApi) {
-        try { localStorage.removeItem('ms_api_url'); } catch {}
-      }
+      markApiUrlFailed(candidate.pollBase);
       console.warn(`[StoryGenerator] Не удалось начать генерацию через ${candidate.url}:`, err.message);
     }
   }

@@ -16,6 +16,7 @@ interface Screen12SettingsProps {
   onUpdateSetting: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
   onDeleteAccount: () => Promise<void>;
   onOpenAdmin?: () => void;
+  isAdmin?: boolean;
 }
 
 export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
@@ -23,6 +24,7 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
   onUpdateSetting,
   onDeleteAccount,
   onOpenAdmin,
+  isAdmin,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -239,6 +241,21 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
             </div>
             <span className="text-stone-400">›</span>
           </a>
+
+          {isAdmin && (
+            <div className="p-3.5 bg-amber-50/80 border-b border-cream-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">👑</span>
+                <div>
+                  <div className="font-bold text-xs text-stone-900">Администратор: @dinar_fazlyev</div>
+                  <div className="text-[10px] text-amber-700 font-medium">Безлимитные кредиты и доступ к панели</div>
+                </div>
+              </div>
+              <span className="text-[10px] bg-amber-500 text-stone-950 font-bold px-2 py-0.5 rounded-full">
+                ADMIN
+              </span>
+            </div>
+          )}
 
           {onOpenAdmin && (
             <button

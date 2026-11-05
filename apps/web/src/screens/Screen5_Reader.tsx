@@ -83,15 +83,21 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
 
   const { isPlaying, toggleMute } = useLullabyAudio(settings.music || 'calm', true);
 
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentSceneIndex]);
+
   // Буквица (Drop Cap): отделяем первую букву текста
   const text = currentScene?.text || '';
   const firstLetter = text.charAt(0);
   const restOfText = text.slice(1);
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 relative ${themeClass}`}>
+    <div className={`h-[100dvh] max-h-[100dvh] flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 relative overflow-hidden ${themeClass}`}>
       {/* 1. Воздушная шапка читалки */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 backdrop-blur-md bg-inherit/90 border-b border-cream-300/40">
+      <div className="shrink-0 z-30 flex items-center justify-between px-4 py-3 backdrop-blur-md bg-inherit/90 border-b border-cream-300/40">
         <button
           onClick={onClose}
           className="p-2 -ml-1 rounded-full text-stone-600 hover:text-stone-900 active:scale-95 transition-all hover:bg-black/5"
@@ -155,8 +161,12 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         </div>
       </div>
 
-      {/* 2. Основной контент сцены: Иллюстрация + Буквица + Свиток беседы (pb-44 предотвращает наложение нижнего дока) */}
-      <div className="flex-1 p-5 space-y-6 overflow-y-auto pb-44 scroll-smooth overscroll-contain">
+      {/* 2. Основной контент сцены: Иллюстрация + Буквица + Свиток беседы (отступ 120px+ гарантирует свободную прокрутку над кнопкой «Дальше») */}
+      <div
+        ref={scrollRef}
+        className="flex-1 p-5 space-y-6 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-contain"
+        style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 24px))' }}
+      >
         {/* Крупная сказочная иллюстрация с мягким виньетированием и Ken Burns эффектом */}
         <div className="relative rounded-3xl overflow-hidden shadow-card border border-amber-200/60 bg-cream-100">
           <div
@@ -238,6 +248,9 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
             )}
           </div>
         )}
+
+        {/* Гарантированный отступ снизу: предотвращает перекрытие текста кнопкой «Дальше» на любых экранах */}
+        <div className="h-40 shrink-0 pointer-events-none select-none" aria-hidden="true" />
       </div>
 
       {/* 4. Плавающая стеклянная панель управления (Floating Glass Dock) */}

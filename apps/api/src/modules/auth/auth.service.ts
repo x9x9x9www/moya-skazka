@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import { config } from '../../config/index';
 import { prisma } from '@moya-skazka/database';
+import { CreditsService } from '../credits/credits.service';
+
+export const ADMIN_USERNAMES = ['dinar_fazlyev'];
 
 export interface TelegramUserData {
   id: number;
@@ -84,6 +87,9 @@ export class AuthService {
     startParam?: string | null
   ) {
     const telegramUserId = BigInt(tgUser.id);
+    const isAdmin = Boolean(
+      tgUser.username && ADMIN_USERNAMES.includes(tgUser.username.toLowerCase())
+    );
 
     // 1. Поиск или создание пользователя
     let user = await prisma.user.findUnique({
@@ -98,6 +104,7 @@ export class AuthService {
           telegram_user_id: telegramUserId,
           first_name: tgUser.first_name || null,
           username: tgUser.username || null,
+          role: isAdmin ? 'ADMIN' : 'USER',
         },
       });
 
@@ -109,6 +116,29 @@ export class AuthService {
           properties_json: { is_new_user: true, start_param: startParam || null },
         },
       });
+    } else if (isAdmin && user.role !== 'ADMIN') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' },
+      });
+    }
+
+    // Если пользователь администратор (@dinar_fazlyev), обеспечиваем запас кредитов
+    if (isAdmin) {
+      try {
+        const balance = await CreditsService.getUserBalance(user.id);
+        if (balance.available < 100) {
+          await CreditsService.adminAdjustBalance(
+            user.id,
+            999,
+            'gift',
+            'Административный доступ: безлимитные кредиты',
+            user.id
+          );
+        }
+      } catch (err: any) {
+        console.warn('[AuthService] Автопополнение кредитов админа:', err.message);
+      }
     }
 
     // 2. Обработка реферальной атрибуции только при первом входе нового пользователя

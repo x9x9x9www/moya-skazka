@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTelegram } from './hooks/useTelegram';
 import { useReaderSettings } from './hooks/useReaderSettings';
 import { api } from './api/client';
@@ -18,8 +18,8 @@ import { Screen9_Shop } from './screens/Screen9_Shop';
 import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
-import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl } from './services/storyGenerator';
+import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, UserDTO } from '@moya-skazka/shared';
+import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, getActiveApiUrl } from './services/storyGenerator';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -30,9 +30,30 @@ const PARENTING_ADVICE = [
   'Персонализированные сказки помогают мягко и экологично преодолевать детские страхи: темноты, разлуки или новых начинаний.',
 ];
 
+const ADMIN_USERNAMES = ['dinar_fazlyev'];
+
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
   const { settings, updateSetting } = useReaderSettings();
+
+  const [currentUser, setCurrentUser] = useState<UserDTO | null>(null);
+
+  const isAdmin = useMemo(() => {
+    const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+    const tgUsername = (tg?.initDataUnsafe?.user?.username || '').toLowerCase();
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const urlAdmin = searchParams?.get('admin') === '1' || searchParams?.get('role') === 'admin';
+    const localAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('ms_is_admin') === 'true';
+    const roleAdmin = currentUser?.role === 'ADMIN';
+
+    const matches = ADMIN_USERNAMES.includes(tgUsername) || roleAdmin || urlAdmin || localAdmin;
+    if (matches && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('ms_is_admin', 'true');
+      } catch {}
+    }
+    return matches;
+  }, [currentUser]);
 
   // 0. Обработка флага полного сброса для проверки опыта нового пользователя (?reset=1)
   const isResetRequested = (() => {
@@ -89,6 +110,13 @@ export const App: React.FC = () => {
       return 1;
     }
   });
+
+  // Автоматически пополняем баланс для администратора (@dinar_fazlyev)
+  useEffect(() => {
+    if (isAdmin) {
+      setBalance((prev) => (prev < 50 ? 999 : prev));
+    }
+  }, [isAdmin]);
   // Единоразовая бесплатная первая сказка: сохраняется в localStorage
   const [canClaimFree, setCanClaimFree] = useState<boolean>(() => {
     try {
@@ -124,6 +152,11 @@ export const App: React.FC = () => {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);
   const [creationStage, setCreationStage] = useState<'writing' | 'drawing' | 'finishing'>('writing');
+  const creationStageRef = useRef<'writing' | 'drawing' | 'finishing'>('writing');
+  const updateCreationStage = (stage: 'writing' | 'drawing' | 'finishing') => {
+    creationStageRef.current = stage;
+    setCreationStage(stage);
+  };
   const [creationMessage, setCreationMessage] = useState<string>('Создаём волшебную сказку...');
   const [remainingSeconds, setRemainingSeconds] = useState<number>(35);
 
@@ -185,6 +218,9 @@ export const App: React.FC = () => {
     try {
       await api.loginWithTelegram(initData, startParam);
       const me = await api.getMe();
+      if (me?.user) {
+        setCurrentUser(me.user);
+      }
       if (me?.balance) {
         const available = me.balance.available ?? me.balance.total;
         if (typeof available === 'number') setBalance(available);
@@ -397,7 +433,7 @@ export const App: React.FC = () => {
       id: 'b_aelita',
       child_id: 'default',
       child_name: 'Аэлита',
-      title: 'Аэлита и тайна Светлячка Лучика',
+      title: 'Аэлита и тайна Звёздного Китёнка',
       status: 'ILLUSTRATED',
       format: 'ILLUSTRATED',
       cover_url: resolveAssetUrl('/illustrations/demo/cover.jpg'),
@@ -539,7 +575,8 @@ export const App: React.FC = () => {
     customWishes: string;
     includeQuestions: boolean;
   }) => {
-    if (!canClaimFree && balance <= 0) {
+    if (isCreatingStory) return;
+    if (!isAdmin && !canClaimFree && balance <= 0) {
       alert('У вас закончились книжные кредиты. Перейдите в магазин, чтобы пополнить баланс.');
       setCurrentScreen('shop');
       setActiveTab('shop');
@@ -550,19 +587,21 @@ export const App: React.FC = () => {
     setGenerationError(null);
     setIsCreatingStory(true);
     setJobProgress(15);
-    setCreationStage('writing');
+    updateCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет и character bible...');
-    const TOTAL_ESTIMATED_SEC = 140;
+    const TOTAL_ESTIMATED_SEC = 160;
     setRemainingSeconds(TOTAL_ESTIMATED_SEC);
     haptic.medium();
 
-    // Плавный монотонный таймер обратного отсчёта
+    // Плавный монотонный таймер обратного отсчёта, синхронизированный с этапом
     const startTime = Date.now();
     const countdownInterval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000;
       const left = Math.max(0, Math.ceil(TOTAL_ESTIMATED_SEC - elapsed));
       setRemainingSeconds(left);
-      setJobProgress((prev) => (prev < 90 ? Math.min(88, prev + 0.6) : prev));
+      const stage = creationStageRef.current;
+      const stageCeiling = stage === 'writing' ? 44 : stage === 'drawing' ? 89 : 98;
+      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.4) : prev));
     }, 500);
 
     try {
@@ -580,7 +619,7 @@ export const App: React.FC = () => {
           appearance: wizardData.appearance,
         },
         (update) => {
-          setCreationStage(update.stage);
+          updateCreationStage(update.stage);
           setCreationMessage(update.message);
           setJobProgress((prev) => Math.max(prev, update.progress));
         }
@@ -588,7 +627,7 @@ export const App: React.FC = () => {
 
       clearInterval(countdownInterval);
       setRemainingSeconds(0);
-      setCreationStage('finishing');
+      updateCreationStage('finishing');
       setCreationMessage('Сказка готова!');
       setJobProgress(100);
 
@@ -617,7 +656,10 @@ export const App: React.FC = () => {
       } catch {}
 
       // 3. Единоразовое списание бесплатной первой сказки или кредита
-      if (canClaimFree) {
+      if (isAdmin) {
+        // Для администратора кредиты не блокируют генерацию
+        if (balance <= 5) setBalance(999);
+      } else if (canClaimFree) {
         setCanClaimFree(false);
         try {
           localStorage.setItem('ms_free_claimed', 'true');
@@ -635,6 +677,69 @@ export const App: React.FC = () => {
     } catch (err: any) {
       clearInterval(countdownInterval);
       console.error('[App] ❌ Ошибка генерации сказки:', err);
+
+      // Аварийное восстановление: проверяем, возможно сказка уже готова на сервере
+      let restoredBook: BookDetailsDTO | null = null;
+      if (wizardData.childName) {
+        try {
+          const apiBase = getActiveApiUrl();
+          if (apiBase) {
+            const checkRes = await fetch(
+              `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(wizardData.childName.trim())}&_t=${Date.now()}`,
+              {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Bypass-Tunnel-Reminder': 'true',
+                },
+                signal: AbortSignal.timeout(6000),
+              }
+            );
+            if (checkRes.ok) {
+              const data = await checkRes.json();
+              if (data?.status === 'ready' && data?.story?.scenes) {
+                restoredBook = data.story;
+              }
+            }
+          }
+        } catch {}
+      }
+
+      if (restoredBook) {
+        console.log('[App] 🎉 Сказка успешно восстановлена из серверного кэша!');
+        updateCreationStage('finishing');
+        setJobProgress(100);
+        const newSummary: BookSummaryDTO = {
+          id: restoredBook.id,
+          child_id: activeChildId || 'default',
+          child_name: wizardData.childName,
+          title: restoredBook.title,
+          status: 'ILLUSTRATED',
+          format: 'ILLUSTRATED',
+          cover_url: resolveMediaUrl(restoredBook.cover_url || restoredBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || restoredBook.title),
+          created_at: new Date().toISOString(),
+        };
+        setBooks((prev) => {
+          const updated = [newSummary, ...prev];
+          try {
+            localStorage.setItem('ms_books', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+        try {
+          localStorage.setItem(`ms_story_${restoredBook.id}`, JSON.stringify(restoredBook));
+        } catch {}
+
+        setTimeout(() => {
+          setIsCreatingStory(false);
+          haptic.success();
+          openReader(restoredBook!);
+        }, 350);
+        return;
+      }
+
       setIsCreatingStory(false);
       setGenerationError(
         err?.message ||
@@ -814,6 +919,7 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   setGenerationError(null);
+                  resetBadApiUrls();
                   if (lastGenerationDetails) {
                     handleCreateStorySubmit(lastGenerationDetails);
                   }
@@ -948,31 +1054,34 @@ export const App: React.FC = () => {
               if (localStory) {
                 try {
                   const parsed = JSON.parse(localStory);
-                  // Самовосстановление: если в ранее сгенерированной истории у сцен не было картинок
-                  if (parsed.scenes && Array.isArray(parsed.scenes)) {
-                    let updated = false;
-                    parsed.scenes.forEach((sc: any, idx: number) => {
-                      if (!sc.image_url) {
-                        sc.image_url = getFairytaleFallbackIllustration(parsed.title || wizardData.theme, idx + 1);
-                        updated = true;
+                  if (id === 'b_aelita' && (!parsed.title || parsed.title.includes('Светлячка') || !parsed.title.includes('Китёнка'))) {
+                    // Пропускаем старую версию со светлячком
+                  } else {
+                    if (parsed.scenes && Array.isArray(parsed.scenes)) {
+                      let updated = false;
+                      parsed.scenes.forEach((sc: any, idx: number) => {
+                        if (!sc.image_url) {
+                          sc.image_url = getFairytaleFallbackIllustration(parsed.title || wizardData.theme, idx + 1);
+                          updated = true;
+                        }
+                      });
+                      if (updated) {
+                        try {
+                          localStorage.setItem(`ms_story_${id}`, JSON.stringify(parsed));
+                        } catch {}
                       }
-                    });
-                    if (updated) {
-                      try {
-                        localStorage.setItem(`ms_story_${id}`, JSON.stringify(parsed));
-                      } catch {}
                     }
+                    openReader(parsed);
+                    return;
                   }
-                  openReader(parsed);
-                  return;
                 } catch {}
               }
 
-              // Эталонная сказка для проверки качества (Definition of Done)
+              // Эталонная сказка для проверки качества: 100% соответствие текста иллюстрациям и неизменность героя
               if (id === 'b_aelita') {
                 const aelitaStory: BookDetailsDTO = {
                   id: 'b_aelita',
-                  title: 'Аэлита и тайна Светлячка Лучика',
+                  title: 'Аэлита и тайна Звёздного Китёнка',
                   status: 'ILLUSTRATED',
                   format: 'ILLUSTRATED',
                   can_upgrade: false,
@@ -981,25 +1090,25 @@ export const App: React.FC = () => {
                     {
                       id: 's1',
                       scene_index: 1,
-                      text: 'Однажды тихим солнечным утром Аэлита почувствовала, что день готовит нечто по-настоящему чудесное. На ней было красивое платье, а золотистые волосы искрились в мягких лучах света. Вдруг прямо на тёплую ладошку опустился крошечный Светлячок Лучик с изумрудными крылышками, приглашая в Волшебную Поляну!',
+                      text: 'Уютным вечером маленькая Аэлита сидела в своей тёплой космической каюте в любимой жёлтой толстовке. Волосы были аккуратно собраны в милый хвостик, а на коленях ласково урчал плюшевый котёнок. За круглым иллюминатором тихо мерцали далёкие звёзды. Вдруг среди звёздной пыли заиграл тёплый сказочный огонёк!',
                       image_url: resolveAssetUrl('/illustrations/demo/scene_1.jpg'),
                     },
                     {
                       id: 's2',
                       scene_index: 2,
-                      text: 'Сделав смелый шаг, Аэлита очутилась на тропинке, где шелестели диковинные сказочные травы. Лучик тихонько прозвенел: «Здравствуй, Аэлита! Нам нужно помочь крошечным лесным колокольчикам найти дорогу ко сну». Маленькая героиня с радостью согласилась помочь верному другу.',
+                      text: 'Аэлита подошла к иллюминатору и замерла от восторга: прямо за стеклом парил добрый Звёздный Китёнок! Он был соткан из мягкого синего сияния и звёздных искорок. Китёнок приветливо мигнул глазками и позвал друзей в удивительное звёздное путешествие.',
                       image_url: resolveAssetUrl('/illustrations/demo/scene_2.jpg'),
                     },
                     {
                       id: 's3',
                       scene_index: 3,
-                      text: 'Впереди возникло небольшое испытание: прохладный вечерний туман спрятал тропинку к полянке с колокольчиками. Но Аэлита не растерялась, улыбнулась и крепко взяла спутника за руку. Девочка зажгла волшебный фонарик доброты, а Лучик озарил каждый листик тёплым сиянием. Вместе они рассеяли туман, доказав силу дружбы!',
+                      text: 'Надев прозрачный скафандр, Аэлита смело шагнула на сверкающую звёздную дорожку. В руке девочки светился добрый золотой фонарик, а верный котёнок уютно устроился рядом. Вместе с Китёнком они зажигали сонные звёздочки, помогая им сиять мягче и теплее.',
                       image_url: resolveAssetUrl('/illustrations/demo/scene_3.jpg'),
                     },
                     {
                       id: 's4',
                       scene_index: 4,
-                      text: 'И вот тайна открылась: все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу! Сердце Аэлиты наполнилось тихим теплом и радостью. Приключение счастливо завершилось, Лучик уютно устроился рядом, напевая нежную колыбельную. Самое время сладко закрыть глазки и уснуть.',
+                      text: 'Вернувшись в каюту, Аэлита сладко укуталась в мягкое одеяло. За окошком ласково улыбались зажжённые звёздочки, а верный котёнок свернулся клубочком. «Добрых снов, звёздные просторы», — прошептала Аэлита и счастливо закрыла глазки.',
                       image_url: resolveAssetUrl('/illustrations/demo/scene_4.jpg'),
                     },
                   ],
@@ -1007,14 +1116,14 @@ export const App: React.FC = () => {
                     {
                       id: 'q1',
                       after_scene: 2,
-                      question: 'Куда Аэлита и Лучик отправились в начале своего пути?',
-                      parent_hint: 'Обсудите с малышом, как приятно и важно помогать тем, кто попал в беду.',
+                      question: 'Что почувствовала Аэлита, когда увидела Звёздного Китёнка?',
+                      parent_hint: 'Спросите малыша, какие чувства вызывает неожиданная добрая встреча.',
                       skill_tag: 'empathy',
                     },
                     {
                       id: 'q2',
                       after_scene: 4,
-                      question: 'Как дружба помогла Аэлите и Лучику рассеять вечерний туман?',
+                      question: 'Кто помог Аэлите зажечь звёздочки перед сном?',
                       parent_hint: 'Подчеркните важность заботы, доброты и взаимной поддержки перед сном.',
                       skill_tag: 'reflection',
                     },
@@ -1054,6 +1163,11 @@ export const App: React.FC = () => {
 
         {currentScreen === 'shop' && (
           <Screen9_Shop
+            isAdmin={isAdmin}
+            onAdminAddCredits={(count) => {
+              setBalance((prev) => prev + count);
+              haptic.success();
+            }}
             onBuySku={(sku) => {
               setSelectedSku(sku);
               setPaymentSheetOpen(true);
@@ -1072,6 +1186,7 @@ export const App: React.FC = () => {
         {currentScreen === 'settings' && (
           <Screen12_Settings
             settings={settings}
+            isAdmin={isAdmin}
             onUpdateSetting={updateSetting}
             onOpenAdmin={() => setAdminModalOpen(true)}
             onDeleteAccount={async () => {

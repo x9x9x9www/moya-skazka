@@ -105,7 +105,21 @@ export class CreditsService {
       const available = totalBalance - reservedCount;
 
       if (available < 1) {
-        throw new Error('Недостаточно кредитов на балансе для создания сказки');
+        const userObj = await tx.user.findUnique({ where: { id: userId } });
+        if (userObj?.role === 'ADMIN') {
+          // Администратор получает кредиты без ограничений
+          await tx.creditLedger.create({
+            data: {
+              user_id: userId,
+              delta: 100,
+              source_type: 'ADMIN_ADJUSTMENT',
+              source_id: 'auto_admin_unlimited',
+              status: 'CONFIRMED',
+            },
+          });
+        } else {
+          throw new Error('Недостаточно кредитов на балансе для создания сказки');
+        }
       }
 
       // 3. Создаем запись резервации

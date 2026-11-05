@@ -29,6 +29,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     onSubmit({ personality, customWishes, includeQuestions });
   };
 

@@ -8,6 +8,7 @@ import {
   sanitizeToneAndPurity,
   verifyNarrativeIntegrity,
   runEditorialAgent,
+  simplifyChildQuestion,
 } from '../src/editorialAgent.mjs';
 
 test('Агент: родовое согласование глаголов для девочки', () => {
@@ -170,4 +171,23 @@ test('Агент: интеграция одежды, любимой игрушк
     result.story.scenes[2].text.toLowerCase().includes('черепаш'),
     'Особое пожелание родителя исполнено в 3-й сцене'
   );
+});
+
+test('Агент: очистка неестественных метафор для детей 2–6 лет', () => {
+  const text = 'Вдруг её тканевые пятнышки затрепетали от удивления, а глазки наполнились серебром.';
+  const sanitized = sanitizeToneAndPurity(text);
+  assert.ok(!sanitized.includes('тканевые пятнышки затрепетали'));
+  assert.ok(sanitized.includes('плюшевые ушки радостно зашевелились') || sanitized.includes('зашевелились'));
+  assert.ok(!sanitized.includes('глазки наполнились серебром'));
+  assert.ok(sanitized.includes('глазки засияли от радости'));
+});
+
+test('Агент: упрощение вопросов ребёнку до одного простого', () => {
+  const doubleQ = 'Что, по-твоему, почувствовала Аэлита, когда услышала шорох? А кто помог ей стать смелее?';
+  const simplified = simplifyChildQuestion(doubleQ);
+  assert.equal(simplified, 'Что почувствовала Аэлита, когда услышала шорох?');
+
+  const compoundQ = 'Что почувствовал герой, и как ты думаешь, почему он улыбнулся?';
+  const simplifiedCompound = simplifyChildQuestion(compoundQ);
+  assert.equal(simplifiedCompound, 'Что почувствовал герой?');
 });

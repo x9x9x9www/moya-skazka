@@ -176,6 +176,16 @@ const STYLE_REPLACEMENTS = [
   [new RegExp(`${CYR_PRE}на сегодняшний день${CYR_POST}`, 'giu'), 'сейчас'],
   [new RegExp(`${CYR_PRE}ввиду того что${CYR_POST}`, 'giu'), 'потому что'],
   [new RegExp(`${CYR_PRE}как следствие${CYR_POST}`, 'giu'), 'поэтому'],
+
+  // Очистка от неестественных синтетических фраз и механических метафор для детей 2–6 лет
+  [new RegExp(`${CYR_PRE}тканев(?:ые|ых|ым|ыми)?\\s+пятнышк(?:и|ек|ам|ами)?\\s+затрепетал(?:и|о)?${CYR_POST}`, 'giu'), 'плюшевые ушки радостно зашевелились'],
+  [new RegExp(`${CYR_PRE}тканев(?:ые|ых|ым|ыми)?\\s+пятнышк(?:и|ек|ам|ами)?${CYR_POST}`, 'giu'), 'плюшевые пятнышки'],
+  [new RegExp(`${CYR_PRE}пятнышк(?:и|ек|ам|ами)?\\s+затрепетал(?:и|о)?${CYR_POST}`, 'giu'), 'хвостик радостно завилял'],
+  [new RegExp(`${CYR_PRE}затрепетал(?:и|о)?\\s+пятнышк(?:и|ек|ам|ами)?${CYR_POST}`, 'giu'), 'радостно зашевелились ушки'],
+  [new RegExp(`${CYR_PRE}модул(?:ь|я|ем|и)?\\s+радост(?:и)?${CYR_POST}`, 'giu'), 'чувство радости'],
+  [new RegExp(`${CYR_PRE}импульс(?:а|ом|ы)?\\s+тепл(?:а)?${CYR_POST}`, 'giu'), 'тёплая искорка'],
+  [new RegExp(`${CYR_PRE}глазк(?:и|ами)?\\s+наполнились\\s+серебр(?:ом)?${CYR_POST}`, 'giu'), 'глазки засияли от радости'],
+  [new RegExp(`${CYR_PRE}душа\\s+запела\\s+хрустал(?:ём|ем)?${CYR_POST}`, 'giu'), 'на сердце стало легко и радостно'],
 ];
 
 /**
@@ -477,6 +487,33 @@ export function sanitizeToneAndPurity(text) {
 }
 
 /**
+ * Упрощение вопроса для ребёнка: ровно один простой, короткий вопрос по сюжету
+ */
+export function simplifyChildQuestion(qText) {
+  if (!qText || typeof qText !== 'string') return '';
+  let clean = qText.trim();
+
+  // Если вопрос содержит два знака вопроса, оставляем только первое простое предложение
+  if (clean.includes('?')) {
+    const parts = clean.split('?').map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      clean = parts[0] + '?';
+    }
+  }
+
+  // Убираем громоздкие взрослые преамбулы
+  clean = clean.replace(/^Что,\s*по-твоему,\s*/iu, 'Что ');
+  clean = clean.replace(/^Как,\s*по-твоему,\s*/iu, 'Как ');
+  clean = clean.replace(/^Как\s+ты\s+думаешь,\s*/iu, '');
+
+  // Убираем вторую составную клаузу: «... шорох, а что помогло...» или «... и кто помог...»
+  clean = clean.replace(/,\s*(?:а|и)\s+(?:что|как|кто|почему|куда)\s+[^?]+(\?|$)/iu, '$1');
+
+  if (!clean.endsWith('?')) clean += '?';
+  return clean.replace(/\s{2,}/g, ' ').trim();
+}
+
+/**
  * Проверка и выравнивание сюжетной целостности (Narrative Integrity)
  */
 export function verifyNarrativeIntegrity(story, params = {}) {
@@ -694,6 +731,7 @@ export function runEditorialAgent(story, params = {}) {
   edited.questions = edited.questions.map((q) => {
     let question = q.question || '';
     question = sanitizeToneAndPurity(question);
+    question = simplifyChildQuestion(question);
     question = proofreadRussianGrammar(question, params);
     question = applyYoification(question);
     question = applyTypographySpacing(question);

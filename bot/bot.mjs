@@ -8,6 +8,9 @@ import { spawn } from 'child_process';
 import { shouldActivateTunnel } from './tunnelPriority.mjs';
 import {
   buildStoryPrompt,
+  buildArchitectPrompt,
+  buildStoryFromBlueprintPrompt,
+  normalizeBlueprint,
   chooseStoryDna,
   createSeededRandom,
   normalizeStory,
@@ -17,8 +20,9 @@ import {
   buildScenePrompt,
   fallbackQuestions,
   declineRussianName,
+  runEditorialAgent,
 } from '../packages/story-engine/src/index.mjs';
-import { Agent, ProxyAgent, setGlobalDispatcher } from 'undici';
+import { Agent, ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import localtunnel from 'localtunnel';
 
 // Автоматическая загрузка переменных из .env
@@ -50,36 +54,50 @@ const explicitProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || proce
 const isProxyDisabled = process.env.DISABLE_PROXY === 'true' || process.env.NO_PROXY === '*';
 const proxyUrl = isProxyDisabled ? null : (explicitProxy || null);
 
-if (proxyUrl) {
+let currentProxyAgent = null;
+
+function applyProxyAgent() {
+  if (!proxyUrl) {
+    currentProxyAgent = null;
+    try { setGlobalDispatcher(new Agent({ connect: { timeout: 30000 } })); } catch {}
+    console.log('[Proxy] ⚡️ Прокси отключен, используется прямое соединение');
+    return null;
+  }
   try {
-    setGlobalDispatcher(
-      new ProxyAgent({
-        uri: proxyUrl,
-        connect: {
-          timeout: 60000,
-        },
-        headersTimeout: 180000,
-        bodyTimeout: 180000,
-      })
-    );
-    console.log(`[Proxy] 🛡 Настроен системный прокси: ${proxyUrl}`);
-    // Удаляем из env, чтобы сокетные туннели (localtunnel) не блокировались HTTP-прокси
-    delete process.env.HTTP_PROXY;
-    delete process.env.HTTPS_PROXY;
-    delete process.env.http_proxy;
-    delete process.env.https_proxy;
-    delete process.env.ALL_PROXY;
-    delete process.env.all_proxy;
+    currentProxyAgent = new ProxyAgent({
+      uri: proxyUrl,
+      connect: {
+        timeout: 60000,
+      },
+      headersTimeout: 240000,
+      bodyTimeout: 240000,
+    });
+    try { setGlobalDispatcher(currentProxyAgent); } catch {}
+    console.log(`[Proxy] 🛡 Настроен Telegram & AI-прокси: ${proxyUrl}`);
+    return currentProxyAgent;
   } catch (err) {
     console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
+    currentProxyAgent = null;
+    return null;
   }
-} else {
-  console.log('[Proxy] ⚡️ Прокси отключен, используется прямое соединение');
+}
+
+applyProxyAgent();
+
+if (proxyUrl) {
+  // Удаляем из env, чтобы сокетные туннели (localtunnel/ssh) не блокировались HTTP-прокси
+  delete process.env.HTTP_PROXY;
+  delete process.env.HTTPS_PROXY;
+  delete process.env.http_proxy;
+  delete process.env.https_proxy;
+  delete process.env.ALL_PROXY;
+  delete process.env.all_proxy;
 }
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
+const ADMIN_USERNAMES = ['dinar_fazlyev'];
 if (!BOT_TOKEN) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -145,8 +163,12 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   const timeout = new Promise((_, reject) => {
     setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs + 1000);
   });
+  const fetchOpts = { ...options, signal: controller.signal };
+  if (currentProxyAgent && !fetchOpts.dispatcher) {
+    fetchOpts.dispatcher = currentProxyAgent;
+  }
   try {
-    return await Promise.race([fetch(url, { ...options, signal: controller.signal }), timeout]);
+    return await Promise.race([undiciFetch(url, fetchOpts), timeout]);
   } finally {
     clearTimeout(timer);
   }
@@ -154,7 +176,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 
 async function callWellflowDirect(messages, label, options = {}) {
   const maxTokens = options.max_tokens || 4500;
-  const timeoutMs = options.timeoutMs || 150000;
+  const timeoutMs = options.timeoutMs || 240000;
   let res;
   try {
     res = await fetchWithTimeout(
@@ -196,12 +218,12 @@ async function callTextChat(messages, label, options = {}) {
 
 const callWellflowChat = callTextChat;
 
-async function callWithRetry(messages, label, attempts = 2) {
+async function callWithRetry(messages, label, attempts = 2, options = {}) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       if (attempt > 1) console.warn(`[AI] 🔁 ${label}: повторная попытка ${attempt}/${attempts}`);
-      return await callTextChat(messages, `${label}#${attempt}`);
+      return await callTextChat(messages, `${label}#${attempt}`, options);
     } catch (error) {
       lastError = error;
       console.warn(`[AI] ⚠️ ${label}: ${error.message}`);
@@ -217,20 +239,53 @@ async function generateWellflowStoryAI(params) {
     input,
     createSeededRandom(`${Date.now()}|${input.childName}|${input.age}|${input.theme}|${input.personality}`)
   );
-  const prompt = buildStoryPrompt(input, { dna });
 
   console.log(
-    `[StoryEngine] ✍️ ${WELLFLOW_TEXT_MODEL} для «${input.childName || 'Малыш'}» (${input.age || 4} г.): ` +
-      `${dna.world_scale} / ${dna.narrative_engine}`
+    `[StoryEngine] 🧠 Двухэтапный запуск для «${input.childName || 'Малыш'}» (${input.age || 4} г., ${dna.personality_profile?.traitLabel || input.personality || 'Добрый'}): тема «${input.theme || 'Дружба'}»`
+  );
+
+  let storyPrompt = null;
+  let blueprint = null;
+
+  // ЭТАП 1: Агент-Методист & Сюжетный Архитектор (Анализ психологии, темы, характера)
+  try {
+    const architectPrompt = buildArchitectPrompt(input, { dna });
+    console.log(`[StoryEngine/Этап 1] 🏛 Архитектор анализирует характер и проектирует метафору...`);
+    const architectContent = await callWithRetry(
+      [
+        { role: 'system', content: architectPrompt.system },
+        { role: 'user', content: architectPrompt.user },
+      ],
+      'architect',
+      2,
+      { max_tokens: 650, timeoutMs: 120000 }
+    );
+
+    const rawBlueprint = parseJsonContent(architectContent);
+    blueprint = normalizeBlueprint(rawBlueprint, input);
+    console.log(
+      `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: «${blueprint.creative_concept.core_metaphor}» | Сила героя: ${blueprint.psychological_profile.character_strength}`
+    );
+
+    storyPrompt = buildStoryFromBlueprintPrompt(input, blueprint, { dna });
+  } catch (archErr) {
+    console.warn(`[StoryEngine/Этап 1] ⚠️ Сбой этапа Архитектора (${archErr.message}), используем прямой фоллбэк StoryPrompt`);
+    storyPrompt = buildStoryPrompt(input, { dna });
+  }
+
+  // ЭТАП 2: Агент-Сказочник & Литературный Режиссёр (Написание 4 сцен по паспорту)
+  console.log(
+    `[StoryEngine/Этап 2] ✍️ Сказочник (${WELLFLOW_TEXT_MODEL}) пишет 4 сцены по утверждённому сценарию...`
   );
 
   const content = await callWithRetry(
     [
-      { role: 'system', content: prompt.system },
-      { role: 'user', content: prompt.user },
+      { role: 'system', content: storyPrompt.system },
+      { role: 'user', content: storyPrompt.user },
     ],
     'story',
-    2
+    2,
+    { max_tokens: 2200, timeoutMs: 240000 }
   );
 
   let raw;
@@ -243,21 +298,24 @@ async function generateWellflowStoryAI(params) {
   try {
     let story = normalizeStory(raw, input, dna);
 
-    // Если модель написала заметно короче минимума (< 260 слов) — расширяем
-    if (story.metrics.total_words < 260) {
+    // Адаптивная проверка длины по возрасту ребенка: не вызываем лишний repair, если объем идеален
+    const childAge = Number(input.age) || 4;
+    const minWords = childAge <= 3 ? 190 : (childAge <= 5 ? 270 : 360);
+    if (story.metrics.total_words < minWords) {
       console.warn(
-        `[StoryEngine] 📏 Текст короче минимума: ${story.metrics.total_words} < 260, запускаем length repair`
+        `[StoryEngine] 📏 Текст короче минимума для возраста ${childAge}: ${story.metrics.total_words} < ${minWords}, запускаем length repair`
       );
       try {
         const lengthRepair = buildLengthRepairPrompt(story, story.metrics.target);
         const expandedContent = await callTextChat(
           [
-            { role: 'system', content: prompt.system },
-            { role: 'user', content: prompt.user },
+            { role: 'system', content: storyPrompt.system },
+            { role: 'user', content: storyPrompt.user },
             { role: 'assistant', content },
             { role: 'user', content: lengthRepair },
           ],
-          'length-repair'
+          'length-repair',
+          { max_tokens: 2200, timeoutMs: 90000 }
         );
         const expandedRaw = parseJsonContent(expandedContent);
         const expanded = normalizeStory(expandedRaw, input, dna);
@@ -268,6 +326,19 @@ async function generateWellflowStoryAI(params) {
       } catch (lengthError) {
         console.warn(`[StoryEngine] ⚠️ Length repair не удался, оставляем исходный текст: ${lengthError.message}`);
       }
+    }
+
+    // Прогоняем через редакционный агент для безупречной грамматики и ёфикации
+    try {
+      const editorial = runEditorialAgent(story, input);
+      if (editorial && editorial.story) {
+        story = editorial.story;
+        if (editorial.fixesApplied?.length) {
+          console.log(`[StoryEngine] 📚 EditorialAgent применил правки: ${editorial.fixesApplied.join(', ')}`);
+        }
+      }
+    } catch (edErr) {
+      console.warn(`[StoryEngine] ⚠️ Ошибка EditorialAgent: ${edErr.message}`);
     }
 
     console.log(
@@ -281,8 +352,8 @@ async function generateWellflowStoryAI(params) {
     const repair = buildRepairPrompt(raw, error.issues || [error.message]);
     const repairedContent = await callTextChat(
       [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user },
+        { role: 'system', content: storyPrompt.system },
+        { role: 'user', content: storyPrompt.user },
         { role: 'assistant', content },
         { role: 'user', content: repair },
       ],
@@ -290,13 +361,21 @@ async function generateWellflowStoryAI(params) {
     );
     const repairedRaw = parseJsonContent(repairedContent);
     try {
-      const story = normalizeStory(repairedRaw, input, dna);
+      let story = normalizeStory(repairedRaw, input, dna);
+      try {
+        const editorial = runEditorialAgent(story, input);
+        if (editorial?.story) story = editorial.story;
+      } catch {}
       console.log(`[StoryEngine] ✅ после repair: «${story.title}» (${story.metrics.total_words} слов)`);
       return story;
     } catch (repairError) {
       if ((repairError.issues || []).some((issue) => /вопрос/i.test(issue))) {
         const patched = { ...repairedRaw, questions: fallbackQuestions(input.childName) };
-        const story = normalizeStory(patched, input, dna);
+        let story = normalizeStory(patched, input, dna);
+        try {
+          const editorial = runEditorialAgent(story, input);
+          if (editorial?.story) story = editorial.story;
+        } catch {}
         story.warnings.push('вопросы заменены fallback-вопросами после repair');
         console.warn('[StoryEngine] ⚠️ Вопросы заменены fallback-вопросами');
         return story;
@@ -552,13 +631,13 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
         ? [
             {
               after_scene: 2,
-              question: `Как ${child} ${isGirl ? 'поддержала' : 'поддержал'} друга ${companionName} в начале их пути?`,
-              parent_hint: 'Спросите ребёнка о доверии и о том, как приятно помогать друзьям.',
+              question: `Что почувствовал${isGirl ? 'а' : ''} ${child}, когда началось приключение?`,
+              parent_hint: 'Спросите ребёнка о доверии и первых впечатлениях в начале пути.',
               skill_tag: 'empathy',
             },
             {
               after_scene: 4,
-              question: `Что помогло ${declined.dat} и ${companionName} справиться с испытанием?`,
+              question: `Кто помог ${declined.dat} стать смелее?`,
               parent_hint: 'Подчеркните ценность доброты, терпения и взаимовыручки перед сном.',
               skill_tag: 'emotions',
             },
@@ -625,40 +704,47 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     })),
   ];
 
-  console.log(`[StoryEngine] 🎨 Запуск параллельной генерации 5 изображений для «${story.title}»...`);
+  console.log(`[StoryEngine] 🎨 Запуск генерации 5 изображений для «${story.title}» (пул concurrency: 2)...`);
 
   let completedImages = 0;
-  await Promise.all(
-    imageTasks.map(async (job) => {
-      let url;
-      try {
-        const remoteUrl = await generateWellflowImageAI(job.prompt);
-        url = await saveGeneratedImage(remoteUrl, jobId, job.name);
-      } catch (error) {
-        console.error(`[StoryEngine] ⚠️ ${job.name}: используем fallback — ${error.message}`);
-        url = job.fallback;
-      }
+  const executeImageJob = async (job) => {
+    let url;
+    try {
+      const remoteUrl = await generateWellflowImageAI(job.prompt);
+      url = await saveGeneratedImage(remoteUrl, jobId, job.name);
+    } catch (error) {
+      console.error(`[StoryEngine] ⚠️ ${job.name}: используем fallback — ${error.message}`);
+      url = job.fallback;
+    }
 
-      if (job.kind === 'cover') {
-        story.cover_url = url;
-      } else {
-        const scene = story.scenes.find((item) => item.index === job.sceneIndex);
-        if (scene) {
-          scene.image_url = url;
-          scene.image_prompt = scene.visual;
-        }
+    if (job.kind === 'cover') {
+      story.cover_url = url;
+    } else {
+      const scene = story.scenes.find((item) => item.index === job.sceneIndex);
+      if (scene) {
+        scene.image_url = url;
+        scene.image_prompt = scene.visual;
       }
+    }
 
-      completedImages += 1;
-      const pct = 50 + Math.round((completedImages / imageTasks.length) * 45);
-      onProgress?.({
-        stage: 'drawing',
-        progress: pct,
-        message: `Создаём иллюстрации (${completedImages} из ${imageTasks.length} готовы)...`,
-        story,
-      });
-    })
-  );
+    completedImages += 1;
+    const pct = 50 + Math.round((completedImages / imageTasks.length) * 45);
+    onProgress?.({
+      stage: 'drawing',
+      progress: pct,
+      message: `Создаём иллюстрации (${completedImages} из ${imageTasks.length} готовы)...`,
+      story,
+    });
+  };
+
+  const imageQueue = [...imageTasks];
+  const workers = Array.from({ length: Math.min(2, imageQueue.length) }, async () => {
+    while (imageQueue.length > 0) {
+      const job = imageQueue.shift();
+      if (job) await executeImageJob(job);
+    }
+  });
+  await Promise.all(workers);
 
   // Гарантия: у каждой сцены и обложки есть URL
   if (!story.cover_url) story.cover_url = getThemedFallbackIllustration(params.theme, 0);
@@ -813,6 +899,10 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(jsonStr),
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
     'Access-Control-Allow-Origin': isAllowed ? origin : '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *',
@@ -837,6 +927,90 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       },
       origin
     );
+    return;
+  }
+
+  // Авторизация Telegram WebApp в режиме моста
+  if (url.pathname === '/api/v1/auth/telegram' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let username = '';
+      let firstName = 'Родитель';
+      let userId = 'user_demo';
+      try {
+        const parsed = JSON.parse(body || '{}');
+        const initData = parsed.init_data || '';
+        if (initData) {
+          const sp = new URLSearchParams(initData);
+          const u = JSON.parse(sp.get('user') || '{}');
+          username = (u.username || '').toLowerCase();
+          firstName = u.first_name || firstName;
+          userId = String(u.id || userId);
+        }
+      } catch {}
+
+      const isAdmin = ADMIN_USERNAMES.includes(username);
+      sendJsonResponse(res, 200, {
+        token: `bridge_token_${userId}`,
+        user: {
+          id: userId,
+          telegram_user_id: userId,
+          first_name: firstName,
+          username: username || 'parent',
+          role: isAdmin ? 'ADMIN' : 'USER',
+          free_text_claimed_at: null,
+          default_questions_enabled: true,
+          timezone: 'UTC+3',
+        },
+      }, origin);
+    });
+    return;
+  }
+
+  // Профиль и баланс пользователя в режиме моста (/me)
+  if (url.pathname === '/api/v1/me' && req.method === 'GET') {
+    const authHeader = req.headers['authorization'] || '';
+    const tgHeader = req.headers['x-telegram-init-data'] || '';
+    let username = '';
+    if (tgHeader) {
+      try {
+        const sp = new URLSearchParams(tgHeader);
+        const u = JSON.parse(sp.get('user') || '{}');
+        username = (u.username || '').toLowerCase();
+      } catch {}
+    }
+    const isAdmin = ADMIN_USERNAMES.includes(username) || authHeader.includes('admin') || url.searchParams.get('admin') === '1';
+    sendJsonResponse(res, 200, {
+      user: {
+        id: 'user_1',
+        telegram_user_id: '123456789',
+        first_name: 'Родитель',
+        username: username || (isAdmin ? 'dinar_fazlyev' : 'parent'),
+        role: isAdmin ? 'ADMIN' : 'USER',
+        free_text_claimed_at: null,
+        default_questions_enabled: true,
+        timezone: 'UTC+3',
+      },
+      balance: {
+        total: isAdmin ? 999 : 5,
+        paid: isAdmin ? 999 : 5,
+        gift: 0,
+        reserved: 0,
+        available: isAdmin ? 999 : 5,
+      },
+      can_claim_free_story: true,
+    }, origin);
+    return;
+  }
+
+  // Корректировка кредитов администратора (/admin/credits/adjust)
+  if (url.pathname === '/api/v1/admin/credits/adjust' && req.method === 'POST') {
+    sendJsonResponse(res, 200, {
+      status: 'ok',
+      message: 'Кредиты успешно начислены',
+      delta: 999,
+    }, origin);
     return;
   }
 
@@ -1396,9 +1570,27 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       for await (const chunk of req) bodyStr += chunk;
       const params = JSON.parse(bodyStr || '{}');
 
+      const childKey = (params.childName || '').trim().toLowerCase();
+
+      // Защита от дубликатов: если генерация для этого ребенка уже идет, возвращаем активный jobId
+      if (childKey) {
+        const existingJob = [...jobs.entries()].find(
+          ([id, j]) =>
+            j.status === 'pending' &&
+            j.childKey === childKey &&
+            Date.now() - j.createdAt < 120000
+        );
+        if (existingJob) {
+          console.log(`[API Bridge] ⚡️ Переиспользуем активную задачу ${existingJob[0]} для «${params.childName}»`);
+          sendJsonResponse(res, 202, { jobId: existingJob[0], status: 'pending' }, origin);
+          return;
+        }
+      }
+
       const jobId = 'story_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       jobs.set(jobId, {
         status: 'pending',
+        childKey,
         stage: 'writing',
         progress: 15,
         message: 'Автор придумывает сюжет и character bible...',
@@ -1413,7 +1605,6 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         }
       }, jobId)
         .then((story) => {
-          const childKey = (params.childName || '').trim().toLowerCase();
           if (childKey) {
             recentReadyStories.set(childKey, {
               story,
@@ -1421,9 +1612,11 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
               readyAt: Date.now(),
             });
           }
+          console.log(`[StoryEngine] 🎉 Сказка «${story.title}» полностью готова! (jobId: ${jobId})`);
           jobs.set(jobId, {
             status: 'ready',
             story,
+            childKey,
             stage: 'finishing',
             progress: 100,
             message: 'Сказка готова!',
@@ -1432,7 +1625,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         })
         .catch((err) => {
           console.error('[API Bridge Error generate-story]:', err.message, err.cause || '');
-          jobs.set(jobId, { status: 'error', error: err.message, createdAt: Date.now() });
+          jobs.set(jobId, { status: 'error', childKey, error: err.message, createdAt: Date.now() });
         });
 
       // Мгновенный ответ клиенту (менее 10мс!)
@@ -1502,21 +1695,37 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
 // ========================================================
 async function checkTunnelHealth(url, timeoutMs = 7000) {
   if (!url) return false;
-  try {
-    const cleanUrl = url.replace(/\/$/, '');
-    const res = await fetch(`${cleanUrl}/health`, {
-      headers: {
-        'Bypass-Tunnel-Reminder': 'true',
-        'bypass-tunnel-reminder': 'true',
-      },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) return false;
-    const json = await res.json().catch(() => null);
-    return Boolean(json && (json.status === 'ok' || json.service));
-  } catch {
-    return false;
+  const cleanUrl = url.replace(/\/$/, '');
+  const directAgent = new Agent({ connect: { timeout: timeoutMs } });
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      let res;
+      try {
+        res = await undiciFetch(`${cleanUrl}/health`, {
+          dispatcher: directAgent,
+          headers: {
+            'Bypass-Tunnel-Reminder': 'true',
+            'Cache-Control': 'no-cache',
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch {
+        res = await fetch(`${cleanUrl}/health`, {
+          headers: {
+            'Bypass-Tunnel-Reminder': 'true',
+            'Cache-Control': 'no-cache',
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      }
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json && (json.status === 'ok' || json.service)) return true;
+      }
+    } catch {}
+    if (attempt < 4) await new Promise((r) => setTimeout(r, 1500));
   }
+  return false;
 }
 
 async function activateTunnel(url, source) {
@@ -1528,8 +1737,13 @@ async function activateTunnel(url, source) {
   const cleanUrl = url.replace(/\/$/, '');
   if (cleanUrl === publicTunnelUrl) return true;
 
+  if (source === 'cloudflare') {
+    // 2.5 сек на первичное распространение DNS Cloudflare перед health-check
+    await new Promise((r) => setTimeout(r, 2500));
+  }
+
   console.log(`[Tunnel] 🩺 Проверка работоспособности туннеля (${source}): ${cleanUrl}...`);
-  const isHealthy = await checkTunnelHealth(cleanUrl, 8000);
+  const isHealthy = await checkTunnelHealth(cleanUrl, 9000);
   if (!isHealthy) {
     console.warn(`[Tunnel] ❌ ${source} (${cleanUrl}) не прошёл health-check (HTTP 408/503/таймаут). Активация отклонена!`);
     if (source === 'cloudflare') {
@@ -1622,8 +1836,13 @@ let consecutiveWatchdogFailures = 0;
 // Watchdog: каждые 25 сек проверяет живость активного туннеля
 setInterval(async () => {
   if (!publicTunnelUrl) {
-    if (!serveoProc && !pinggyProc && !currentTunnel) {
-      startServeoTunnel();
+    if (!serveoProc && !pinggyProc && !currentTunnel && !cloudflareProc) {
+      const binPath = path.resolve('bot/cloudflared');
+      if (fs.existsSync(binPath)) {
+        startCloudflareTunnel();
+      } else {
+        startPinggyTunnel();
+      }
     }
     return;
   }
@@ -1633,21 +1852,15 @@ setInterval(async () => {
     return;
   }
   consecutiveWatchdogFailures++;
-  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/3)...`);
-  if (consecutiveWatchdogFailures < 3) {
+  const hasPendingJob = Array.from(jobs.values()).some((j) => j.status === 'pending');
+  const maxFailures = hasPendingJob ? 15 : 6;
+  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/${maxFailures})...`);
+  if (consecutiveWatchdogFailures < maxFailures) {
     return;
   }
   consecutiveWatchdogFailures = 0;
   console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) признан неработающим. Автоматический перезапуск...`);
-  if (activeTunnelSource === 'serveo') {
-    if (serveoProc) {
-      try { serveoProc.kill(); } catch {}
-      serveoProc = null;
-    }
-    publicTunnelUrl = '';
-    activeTunnelSource = '';
-    startServeoTunnel();
-  } else if (activeTunnelSource === 'cloudflare') {
+  if (activeTunnelSource === 'cloudflare') {
     if (cloudflareProc) {
       try { cloudflareProc.kill(); } catch {}
       cloudflareProc = null;
@@ -1655,32 +1868,59 @@ setInterval(async () => {
     publicTunnelUrl = '';
     activeTunnelSource = '';
     startCloudflareTunnel();
+  } else if (activeTunnelSource === 'serveo') {
+    stopServeoTunnel();
+    startServeoTunnel();
   } else {
-    if (pinggyProc) {
-      try { pinggyProc.kill(); } catch {}
-      pinggyProc = null;
-    }
+    stopPinggyTunnel();
     if (currentTunnel) {
       try { currentTunnel.close(); } catch {}
       currentTunnel = null;
     }
     publicTunnelUrl = '';
     activeTunnelSource = '';
-    startServeoTunnel();
+    const binPath = path.resolve('bot/cloudflared');
+    if (fs.existsSync(binPath)) {
+      startCloudflareTunnel();
+    } else {
+      startPinggyTunnel();
+    }
   }
 }, 25000);
 
 let serveoProc = null;
+let serveoReconnectTimer = null;
+
+function stopServeoTunnel() {
+  if (serveoReconnectTimer) {
+    clearTimeout(serveoReconnectTimer);
+    serveoReconnectTimer = null;
+  }
+  if (serveoProc) {
+    const proc = serveoProc;
+    serveoProc = null;
+    try { proc.kill('SIGTERM'); } catch {}
+  }
+  if (activeTunnelSource === 'serveo') {
+    publicTunnelUrl = '';
+    activeTunnelSource = '';
+  }
+}
 
 function startServeoTunnel() {
   if (serveoProc) return;
+  if (serveoReconnectTimer) {
+    clearTimeout(serveoReconnectTimer);
+    serveoReconnectTimer = null;
+  }
   console.log('[Serveo] 🌐 Запуск быстрого HTTPS-туннеля Serveo (порт 443, без предупреждений)...');
   try {
     const sshArgs = [
       '-p', '443',
       '-o', 'StrictHostKeyChecking=no',
-      '-o', 'ServerAliveInterval=15',
-      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ServerAliveInterval=20',
+      '-o', 'ServerAliveCountMax=4',
+      '-o', 'ConnectTimeout=15',
       '-o', 'ExitOnForwardFailure=yes',
       '-R', `80:localhost:${BRIDGE_PORT}`,
       'serveo.net',
@@ -1702,19 +1942,21 @@ function startServeoTunnel() {
     proc.stderr.on('data', parseOutput);
 
     proc.on('close', (code) => {
+      if (serveoProc !== proc) return;
       console.log(`[Serveo] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
       serveoProc = null;
       if (activeTunnelSource === 'serveo') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
       }
-      setTimeout(startServeoTunnel, 5000);
+      serveoReconnectTimer = setTimeout(startServeoTunnel, 5000);
     });
 
     proc.on('error', (err) => {
+      if (serveoProc !== proc) return;
       console.warn('[Serveo Ошибка]:', err.message);
       serveoProc = null;
-      setTimeout(startServeoTunnel, 10000);
+      serveoReconnectTimer = setTimeout(startServeoTunnel, 10000);
     });
   } catch (err) {
     console.error('[Serveo Сбой запуска]:', err.message);
@@ -1735,7 +1977,13 @@ function startCloudflareTunnel() {
   }
   console.log('[Cloudflare] 🌐 Запуск быстрого HTTPS-туннеля Cloudflare (без предупреждений и блокировок CORS)...');
   try {
-    const proc = spawn(binPath, ['tunnel', '--url', `http://localhost:${BRIDGE_PORT}`]);
+    const env = { ...process.env };
+    if (proxyUrl) {
+      env.HTTP_PROXY = proxyUrl;
+      env.HTTPS_PROXY = proxyUrl;
+      env.ALL_PROXY = proxyUrl;
+    }
+    const proc = spawn(binPath, ['tunnel', '--url', `http://127.0.0.1:${BRIDGE_PORT}`], { env });
     cloudflareProc = proc;
 
     const parseOutput = async (data) => {
@@ -1758,13 +2006,19 @@ function startCloudflareTunnel() {
         publicTunnelUrl = '';
         activeTunnelSource = '';
         setTimeout(startCloudflareTunnel, 5000);
+      } else {
+        startPinggyTunnel();
       }
     });
 
     proc.on('error', (err) => {
       console.warn('[Cloudflare Ошибка]:', err.message);
       cloudflareProc = null;
-      setTimeout(startCloudflareTunnel, 10000);
+      if (activeTunnelSource === 'cloudflare') {
+        setTimeout(startCloudflareTunnel, 10000);
+      } else {
+        startPinggyTunnel();
+      }
     });
   } catch (err) {
     console.error('[Cloudflare Сбой запуска]:', err.message);
@@ -1774,16 +2028,38 @@ function startCloudflareTunnel() {
 }
 
 let pinggyProc = null;
+let pinggyReconnectTimer = null;
+
+function stopPinggyTunnel() {
+  if (pinggyReconnectTimer) {
+    clearTimeout(pinggyReconnectTimer);
+    pinggyReconnectTimer = null;
+  }
+  if (pinggyProc) {
+    const proc = pinggyProc;
+    pinggyProc = null;
+    try { proc.kill('SIGTERM'); } catch {}
+  }
+  if (activeTunnelSource === 'pinggy') {
+    publicTunnelUrl = '';
+    activeTunnelSource = '';
+  }
+}
 
 function startPinggyTunnel() {
   if (pinggyProc) return;
+  if (pinggyReconnectTimer) {
+    clearTimeout(pinggyReconnectTimer);
+    pinggyReconnectTimer = null;
+  }
   console.log('[Pinggy] 🌐 Запуск быстрого HTTPS-туннеля через Pinggy (порт 443)...');
   try {
     const sshArgs = [
       '-p', '443',
       '-o', 'StrictHostKeyChecking=no',
-      '-o', 'ServerAliveInterval=15',
-      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ServerAliveInterval=20',
+      '-o', 'ServerAliveCountMax=4',
+      '-o', 'ConnectTimeout=15',
       '-o', 'ExitOnForwardFailure=yes',
       '-R', `80:localhost:${BRIDGE_PORT}`,
       'a.pinggy.io',
@@ -1805,24 +2081,26 @@ function startPinggyTunnel() {
     proc.stderr.on('data', parseOutput);
 
     proc.on('close', (code) => {
+      if (pinggyProc !== proc) return;
       console.log(`[Pinggy] Соединение завершилось (код ${code}). Перезапуск через 5 сек...`);
       pinggyProc = null;
       if (activeTunnelSource === 'pinggy') {
         publicTunnelUrl = '';
         activeTunnelSource = '';
       }
-      setTimeout(startPinggyTunnel, 5000);
+      pinggyReconnectTimer = setTimeout(startPinggyTunnel, 5000);
     });
 
     proc.on('error', (err) => {
+      if (pinggyProc !== proc) return;
       console.warn('[Pinggy Ошибка]:', err.message);
       pinggyProc = null;
-      setTimeout(startPinggyTunnel, 10000);
+      pinggyReconnectTimer = setTimeout(startPinggyTunnel, 10000);
     });
   } catch (err) {
     console.error('[Pinggy Сбой запуска]:', err.message);
     pinggyProc = null;
-    setTimeout(startPinggyTunnel, 10000);
+    pinggyReconnectTimer = setTimeout(startPinggyTunnel, 10000);
   }
 }
 
@@ -1901,13 +2179,12 @@ process.on('SIGTERM', () => {
 if (SKIP_TUNNELS) {
   console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
 } else {
-  startServeoTunnel();
-  setTimeout(() => {
-    if (!publicTunnelUrl && !serveoProc) {
-      console.log('[Tunnel] Serveo не поднялся за 12 сек, запускаем Pinggy как резерв...');
-      startPinggyTunnel();
-    }
-  }, 12000);
+  const binPath = path.resolve('bot/cloudflared');
+  if (fs.existsSync(binPath)) {
+    startCloudflareTunnel();
+  } else {
+    startPinggyTunnel();
+  }
 }
 
 // ========================================================
@@ -1916,36 +2193,53 @@ if (SKIP_TUNNELS) {
 async function callTelegram(method, params = {}) {
   try {
     const isLongPoll = method === 'getUpdates';
-    const res = await fetch(`${TELEGRAM_API}/${method}`, {
+    const fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
       signal: AbortSignal.timeout(isLongPoll ? 45000 : 15000),
-    });
+    };
+    if (currentProxyAgent) {
+      fetchOptions.dispatcher = currentProxyAgent;
+    }
+    const res = await undiciFetch(`${TELEGRAM_API}/${method}`, fetchOptions);
     return await res.json();
   } catch (err) {
-    if (method === 'getUpdates' && (err.name === 'TimeoutError' || err.message?.includes('timeout') || err.message?.includes('Timeout'))) {
+    const isNetworkIdle =
+      err.name === 'TimeoutError' ||
+      err.message?.includes('timeout') ||
+      err.message?.includes('Timeout') ||
+      err.message?.includes('other side closed') ||
+      err.message?.includes('ECONNRESET');
+
+    if (method === 'getUpdates' && isNetworkIdle) {
       return { ok: true, result: [] };
     }
     const causeMsg = err.cause?.message || err.cause?.code || '';
     const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
-    if (details.includes('ECONNREFUSED') || details.includes('connect error') || details.includes('Client network socket disconnected')) {
-      console.warn('[Proxy] ⚠️ Сбой соединения через прокси, переключаемся на прямое соединение...');
-      try {
-        setGlobalDispatcher(new Agent({ connect: { timeout: 15000 } }));
-      } catch {}
+    if (proxyUrl && method !== 'getUpdates') {
+      if (
+        details.includes('ECONNREFUSED') ||
+        details.includes('connect error') ||
+        details.includes('Client network socket disconnected') ||
+        details.includes('fetch failed')
+      ) {
+        applyProxyAgent();
+      }
     }
     console.error(`[Bot] Ошибка вызова ${method}:`, details);
     return null;
   }
 }
 
-function getAppUrlWithApi(apiUrl) {
+function getAppUrlWithApi(apiUrl, isAdmin = false) {
   const base = WEB_APP_BASE_URL;
   const target = apiUrl || publicTunnelUrl;
-  if (!target) return base;
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}api_url=${encodeURIComponent(target)}`;
+  let url = target ? `${base}${base.includes('?') ? '&' : '?'}api_url=${encodeURIComponent(target)}` : base;
+  if (isAdmin) {
+    url += `${url.includes('?') ? '&' : '?'}admin=1`;
+  }
+  return url;
 }
 
 let lastMenuButtonUrl = '';
@@ -1969,8 +2263,10 @@ async function updateChatMenuWithApi(apiUrl) {
 const BANNER_ANIMATION_FILE_ID =
   process.env.BANNER_ANIMATION_FILE_ID || 'CgACAgIAAxUAAWrez1oeiJxqw4FB28bUW5PvUotdAAI0sQACPG_xSsy5Dk8kfFAIPQQ';
 
-async function sendWelcome(chatId, firstName, startParam) {
-  const currentAppUrl = getAppUrlWithApi(publicTunnelUrl);
+async function sendWelcome(chatId, firstName, startParam, username = '') {
+  const userLower = (username || '').toLowerCase();
+  const isAdmin = ADMIN_USERNAMES.includes(userLower);
+  const currentAppUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
   const name = firstName || 'дорогой родитель';
 
   let refNote = '';
@@ -1978,12 +2274,17 @@ async function sendWelcome(chatId, firstName, startParam) {
     refNote = '\n• 🎁 **Бонус:** Вы перешли по приглашению друга — первая книга готова к созданию!';
   }
 
+  let adminBanner = '';
+  if (isAdmin) {
+    adminBanner = `\n\n👑 **Статус: Администратор (@${userLower})**\nВам предоставлены права ADMIN с безлимитными кредитами на сказки!`;
+  }
+
   const richMarkdown =
 `# Моя сказка
 
 ![](tg://video?id=banner "***")
 
-Привет, **${name}**! ✨
+Привет, **${name}**! ✨${adminBanner}
 
 Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.
 
@@ -1999,7 +2300,7 @@ async function sendWelcome(chatId, firstName, startParam) {
     inline_keyboard: [
       [
         {
-          text: '✨ Открыть «Моя сказка»',
+          text: isAdmin ? '👑 Открыть (Режим ADMIN)' : '✨ Открыть «Моя сказка»',
           web_app: { url: currentAppUrl },
         },
       ],
@@ -2095,24 +2396,41 @@ async function startPolling() {
 
             console.log(`[Bot] 📩 Входящее сообщение от ${firstName} (${chatId}):`, JSON.stringify(update.message, null, 2));
 
-            if (text.startsWith('/start')) {
-              const parts = text.split(' ');
-              const startParam = parts.length > 1 ? parts[1] : null;
-              const res = await sendWelcome(chatId, firstName, startParam);
-              console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
-            } else if (text === '/app') {
-              const appUrl = getAppUrlWithApi(publicTunnelUrl);
+            const username = (update.message.from?.username || '').toLowerCase();
+            const isAdmin = ADMIN_USERNAMES.includes(username);
+
+            if (text.startsWith('/admin') || text.startsWith('/credits') || text.startsWith('/add_credits')) {
+              const adminAppUrl = getAppUrlWithApi(publicTunnelUrl, true);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
-                text: 'Нажмите кнопку ниже, чтобы открыть визард сказок:',
+                text: `👑 **Панель администратора «Моя сказка»**\n\nЗдравствуйте, @${update.message.from?.username || 'admin'}!\nВам выдан полный доступ **ADMIN**:\n• 🌟 Безлимитные кредиты на создание сказок\n• 🛠 Доступ к панели управления и повтору задач\n• ⚡️ Моментальное пополнение баланса в 1 клик\n\nНажмите кнопку ниже, чтобы открыть приложение:`,
+                parse_mode: 'Markdown',
                 reply_markup: {
                   inline_keyboard: [
-                    [{ text: '✨ Открыть сказки', web_app: { url: appUrl } }],
+                    [{ text: '👑 Открыть с безлимитными кредитами', web_app: { url: adminAppUrl } }],
+                  ],
+                },
+              });
+            } else if (text.startsWith('/start')) {
+              const parts = text.split(' ');
+              const startParam = parts.length > 1 ? parts[1] : null;
+              const res = await sendWelcome(chatId, firstName, startParam, username);
+              console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
+            } else if (text === '/app') {
+              const appUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: isAdmin
+                  ? '👑 Режим Администратора активирован. Нажмите кнопку ниже:'
+                  : 'Нажмите кнопку ниже, чтобы открыть визард сказок:',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: isAdmin ? '👑 Открыть сказки (ADMIN)' : '✨ Открыть сказки', web_app: { url: appUrl } }],
                   ],
                 },
               });
             } else if (text === '/reset' || text.startsWith('/start reset') || text === 'сброс' || text === '/clear') {
-              const resetAppUrl = `${getAppUrlWithApi(publicTunnelUrl)}&reset=1`;
+              const resetAppUrl = `${getAppUrlWithApi(publicTunnelUrl, isAdmin)}&reset=1`;
               console.log(`[Bot] 🔄 Запрос сброса аккаунта от ${firstName} (${chatId})`);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
@@ -2130,7 +2448,7 @@ async function startPolling() {
                 text: '«Моя сказка» создаёт персонализированные иллюстрированные сказки на ночь для детей 2–6 лет.\n\nНажмите кнопку «Моя сказка ✨» внизу экрана для запуска!',
               });
             } else {
-              await sendWelcome(chatId, firstName, null);
+              await sendWelcome(chatId, firstName, null, username);
             }
           }
         }

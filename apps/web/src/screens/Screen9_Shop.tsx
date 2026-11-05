@@ -3,9 +3,11 @@ import { Sparkles, Check, ShieldCheck, Flame, Star } from 'lucide-react';
 
 interface Screen9ShopProps {
   onBuySku: (sku: 'single_book_1' | 'pack_5') => void;
+  isAdmin?: boolean;
+  onAdminAddCredits?: (count: number) => void;
 }
 
-export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
+export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku, isAdmin, onAdminAddCredits }) => {
   return (
     <div className="p-4 space-y-5 pb-28 max-w-md mx-auto">
       <div className="text-center py-2">
@@ -16,6 +18,44 @@ export const Screen9_Shop: React.FC<Screen9ShopProps> = ({ onBuySku }) => {
           Звёздочки для новых иллюстрированных историй и волшебных открытий
         </p>
       </div>
+
+      {/* Панель администратора: получение кредитов без ограничений */}
+      {isAdmin && (
+        <div className="bg-gradient-to-br from-stone-900 to-stone-850 text-stone-100 rounded-3xl p-5 border-2 border-amber-500/60 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">👑</span>
+              <span className="font-bold text-sm text-white">Админ-доступ (@dinar_fazlyev)</span>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+              Unlimited
+            </span>
+          </div>
+          <p className="text-xs text-stone-300">
+            Вам открыт доступ без ограничений. Начисляйте книжные кредиты в 1 клик без оплаты:
+          </p>
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <button
+              onClick={() => onAdminAddCredits && onAdminAddCredits(10)}
+              className="py-2.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md active:scale-95 transition-all text-center"
+            >
+              +10 сказок
+            </button>
+            <button
+              onClick={() => onAdminAddCredits && onAdminAddCredits(50)}
+              className="py-2.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md active:scale-95 transition-all text-center"
+            >
+              +50 сказок
+            </button>
+            <button
+              onClick={() => onAdminAddCredits && onAdminAddCredits(999)}
+              className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md active:scale-95 transition-all text-center"
+            >
+              ∞ Безлимит
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Карточка 1: Одиночная сказка (Экран 9) */}
       <div className="bg-white rounded-3xl p-5 border border-cream-300 shadow-card flex items-center justify-between gap-4">
