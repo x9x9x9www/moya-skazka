@@ -2,6 +2,7 @@ import { BookDetailsDTO } from '@moya-skazka/shared';
 import { declineRussianName, removeAgeFromText, fixGenderAgreements } from '../utils/russianGrammar';
 
 export interface GenerateStoryParams {
+  userId?: string;
   childName: string;
   age: number;
   gender?: 'boy' | 'girl';
@@ -11,7 +12,10 @@ export interface GenerateStoryParams {
   storyMood?: string;
   customWishes?: string | null;
   includeQuestions: boolean;
+  avatarUrl?: string;
   appearance?: {
+    avatar_url?: string;
+    avatar_id?: string;
     hairColor?: string;
     hairType?: string;
     hairLength?: string;
@@ -22,6 +26,7 @@ export interface GenerateStoryParams {
     toy?: string;
     eyeColor?: string;
     skinTone?: string;
+    distinctiveFeatures?: string;
   };
 }
 
@@ -334,7 +339,8 @@ async function pollJob<T>(
   jobId: string,
   maxWaitMs = 240000,
   onProgress?: (update: StoryProgressUpdate) => void,
-  childName?: string
+  childName?: string,
+  userId?: string
 ): Promise<T> {
   const start = Date.now();
   let consecutiveErrors = 0;
@@ -410,8 +416,9 @@ async function pollJob<T>(
         // Пробуем аварийный запрос последней готовой сказки перед падением
         if (childName) {
           try {
+            const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
             const fallbackRes = await fetch(
-              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}&_t=${Date.now()}`,
+              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}${userParam}&_t=${Date.now()}`,
               {
                 method: 'GET',
                 cache: 'no-store',
@@ -439,8 +446,9 @@ async function pollJob<T>(
   // Перед таймаутом проверяем, не завершилась ли сказка на сервере
   if (childName) {
     try {
+      const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
       const fallbackRes = await fetch(
-        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}&_t=${Date.now()}`,
+        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}${userParam}&_t=${Date.now()}`,
         {
           method: 'GET',
           cache: 'no-store',
@@ -569,12 +577,22 @@ export async function callWellflowStory(
 ): Promise<any> {
   const overallStart = Date.now();
   const recentBlacklist = getRecentBooksBlacklist();
+  const effectiveUserId =
+    params.userId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
+    'user_demo';
+  const effectiveAvatarUrl =
+    params.avatarUrl ||
+    params.appearance?.avatar_url ||
+    '';
   const body = {
+    userId: effectiveUserId,
     childName: params.childName,
     age: params.age,
     interests: params.interests,
     theme: params.theme,
     appearance: params.appearance,
+    avatarUrl: effectiveAvatarUrl,
     personality: params.personality,
     storyMood: params.storyMood,
     customWishes: params.customWishes,
@@ -658,7 +676,7 @@ export async function callWellflowStory(
   if (jobId) {
     console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
     const remainingMs = Math.max(30000, timeoutMs - (Date.now() - overallStart));
-    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress, params.childName);
+    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress, params.childName, effectiveUserId);
     if (polled && polled.scenes) {
       console.log('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
       return polled;
@@ -754,10 +772,15 @@ export async function generateDynamicStory(
     console.warn('[StoryGenerator] Ошибка вызова callWellflowStory:', err.message);
     // Пробуем восстановить готовую сказку через latest-story, если связь оборвалась
     const apiBase = getActiveApiUrl();
+    const effectiveUserId =
+      params.userId ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
+      '';
+    const userParam = effectiveUserId ? `&userId=${encodeURIComponent(effectiveUserId)}` : '';
     if (apiBase && params.childName) {
       try {
         const checkRes = await fetch(
-          `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}&_t=${Date.now()}`,
+          `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}${userParam}&_t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (checkRes.ok) {
@@ -784,14 +807,15 @@ export async function generateDynamicStory(
   const gender = isGirl ? 'girl' : 'boy';
   const child = params.childName?.trim() || 'Малыш';
 
-  const bookId = `book_${Date.now()}`;
+  const bookId = storyData.id || `book_${Date.now()}`;
   const scenes = storyData.scenes.slice(0, 4).map((s: any, idx: number) => {
     const sceneIndex = idx + 1;
     const prompt = s.image_prompt || s.visual || buildFairytaleImagePrompt(params, `in scene ${sceneIndex}`);
     const cleanedText = fixGenderAgreements(removeAgeFromText(s.text || ''), gender, child);
     return {
-      id: `scene_${sceneIndex}`,
+      id: s.id || `scene_${sceneIndex}`,
       scene_index: sceneIndex,
+      index: sceneIndex,
       text: cleanedText,
       image_url: s.image_url || null, // Сохраняем готовую иллюстрацию с моста!
       image_prompt: prompt,

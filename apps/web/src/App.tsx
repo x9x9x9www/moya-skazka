@@ -20,6 +20,7 @@ import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, UserDTO } from '@moya-skazka/shared';
 import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, getActiveApiUrl } from './services/storyGenerator';
+import { resolveChildAvatar } from './utils/avatarResolver';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -41,18 +42,10 @@ export const App: React.FC = () => {
   const isAdmin = useMemo(() => {
     const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
     const tgUsername = (tg?.initDataUnsafe?.user?.username || '').toLowerCase();
-    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const urlAdmin = searchParams?.get('admin') === '1' || searchParams?.get('role') === 'admin';
-    const localAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('ms_is_admin') === 'true';
     const roleAdmin = currentUser?.role === 'ADMIN';
 
-    const matches = ADMIN_USERNAMES.includes(tgUsername) || roleAdmin || urlAdmin || localAdmin;
-    if (matches && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('ms_is_admin', 'true');
-      } catch {}
-    }
-    return matches;
+    // Безопасная проверка: только подтверждённый username администратора или проверенная роль от сервера
+    return ADMIN_USERNAMES.includes(tgUsername) || roleAdmin;
   }, [currentUser]);
 
   // 0. Обработка флага полного сброса для проверки опыта нового пользователя (?reset=1)
@@ -215,11 +208,16 @@ export const App: React.FC = () => {
       } catch {}
       return;
     }
+
+    // 1. Авторизация и профиль пользователя (сохраняем userId для привязки сказок и детей)
     try {
       await api.loginWithTelegram(initData, startParam);
       const me = await api.getMe();
       if (me?.user) {
         setCurrentUser(me.user);
+        try {
+          if (me.user.id) localStorage.setItem('ms_user_id', me.user.id);
+        } catch {}
       }
       if (me?.balance) {
         const available = me.balance.available ?? me.balance.total;
@@ -231,10 +229,20 @@ export const App: React.FC = () => {
       } else {
         setCanClaimFree(me?.can_claim_free_story ?? true);
       }
+    } catch (authErr) {
+      console.warn('[App] Авторизация Telegram вернула предупреждение:', authErr);
+    }
 
-      const childrenList = await api.getChildren();
+    // 2. Загрузка профилей детей (API + локальный кэш)
+    try {
+      let childrenList: ChildProfileDTO[] = [];
+      try {
+        childrenList = await api.getChildren();
+      } catch (childApiErr) {
+        console.warn('[App] Ошибка api.getChildren():', childApiErr);
+      }
+
       let effectiveChildren: ChildProfileDTO[] = [];
-
       const savedChildrenStr = localStorage.getItem('ms_children');
       if (savedChildrenStr) {
         try {
@@ -263,6 +271,8 @@ export const App: React.FC = () => {
           interests: (active.interests as string[]) || prev.interests,
           appearance: {
             ...prev.appearance,
+            avatar_url: app.avatar_url || prev.appearance.avatar_url,
+            avatar_id: app.avatar_id || prev.appearance.avatar_id,
             hairColor: app.hairColor || prev.appearance.hairColor,
             hairType: app.hairType || prev.appearance.hairType,
             hairLength: app.hairLength || prev.appearance.hairLength,
@@ -279,46 +289,22 @@ export const App: React.FC = () => {
           setCurrentScreen('onboarding');
         }
       }
-
-      loadBooks();
-      loadReferrals();
-    } catch {
-      const savedChildrenStr = localStorage.getItem('ms_children');
-      if (savedChildrenStr) {
-        try {
-          const parsed: ChildProfileDTO[] = JSON.parse(savedChildrenStr);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setChildren(parsed);
-            const savedActiveId = localStorage.getItem('ms_active_child_id');
-            const active = parsed.find((c) => c.id === savedActiveId) || parsed[0];
-            setActiveChildId(active.id);
-            const app = (active.appearance as any) || {};
-            setWizardData((prev) => ({
-              ...prev,
-              childName: active.name,
-              age: active.age,
-              gender: app.gender || (active.name.endsWith('а') || active.name.endsWith('я') ? 'girl' : 'boy'),
-              interests: (active.interests as string[]) || prev.interests,
-              appearance: {
-                ...prev.appearance,
-                hairColor: app.hairColor || prev.appearance.hairColor,
-                hairType: app.hairType || prev.appearance.hairType,
-                hairLength: app.hairLength || prev.appearance.hairLength,
-                hairStructure: app.hairStructure || prev.appearance.hairStructure,
-                eyeColor: app.eyeColor || 'карие',
-                skinTone: app.skinTone || 'персиковая',
-                toy: app.toy || prev.appearance.toy,
-              },
-            }));
-            return;
-          }
-        } catch {}
-      }
-
-      if (!localStorage.getItem('ms_onboarding_completed')) {
-        setCurrentScreen('onboarding');
-      }
+    } catch (childErr) {
+      console.warn('[App] Сбой загрузки детей:', childErr);
     }
+
+    // 3. Библиотека книг пользователя ОБЯЗАНА загружаться ВСЕГДА!
+    // Никакой сбой авторизации или детей не должен блокировать вызов loadBooks().
+    try {
+      await loadBooks();
+    } catch (booksErr) {
+      console.warn('[App] Ошибка загрузки книг:', booksErr);
+    }
+
+    // 4. Рефералы
+    try {
+      await loadReferrals();
+    } catch {}
   };
 
   // Обработчик успешного завершения быстрой регистрации ребёнка (Слайд 1 -> Слайд 2)
@@ -327,7 +313,7 @@ export const App: React.FC = () => {
     const newChildId = `child_${Date.now()}`;
     const newChild: ChildProfileDTO = {
       id: newChildId,
-      user_id: 'user_1',
+      user_id: currentUser?.id || 'user_demo',
       name: data.name.trim() || (data.gender === 'girl' ? 'Алиса' : 'Миша'),
       age: data.age,
       interests: data.interests.length > 0 ? data.interests : ['Динозавры', 'Волшебство'],
@@ -605,10 +591,21 @@ export const App: React.FC = () => {
       setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.8) : prev));
     }, 500);
 
+    const currentUserId =
+      currentUser?.id ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
+      'user_demo';
+    const resolvedAvatar = resolveChildAvatar(wizardData.appearance || wizardData);
+    const appearanceWithAvatar = {
+      ...wizardData.appearance,
+      avatar_url: wizardData.appearance?.avatar_url || resolvedAvatar,
+    };
+
     try {
-      // 1. Story Engine: текст, character bible, обложка и 4 иллюстрации
+      // 1. Story Engine: текст, character bible, обложка и 4 иллюстрации с консистентным лицом
       const generatedBook = await generateDynamicStory(
         {
+          userId: currentUserId,
           childName: wizardData.childName,
           age: wizardData.age,
           gender: wizardData.gender,
@@ -618,7 +615,8 @@ export const App: React.FC = () => {
           storyMood: details.storyMood || 'Творчество',
           customWishes: details.customWishes,
           includeQuestions: details.includeQuestions,
-          appearance: wizardData.appearance,
+          avatarUrl: appearanceWithAvatar.avatar_url,
+          appearance: appearanceWithAvatar,
         },
         (update) => {
           updateCreationStage(update.stage);
@@ -657,6 +655,15 @@ export const App: React.FC = () => {
         localStorage.setItem(`ms_story_${generatedBook.id}`, JSON.stringify(generatedBook));
       } catch {}
 
+      // Асинхронно сохраняем в постоянное хранилище на сервере (bot/data/db.json)
+      try {
+        api.createPaidBook({
+          ...generatedBook,
+          child_id: activeChildId || 'default',
+          child_name: wizardData.childName,
+        }).catch(() => {});
+      } catch {}
+
       // 3. Единоразовое списание бесплатной первой сказки или кредита
       if (isAdmin) {
         // Для администратора кредиты не блокируют генерацию
@@ -686,8 +693,9 @@ export const App: React.FC = () => {
         try {
           const apiBase = getActiveApiUrl();
           if (apiBase) {
+            const userParam = currentUserId ? `&userId=${encodeURIComponent(currentUserId)}` : '';
             const checkRes = await fetch(
-              `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(wizardData.childName.trim())}&_t=${Date.now()}`,
+              `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(wizardData.childName.trim())}${userParam}&_t=${Date.now()}`,
               {
                 method: 'GET',
                 cache: 'no-store',
@@ -1141,7 +1149,12 @@ export const App: React.FC = () => {
                 openReader(book);
               } catch {
                 const targetBook = books.find((b) => b.id === id);
+                const effectiveUserId =
+                  currentUser?.id ||
+                  (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
+                  'user_demo';
                 const generated = await generateDynamicStory({
+                  userId: effectiveUserId,
                   childName: targetBook?.child_name || wizardData.childName,
                   age: wizardData.age,
                   theme: targetBook?.title || wizardData.theme,

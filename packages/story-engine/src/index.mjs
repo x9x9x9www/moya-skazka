@@ -1604,13 +1604,16 @@ function characterBlock(characters) {
     .join(' ');
 }
 
-export function buildImagePrompt({ visual, characters = [], kind = 'scene' } = {}) {
+export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null } = {}) {
   const base = asString(visual);
   if (!base) throw new Error('buildImagePrompt: visual is empty');
   const hero = characters.find((c) => c.role === 'hero' || c.id === 'hero');
-  const heroRef = hero
-    ? `[Character Reference: exact same face, ${hero.name}, consistent child proportions, strictly immutable hair color, hair length, hairstyle, eye color, facial features, wearing EXACTLY the same outfit throughout all scenes: ${hero.visual_description}].`
+  const avatarRefNote = avatarUrl
+    ? ` [Reference Avatar Image: ${avatarUrl} - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar].`
     : '';
+  const heroRef = hero
+    ? `[Character Reference: exact same face, ${hero.name}, consistent child proportions, strictly immutable hair color, hair length, hairstyle, eye color, facial features, wearing EXACTLY the same outfit throughout all scenes: ${hero.visual_description}].${avatarRefNote}`
+    : (avatarRefNote || '');
   const composition =
     kind === 'cover'
       ? 'Warm iconic children’s book cover composition: hero and companion as the clear focal point, inviting eye contact, generous negative space at the top for a title, rich layered background. If any books, covers, spines, signs, or labels appear, they are completely blank with no lettering.'
@@ -1620,13 +1623,15 @@ export function buildImagePrompt({ visual, characters = [], kind = 'scene' } = {
   return `${heroRef} ${base}. ${composition} ${people} ${style}`.replace(/\s+/g, ' ').trim();
 }
 
-export function buildScenePrompt(story, scene) {
+export function buildScenePrompt(story, scene, avatarUrl = null) {
   const present = (story.characters || []).filter((c) => (scene.character_ids || []).includes(c.id));
-  return buildImagePrompt({ visual: scene.visual, characters: present.length ? present : story.characters, kind: 'scene' });
+  const effectiveAvatar = avatarUrl || story.avatar_url || story.avatar_reference || null;
+  return buildImagePrompt({ visual: scene.visual, characters: present.length ? present : story.characters, kind: 'scene', avatarUrl: effectiveAvatar });
 }
 
-export function buildCoverPrompt(story) {
-  return buildImagePrompt({ visual: story.cover_visual, characters: story.characters, kind: 'cover' });
+export function buildCoverPrompt(story, avatarUrl = null) {
+  const effectiveAvatar = avatarUrl || story.avatar_url || story.avatar_reference || null;
+  return buildImagePrompt({ visual: story.cover_visual, characters: story.characters, kind: 'cover', avatarUrl: effectiveAvatar });
 }
 
 // --------------------------------------------------------

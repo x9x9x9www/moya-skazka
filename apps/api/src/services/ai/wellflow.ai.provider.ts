@@ -302,18 +302,25 @@ export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {
     }
 
     try {
+      const bodyPayload: Record<string, any> = {
+        model,
+        prompt: finalPrompt,
+        n: 1,
+        size: '1024x1024',
+      };
+      if (input.referenceImageUrl) {
+        bodyPayload.image_url = input.referenceImageUrl;
+        bodyPayload.reference_image = input.referenceImageUrl;
+        bodyPayload.init_image = input.referenceImageUrl;
+      }
+
       const response = await fetch(`${apiUrl}/images/generations`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          prompt: finalPrompt,
-          n: 1,
-          size: '1024x1024',
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!response.ok) {

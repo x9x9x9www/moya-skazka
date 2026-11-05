@@ -43,7 +43,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   onToggleQuestions,
   onCycleFontSize,
 }) => {
-  const currentScene = book.scenes.find((s) => s.scene_index === currentSceneIndex) || book.scenes[0];
+  const currentScene =
+    book.scenes.find((s) => (s.scene_index ?? (s as any).index) === currentSceneIndex) ||
+    book.scenes[currentSceneIndex - 1] ||
+    book.scenes[0];
 
   const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(currentScene?.image_url);
   const [skippedScenes, setSkippedScenes] = React.useState<number[]>([]);
@@ -84,10 +87,61 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   const { isPlaying, toggleMute } = useLullabyAudio(settings.music || 'calm', true);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const touchStartX = React.useRef<number | null>(null);
+  const touchStartY = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSceneIndex]);
+
+  // Свайп-жесты для перелистывания страниц пальцем (touch start / touch end)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    if (!e.changedTouches || e.changedTouches.length === 0) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const deltaX = endX - touchStartX.current;
+    const deltaY = endY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Горизонтальный свайп: минимальная дистанция 45px и преобладание над вертикальным скроллом
+    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+      if (deltaX < 0) {
+        // Свайп влево: следующая страница
+        onNextScene();
+      } else if (deltaX > 0 && currentSceneIndex > 1) {
+        // Свайп вправо: предыдущая страница
+        onPrevScene();
+      }
+    }
+  };
+
+  const handleTouchCancel = () => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  // Поддержка перелистывания стрелками на клавиатуре
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') onNextScene();
+      if (e.key === 'ArrowLeft' && currentSceneIndex > 1) onPrevScene();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSceneIndex, onNextScene, onPrevScene]);
 
   // Буквица (Drop Cap): отделяем первую букву текста
   const text = currentScene?.text || '';
@@ -95,7 +149,12 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   const restOfText = text.slice(1);
 
   return (
-    <div className={`h-[100dvh] max-h-[100dvh] flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 relative overflow-hidden ${themeClass}`}>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+      className={`h-[100dvh] max-h-[100dvh] flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 relative overflow-hidden select-none touch-pan-y ${themeClass}`}
+    >
       {/* 1. Воздушная шапка читалки */}
       <div className="shrink-0 z-30 flex items-center justify-between px-4 py-3 backdrop-blur-md bg-inherit/90 border-b border-cream-300/40">
         <button

@@ -184,10 +184,11 @@ export function buildImagePrompt(input: {
   visual: string;
   characters?: StoryCharacter[];
   kind?: 'scene' | 'cover';
+  avatarUrl?: string | null;
 }): string;
 
-export function buildScenePrompt(story: NormalizedStory | { characters: StoryCharacter[] }, scene: StoryScene): string;
-export function buildCoverPrompt(story: NormalizedStory | { cover_visual: string; characters: StoryCharacter[] }): string;
+export function buildScenePrompt(story: NormalizedStory | { characters: StoryCharacter[]; avatar_url?: string; avatar_reference?: string }, scene: StoryScene, avatarUrl?: string | null): string;
+export function buildCoverPrompt(story: NormalizedStory | { cover_visual: string; characters: StoryCharacter[]; avatar_url?: string; avatar_reference?: string }, avatarUrl?: string | null): string;
 
 export function buildRepairPrompt(raw: unknown, issues: string[]): string;
 export function buildLengthRepairPrompt(story: NormalizedStory, target?: [number, number]): string;

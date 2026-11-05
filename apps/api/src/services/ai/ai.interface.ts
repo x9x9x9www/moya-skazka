@@ -51,6 +51,7 @@ export interface GenerateImageInput {
   type: 'cover' | 'scene';
   characterBible?: string;
   sceneIndex?: number;
+  referenceImageUrl?: string | null;
 }
 
 export interface AIGeneratedImage {

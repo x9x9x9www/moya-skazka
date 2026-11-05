@@ -124,6 +124,146 @@ const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GENERATED_DIR = path.join(BOT_DIR, 'generated');
 fs.mkdirSync(GENERATED_DIR, { recursive: true });
 
+// ========================================================
+// 1.1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (bot/data/db.json)
+// ========================================================
+const DATA_DIR = path.join(BOT_DIR, 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
+
+function initDb() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(DB_FILE)) {
+      const initialDb = {
+        users: {},
+        children: {},
+        books: {},
+      };
+      fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), 'utf-8');
+      return initialDb;
+    }
+    const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    const parsed = JSON.parse(raw || '{}');
+    return {
+      users: parsed.users || {},
+      children: parsed.children || {},
+      books: parsed.books || {},
+    };
+  } catch (err) {
+    console.error('[DB] Ошибка чтения db.json:', err.message);
+    return { users: {}, children: {}, books: {} };
+  }
+}
+
+let db = initDb();
+
+function saveDb() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tmpFile = `${DB_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(tmpFile, JSON.stringify(db, null, 2), 'utf-8');
+    fs.renameSync(tmpFile, DB_FILE);
+  } catch (err) {
+    console.error('[DB] Ошибка сохранения db.json:', err.message);
+  }
+}
+
+function getAuthContext(req, url) {
+  let userId = '';
+  let username = '';
+  let firstName = 'Родитель';
+
+  // 1. Из заголовка x-telegram-init-data
+  const tgHeader = req.headers['x-telegram-init-data'] || '';
+  if (tgHeader) {
+    try {
+      const sp = new URLSearchParams(tgHeader);
+      const uStr = sp.get('user');
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        if (u.id) userId = String(u.id);
+        if (u.username) username = (u.username || '').toLowerCase();
+        if (u.first_name) firstName = u.first_name;
+      }
+    } catch {}
+  }
+
+  // 2. Из заголовка Authorization (Bearer bridge_token_..., JWT или raw)
+  const authHeader = req.headers['authorization'] || '';
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (token.startsWith('bridge_token_')) {
+      const parsedId = token.replace('bridge_token_', '').trim();
+      if (parsedId && !userId) userId = parsedId;
+    } else if (token.includes('.')) {
+      try {
+        const parts = token.split('.');
+        if (parts.length >= 2) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+          if (payload.userId || payload.sub || payload.id) {
+            userId = String(payload.userId || payload.sub || payload.id);
+          }
+          if (payload.username && !username) {
+            username = String(payload.username).toLowerCase();
+          }
+        }
+      } catch {}
+    } else if (token && !userId) {
+      userId = token;
+    }
+  }
+
+  // 3. Из query params
+  if (!userId) {
+    userId = url.searchParams.get('userId') || url.searchParams.get('user_id') || '';
+  }
+
+  // 4. Из x-user-id
+  if (!userId) {
+    userId = (req.headers['x-user-id'] || '').toString().trim();
+  }
+
+  // 5. Дефолтный пользователь для разработки
+  if (!userId) {
+    userId = 'user_default';
+  }
+
+  // Безопасная проверка: только список доверенных администраторов
+  const isAdmin = ADMIN_USERNAMES.includes((username || '').toLowerCase()) || db.users[userId]?.role === 'ADMIN';
+
+  if (!db.users[userId]) {
+    db.users[userId] = {
+      id: userId,
+      telegram_user_id: userId,
+      first_name: firstName,
+      username: username || (isAdmin ? 'dinar_fazlyev' : 'parent'),
+      role: isAdmin ? 'ADMIN' : 'USER',
+      free_text_claimed_at: null,
+      default_questions_enabled: true,
+      timezone: 'UTC+3',
+      balance: {
+        total: isAdmin ? 999 : 5,
+        paid: isAdmin ? 999 : 5,
+        gift: 0,
+        reserved: 0,
+        available: isAdmin ? 999 : 5,
+      },
+      createdAt: new Date().toISOString(),
+    };
+    saveDb();
+  } else {
+    // Обновляем поля, если пришли новые данные из Telegram
+    if (username && db.users[userId].username !== username) {
+      db.users[userId].username = username;
+    }
+    if (isAdmin && db.users[userId].role !== 'ADMIN') {
+      db.users[userId].role = 'ADMIN';
+    }
+  }
+
+  return { userId, user: db.users[userId], isAdmin, username };
+}
+
 // Промпт, Story DNA и контракт сказки живут в packages/story-engine/src/index.mjs
 
 // ========================================================
@@ -439,7 +579,33 @@ function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0, params =
   return `${baseUrl}/illustrations/demo/cover.jpg`;
 }
 
-async function generateWellflowImageAI(prompt, retries = 2) {
+export function resolveAvatarReferenceUrl(params) {
+  const direct = params?.avatarUrl || params?.avatar_url || params?.appearance?.avatar_url || params?.appearance?.avatarUrl;
+  if (direct && (direct.startsWith('http://') || direct.startsWith('https://') || direct.startsWith('data:image/'))) {
+    return direct;
+  }
+  if (direct && (direct.startsWith('/illustrations/') || direct.startsWith('illustrations/'))) {
+    const clean = direct.replace(/^\/+/, '');
+    return `https://x9x9x9www.github.io/moya-skazka/${clean}`;
+  }
+  if (direct && direct.startsWith('/media/')) {
+    const base = publicTunnelUrl || (process.env.PUBLIC_BRIDGE_URL || '').replace(/\/+$/, '') || 'http://localhost:4040';
+    return `${base}${direct}`;
+  }
+  const app = params?.appearance || {};
+  const traits = {
+    gender: params?.gender || app.gender,
+    hairColor: app.hairColor || params?.hairColor,
+    hairType: app.hairType || params?.hairType,
+    skinTone: app.skinTone || params?.skinTone,
+    distinctiveFeatures: app.distinctiveFeatures || params?.distinctiveFeatures,
+    avatar_id: app.avatar_id || params?.avatar_id,
+  };
+  const avatarKey = resolveChildAvatarKey(traits);
+  return `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarKey}.webp`;
+}
+
+async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = null) {
   const models = [WELLFLOW_IMAGE_MODEL || 'nano-banana-2'].filter(Boolean);
   // Story Engine уже добавил 3D Pixar-стиль и character bible. Не оборачиваем
   // промпт в старый акварельный шаблон, иначе стиль сломается.
@@ -449,18 +615,25 @@ async function generateWellflowImageAI(prompt, retries = 2) {
     const currentModel = models[attempt] || models[0];
     try {
       console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${currentModel} (попытка ${attempt + 1})...`);
+      const bodyPayload = {
+        model: currentModel,
+        prompt: finalPrompt,
+        n: 1,
+        size: '1024x1024',
+      };
+      if (referenceImageUrl) {
+        // Консистентность персонажа: референсный 3D-аватар для Nano-Banana-2 / Wellflow
+        bodyPayload.image_url = referenceImageUrl;
+        bodyPayload.reference_image = referenceImageUrl;
+        bodyPayload.init_image = referenceImageUrl;
+      }
       const res = await fetchWithTimeout(`${WELLFLOW_API_URL}/images/generations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${WELLFLOW_IMAGE_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: currentModel,
-          prompt: finalPrompt,
-          n: 1,
-          size: '1024x1024',
-        }),
+        body: JSON.stringify(bodyPayload),
       }, 90000);
 
       if (!res.ok) {
@@ -693,13 +866,17 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     message: 'Художник создаёт обложку и 4 иллюстрации...',
   });
 
+  const avatarReferenceUrl = resolveAvatarReferenceUrl(params);
+  story.avatar_url = avatarReferenceUrl;
+  console.log(`[StoryEngine] 👤 Опорный референс персонажа (Image-to-Image): ${avatarReferenceUrl}`);
+
   const imageTasks = [
-    { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story), fallback: getThemedFallbackIllustration(params.theme, 0, params) },
+    { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story, avatarReferenceUrl), fallback: getThemedFallbackIllustration(params.theme, 0, params) },
     ...story.scenes.map((scene) => ({
       name: `scene_${scene.index}`,
       kind: 'scene',
       sceneIndex: scene.index,
-      prompt: buildScenePrompt(story, scene),
+      prompt: buildScenePrompt(story, scene, avatarReferenceUrl),
       fallback: getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index, params),
     })),
   ];
@@ -710,7 +887,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   const executeImageJob = async (job) => {
     let url;
     try {
-      const remoteUrl = await generateWellflowImageAI(job.prompt);
+      const remoteUrl = await generateWellflowImageAI(job.prompt, 2, avatarReferenceUrl);
       url = await saveGeneratedImage(remoteUrl, jobId, job.name);
     } catch (error) {
       console.error(`[StoryEngine] ⚠️ ${job.name}: используем fallback — ${error.message}`);
@@ -753,19 +930,70 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     if (!scene.image_prompt) scene.image_prompt = scene.visual;
   }
 
-  // Заполняем системные поля для читалки
+  // Заполняем системные поля для читалки и нормализуем сцены и вопросы
   story.id = jobId || ('story_' + Date.now());
   story.status = 'ILLUSTRATED';
   story.format = 'ILLUSTRATED';
+  story.scenes = (story.scenes || []).map((s, idx) => ({
+    id: s.id || `scene_${s.scene_index || s.index || idx + 1}`,
+    scene_index: s.scene_index || s.index || idx + 1,
+    index: s.scene_index || s.index || idx + 1,
+    text: s.text || '',
+    image_url: s.image_url || null,
+    image_prompt: s.image_prompt || s.visual || null,
+  }));
+  story.questions = (story.questions || []).map((q, idx) => ({
+    id: q.id || `q_${idx + 1}`,
+    after_scene: q.after_scene || (idx === 0 ? 2 : 4),
+    question: q.question || '',
+    parent_hint: q.parent_hint || null,
+    skill_tag: q.skill_tag || q.skill || 'emotions',
+  }));
 
   // Сохраняем в кэш готовых сказок для мгновенной отдачи при обрыве соединения
+  const userId = params.userId || 'user_default';
   const childKey = (params.childName || '').trim().toLowerCase();
-  if (childKey) {
-    recentReadyStories.set(childKey, {
+  const userChildKey = childKey ? `${userId}_${childKey}` : '';
+  if (userChildKey) {
+    recentReadyStories.set(userChildKey, {
       story,
       jobId: story.id,
       readyAt: Date.now(),
+      userId,
     });
+  }
+
+  // Сохраняем готовую сказку в постоянную базу данных bot/data/db.json
+  try {
+    const bookRecord = {
+      id: story.id,
+      user_id: userId,
+      child_id: params.child_id || params.childId || 'default',
+      child_name: params.childName || '',
+      title: story.title,
+      status: 'ILLUSTRATED',
+      format: 'ILLUSTRATED',
+      cover_url: story.cover_url,
+      scenes: story.scenes,
+      questions: story.questions,
+      can_upgrade: false,
+      created_at: new Date().toISOString(),
+    };
+    db.books[story.id] = bookRecord;
+    // Списание кредита для обычных пользователей
+    if (db.users[userId] && db.users[userId].role !== 'ADMIN') {
+      const bal = db.users[userId].balance;
+      if (bal && bal.available > 0) {
+        bal.available = Math.max(0, bal.available - 1);
+        bal.total = Math.max(0, bal.total - 1);
+        bal.paid = Math.max(0, bal.paid - 1);
+      }
+      db.users[userId].free_text_claimed_at = db.users[userId].free_text_claimed_at || new Date().toISOString();
+    }
+    saveDb();
+    console.log(`[DB] 💾 Сказка «${story.title}» сохранена в db.json для пользователя ${userId}`);
+  } catch (dbErr) {
+    console.error('[DB] Ошибка сохранения книги в db.json:', dbErr.message);
   }
 
   onProgress?.({
@@ -795,7 +1023,7 @@ setInterval(() => {
       recentReadyStories.delete(key);
     }
   }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 // ========================================================
 // 2.9. ЗАЩИТА API (CORS, Rate Limiting, DoS Guard, Telegram Auth)
@@ -823,7 +1051,7 @@ setInterval(() => {
       rateLimits.delete(ip);
     }
   }
-}, 120 * 1000);
+}, 120 * 1000).unref();
 
 // ========================================================
 // 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy, Job Queue)
@@ -843,8 +1071,8 @@ const server = http.createServer(async (req, res) => {
   // Защита CORS: доверенные домены Telegram WebApp + локальная разработка
   const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.loca.lt');
   res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin ? origin : (origin ? origin : '*'));
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, X-User-Id, x-user-id, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -904,8 +1132,8 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     'Expires': '0',
     'Surrogate-Control': 'no-store',
     'Access-Control-Allow-Origin': isAllowed ? origin : '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, X-User-Id, x-user-id, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *',
   });
   res.end(jsonStr);
 }
@@ -930,7 +1158,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     return;
   }
 
-  // Авторизация Telegram WebApp в режиме моста
+  // Авторизация Telegram WebApp в режиме моста с сохранением в db.json
   if (url.pathname === '/api/v1/auth/telegram' && req.method === 'POST') {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
@@ -951,70 +1179,88 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       } catch {}
 
       const isAdmin = ADMIN_USERNAMES.includes(username);
-      sendJsonResponse(res, 200, {
-        token: `bridge_token_${userId}`,
-        user: {
+      if (!db.users[userId]) {
+        db.users[userId] = {
           id: userId,
           telegram_user_id: userId,
           first_name: firstName,
-          username: username || 'parent',
+          username: username || (isAdmin ? 'dinar_fazlyev' : 'parent'),
           role: isAdmin ? 'ADMIN' : 'USER',
           free_text_claimed_at: null,
           default_questions_enabled: true,
           timezone: 'UTC+3',
-        },
+          balance: {
+            total: isAdmin ? 999 : 5,
+            paid: isAdmin ? 999 : 5,
+            gift: 0,
+            reserved: 0,
+            available: isAdmin ? 999 : 5,
+          },
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        if (username) db.users[userId].username = username;
+        if (firstName) db.users[userId].first_name = firstName;
+        if (isAdmin) db.users[userId].role = 'ADMIN';
+      }
+      saveDb();
+
+      sendJsonResponse(res, 200, {
+        token: `bridge_token_${userId}`,
+        user: db.users[userId],
       }, origin);
     });
     return;
   }
 
-  // Профиль и баланс пользователя в режиме моста (/me)
-  if (url.pathname === '/api/v1/me' && req.method === 'GET') {
-    const authHeader = req.headers['authorization'] || '';
-    const tgHeader = req.headers['x-telegram-init-data'] || '';
-    let username = '';
-    if (tgHeader) {
-      try {
-        const sp = new URLSearchParams(tgHeader);
-        const u = JSON.parse(sp.get('user') || '{}');
-        username = (u.username || '').toLowerCase();
-      } catch {}
-    }
-    const isAdmin = ADMIN_USERNAMES.includes(username) || authHeader.includes('admin') || url.searchParams.get('admin') === '1';
+  // Профиль и баланс пользователя в режиме моста (/me) — безопасная проверка ADMIN
+  if ((url.pathname === '/api/v1/me' || url.pathname === '/api/me' || url.pathname === '/me') && req.method === 'GET') {
+    const { user, isAdmin } = getAuthContext(req, url);
     sendJsonResponse(res, 200, {
-      user: {
-        id: 'user_1',
-        telegram_user_id: '123456789',
-        first_name: 'Родитель',
-        username: username || (isAdmin ? 'dinar_fazlyev' : 'parent'),
-        role: isAdmin ? 'ADMIN' : 'USER',
-        free_text_claimed_at: null,
-        default_questions_enabled: true,
-        timezone: 'UTC+3',
-      },
-      balance: {
+      user,
+      balance: user.balance || {
         total: isAdmin ? 999 : 5,
         paid: isAdmin ? 999 : 5,
         gift: 0,
         reserved: 0,
         available: isAdmin ? 999 : 5,
       },
-      can_claim_free_story: true,
+      can_claim_free_story: (user.balance?.available ?? 5) > 0 || !user.free_text_claimed_at,
     }, origin);
     return;
   }
 
-  // Корректировка кредитов администратора (/admin/credits/adjust)
+  // Корректировка кредитов администратора (/admin/credits/adjust) — только для проверенных ADMIN
   if (url.pathname === '/api/v1/admin/credits/adjust' && req.method === 'POST') {
-    sendJsonResponse(res, 200, {
-      status: 'ok',
-      message: 'Кредиты успешно начислены',
-      delta: 999,
-    }, origin);
+    const { isAdmin, userId } = getAuthContext(req, url);
+    if (!isAdmin) {
+      sendJsonResponse(res, 403, { status: 'error', message: 'Доступ запрещён: требуются права администратора' }, origin);
+      return;
+    }
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    try {
+      const parsed = JSON.parse(bodyStr || '{}');
+      const targetUserId = parsed.user_id || userId;
+      const delta = Number(parsed.delta) || 999;
+      if (db.users[targetUserId]) {
+        db.users[targetUserId].balance.available += delta;
+        db.users[targetUserId].balance.total += delta;
+        db.users[targetUserId].balance.paid += delta;
+        saveDb();
+      }
+      sendJsonResponse(res, 200, {
+        status: 'ok',
+        message: 'Кредиты успешно начислены',
+        delta,
+      }, origin);
+    } catch {
+      sendJsonResponse(res, 200, { status: 'ok', delta: 999 }, origin);
+    }
     return;
   }
 
-  // Проверка статуса фоновой задачи (быстрый GET 5мс)
+  // Проверка статуса фоновой задачи (/job-status и /jobs/:id)
   const isJobStatus =
     (url.pathname === '/api/v1/ai/job-status' ||
       url.pathname === '/api/ai/job-status' ||
@@ -1025,6 +1271,17 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     const jobId = url.searchParams.get('id');
     const job = jobs.get(jobId);
     if (!job) {
+      // Проверяем, может книга уже сохранена в db.books
+      const savedBook = db.books[jobId];
+      if (savedBook) {
+        sendJsonResponse(res, 200, {
+          status: 'ready',
+          story: savedBook,
+          jobId,
+          progress: 100,
+        }, origin);
+        return;
+      }
       sendJsonResponse(res, 404, { status: 'not_found' }, origin);
       return;
     }
@@ -1032,15 +1289,49 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     return;
   }
 
-  // Получение последней готовой сказки для восстановления при обрывах
+  // Endpoint /api/v1/jobs/:id (совместимость с REST ApiClient)
+  const jobsMatch = url.pathname.match(/^\/(?:api\/v1\/)?jobs\/([a-zA-Z0-9_-]+)$/);
+  if (jobsMatch && req.method === 'GET') {
+    const jobId = jobsMatch[1];
+    const job = jobs.get(jobId);
+    if (job) {
+      sendJsonResponse(res, 200, {
+        job_id: jobId,
+        status: job.status === 'ready' ? 'COMPLETED' : job.status === 'error' ? 'FAILED_FINAL' : 'PROCESSING',
+        attempts: 1,
+        progress_percentage: job.progress || (job.status === 'ready' ? 100 : 25),
+        story: job.story,
+        error: job.error,
+      }, origin);
+      return;
+    }
+    const book = db.books[jobId];
+    if (book) {
+      sendJsonResponse(res, 200, {
+        job_id: jobId,
+        status: 'COMPLETED',
+        attempts: 1,
+        progress_percentage: 100,
+        story: book,
+      }, origin);
+      return;
+    }
+    sendJsonResponse(res, 404, { error: 'Job not found' }, origin);
+    return;
+  }
+
+  // Получение последней готовой сказки для восстановления при обрывах (с учётом userId)
   const isLatestStory =
     (url.pathname === '/api/v1/ai/latest-story' ||
       url.pathname === '/api/ai/latest-story' ||
       url.pathname === '/latest-story') &&
     req.method === 'GET';
   if (isLatestStory) {
+    const authCtx = getAuthContext(req, url);
+    const userId = url.searchParams.get('userId') || authCtx.userId || '';
     const childName = (url.searchParams.get('childName') || '').trim().toLowerCase();
-    const cached = childName ? recentReadyStories.get(childName) : null;
+    const userChildKey = (userId && childName) ? `${userId}_${childName}` : '';
+    const cached = userChildKey ? recentReadyStories.get(userChildKey) : null;
     if (cached && Date.now() - cached.readyAt < 15 * 60 * 1000) {
       sendJsonResponse(
         res,
@@ -1056,6 +1347,306 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       return;
     }
     sendJsonResponse(res, 404, { status: 'not_found' }, origin);
+    return;
+  }
+
+  // ========================================================
+  // 1.2. ПОСТОЯННОЕ ХРАНИЛИЩЕ: ПРОФИЛИ ДЕТЕЙ (/api/v1/children)
+  // ========================================================
+  const isChildrenEndpoint =
+    (url.pathname === '/api/v1/children' ||
+      url.pathname === '/api/children' ||
+      url.pathname === '/children');
+
+  if (isChildrenEndpoint && req.method === 'GET') {
+    const { userId } = getAuthContext(req, url);
+    const childrenList = Object.values(db.children || {}).filter(
+      (c) => (userId === 'user_default' ? (c.user_id === 'user_default' || !c.user_id) : c.user_id === userId)
+    );
+    sendJsonResponse(res, 200, childrenList, origin);
+    return;
+  }
+
+  if (isChildrenEndpoint && req.method === 'POST') {
+    const { userId } = getAuthContext(req, url);
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    try {
+      const payload = JSON.parse(bodyStr || '{}');
+      const childId = payload.id || (`child_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+      const childRecord = {
+        id: childId,
+        user_id: userId,
+        name: (payload.name || 'Малыш').trim(),
+        age: Number(payload.age) || 4,
+        gender: payload.gender || (payload.appearance?.gender || 'boy'),
+        interests: Array.isArray(payload.interests) && payload.interests.length > 0 ? payload.interests : ['Волшебство'],
+        appearance: payload.appearance || {},
+        is_active: payload.is_active !== false,
+        updatedAt: new Date().toISOString(),
+      };
+      db.children[childId] = childRecord;
+      saveDb();
+      console.log(`[DB] 👶 Профиль ребёнка «${childRecord.name}» сохранён в db.json для ${userId}`);
+      sendJsonResponse(res, 201, childRecord, origin);
+    } catch (err) {
+      sendJsonResponse(res, 400, { error: err.message }, origin);
+    }
+    return;
+  }
+
+  // Обновление профиля ребёнка PATCH /api/v1/children/:id
+  const childMatch = url.pathname.match(/^\/(?:api\/v1\/)?children\/([a-zA-Z0-9_-]+)$/);
+  if (childMatch && (req.method === 'PATCH' || req.method === 'PUT')) {
+    const { userId } = getAuthContext(req, url);
+    const childId = childMatch[1];
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    try {
+      const patch = JSON.parse(bodyStr || '{}');
+      const existing = db.children[childId] || { id: childId, user_id: userId };
+      db.children[childId] = {
+        ...existing,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      };
+      saveDb();
+      sendJsonResponse(res, 200, db.children[childId], origin);
+    } catch (err) {
+      sendJsonResponse(res, 400, { error: err.message }, origin);
+    }
+    return;
+  }
+
+  // ========================================================
+  // 1.3. ПОСТОЯННОЕ ХРАНИЛИЩЕ: КНИГИ И СКАЗКИ (/api/v1/books)
+  // ========================================================
+  const isBooksEndpoint =
+    (url.pathname === '/api/v1/books' ||
+      url.pathname === '/api/books' ||
+      url.pathname === '/books');
+
+  if (isBooksEndpoint && req.method === 'GET') {
+    const { userId } = getAuthContext(req, url);
+    const format = url.searchParams.get('format');
+    let list = Object.values(db.books || {}).filter(
+      (b) => (userId === 'user_default' ? (b.user_id === 'user_default' || !b.user_id) : b.user_id === userId)
+    );
+    if (format && format !== 'ALL') {
+      list = list.filter((b) => b.format === format);
+    }
+    list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const summaries = list.map((b) => ({
+      id: b.id,
+      child_id: b.child_id || 'default',
+      child_name: b.child_name || '',
+      title: b.title || 'Сказка',
+      status: b.status || 'ILLUSTRATED',
+      format: b.format || 'ILLUSTRATED',
+      cover_url: b.cover_url || null,
+      created_at: b.created_at || new Date().toISOString(),
+    }));
+    sendJsonResponse(res, 200, summaries, origin);
+    return;
+  }
+
+  // Сохранение книги POST /api/v1/books или /api/v1/books/free
+  const isSaveBookEndpoint =
+    isBooksEndpoint ||
+    url.pathname === '/api/v1/books/free' ||
+    url.pathname === '/books/free';
+
+  if (isSaveBookEndpoint && req.method === 'POST') {
+    const { userId } = getAuthContext(req, url);
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    try {
+      const payload = JSON.parse(bodyStr || '{}');
+      const bookId = payload.id || (`book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+      const bookRecord = {
+        id: bookId,
+        user_id: userId,
+        child_id: payload.child_id || 'default',
+        child_name: payload.child_name || payload.childName || '',
+        title: payload.title || 'Сказка',
+        status: payload.status || 'ILLUSTRATED',
+        format: payload.format || 'ILLUSTRATED',
+        cover_url: payload.cover_url || null,
+        scenes: (payload.scenes || []).map((s, idx) => ({
+          id: s.id || `scene_${s.scene_index || s.index || idx + 1}`,
+          scene_index: s.scene_index || s.index || idx + 1,
+          index: s.scene_index || s.index || idx + 1,
+          text: s.text || '',
+          image_url: s.image_url || null,
+          image_prompt: s.image_prompt || s.visual || null,
+        })),
+        questions: (payload.questions || []).map((q, idx) => ({
+          id: q.id || `q_${idx + 1}`,
+          after_scene: q.after_scene || (idx === 0 ? 2 : 4),
+          question: q.question || '',
+          parent_hint: q.parent_hint || null,
+          skill_tag: q.skill_tag || q.skill || 'emotions',
+        })),
+        can_upgrade: false,
+        created_at: payload.created_at || new Date().toISOString(),
+      };
+      db.books[bookId] = bookRecord;
+      saveDb();
+      console.log(`[DB] 📖 Книга «${bookRecord.title}» сохранена в db.json для ${userId}`);
+      sendJsonResponse(res, 201, {
+        book_id: bookId,
+        job_id: bookId,
+        status: 'ok',
+        book: bookRecord,
+      }, origin);
+    } catch (err) {
+      sendJsonResponse(res, 400, { error: err.message }, origin);
+    }
+    return;
+  }
+
+  // Получение детальной книги GET /api/v1/books/:id
+  const bookMatch = url.pathname.match(/^\/(?:api\/v1\/)?books\/([a-zA-Z0-9_-]+)$/);
+  if (bookMatch && req.method === 'GET') {
+    const bookId = bookMatch[1];
+    let book = db.books[bookId];
+    if (!book) {
+      // Проверяем задачи в памяти
+      const job = jobs.get(bookId);
+      if (job && job.story) {
+        book = {
+          id: bookId,
+          ...job.story,
+          can_upgrade: false,
+        };
+      }
+    }
+    if (!book) {
+      // Проверяем кэш готовых сказок
+      for (const item of recentReadyStories.values()) {
+        if (item.jobId === bookId || item.story?.id === bookId) {
+          book = item.story;
+          break;
+        }
+      }
+    }
+    if (!book) {
+      sendJsonResponse(res, 404, { error: 'Book not found' }, origin);
+      return;
+    }
+    sendJsonResponse(res, 200, {
+      id: book.id,
+      title: book.title || 'Сказка',
+      status: book.status || 'ILLUSTRATED',
+      format: book.format || 'ILLUSTRATED',
+      cover_url: book.cover_url || null,
+      scenes: (book.scenes || []).map((s, idx) => ({
+        id: s.id || `scene_${s.scene_index || s.index || idx + 1}`,
+        scene_index: s.scene_index || s.index || idx + 1,
+        index: s.scene_index || s.index || idx + 1,
+        text: s.text || '',
+        image_url: s.image_url || null,
+        image_prompt: s.image_prompt || s.visual || null,
+      })),
+      questions: (book.questions || []).map((q, idx) => ({
+        id: q.id || `q_${idx + 1}`,
+        after_scene: q.after_scene || (idx === 0 ? 2 : 4),
+        question: q.question || '',
+        parent_hint: q.parent_hint || null,
+        skill_tag: q.skill_tag || q.skill || 'emotions',
+      })),
+      can_upgrade: Boolean(book.can_upgrade),
+    }, origin);
+    return;
+  }
+
+  // Апгрейд книги POST /api/v1/books/:id/upgrade
+  const bookUpgradeMatch = url.pathname.match(/^\/(?:api\/v1\/)?books\/([a-zA-Z0-9_-]+)\/upgrade$/);
+  if (bookUpgradeMatch && req.method === 'POST') {
+    const bookId = bookUpgradeMatch[1];
+    if (db.books[bookId]) {
+      db.books[bookId].format = 'ILLUSTRATED';
+      db.books[bookId].status = 'ILLUSTRATED';
+      saveDb();
+    }
+    sendJsonResponse(res, 200, { book_id: bookId, job_id: bookId, status: 'ok' }, origin);
+    return;
+  }
+
+  // ========================================================
+  // 1.4. РЕФЕРАЛЫ, ИДЕИ ДНЯ, КАТАЛОГ И УДАЛЕНИЕ АККАУНТА
+  // ========================================================
+  if ((url.pathname === '/api/v1/referrals/me' || url.pathname === '/referrals/me') && req.method === 'GET') {
+    const { userId } = getAuthContext(req, url);
+    const botUser = process.env.TELEGRAM_BOT_USERNAME || 'My_SSSkaska_bot';
+    sendJsonResponse(res, 200, {
+      referral_link: `https://t.me/${botUser}?startapp=ref_${userId}`,
+      qualified_friends_count: 0,
+      gift_credits_earned: 0,
+    }, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/daily-idea' || url.pathname === '/daily-idea') && req.method === 'GET') {
+    sendJsonResponse(res, 200, {
+      title: 'Тайна сонного облачка',
+      blurb: 'Уютная терапевтическая история для мягкого и спокойного отхода ко сну.',
+      theme: 'Спокойный сон',
+    }, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/daily-idea/refresh' || url.pathname === '/daily-idea/refresh') && req.method === 'POST') {
+    sendJsonResponse(res, 200, {
+      title: 'Маленький исследователь и волшебная звёздочка',
+      blurb: 'Добрая сказка о смелости, дружбе и о том, как зажечь свет в темноте.',
+      theme: 'Смелость',
+    }, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/catalog' || url.pathname === '/catalog') && req.method === 'GET') {
+    sendJsonResponse(res, 200, [
+      { id: 'single_book_1', title: '1 сказка', price_stars: 50 },
+      { id: 'pack_5', title: '5 сказок', price_stars: 190 },
+    ], origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/orders' || url.pathname === '/orders') && req.method === 'POST') {
+    sendJsonResponse(res, 200, {
+      order_id: `ord_${Date.now()}`,
+      stars_amount: 50,
+      status: 'CREATED',
+    }, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/credits' || url.pathname === '/credits') && req.method === 'GET') {
+    const { user } = getAuthContext(req, url);
+    sendJsonResponse(res, 200, [
+      {
+        id: 'c_init',
+        delta: user.balance?.total ?? 5,
+        source_type: 'INITIAL_GRANT',
+        created_at: user.createdAt || new Date().toISOString(),
+      },
+    ], origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/privacy/delete' || url.pathname === '/privacy/delete') && req.method === 'POST') {
+    const { userId } = getAuthContext(req, url);
+    delete db.users[userId];
+    for (const [id, child] of Object.entries(db.children)) {
+      if (child.user_id === userId) delete db.children[id];
+    }
+    for (const [id, book] of Object.entries(db.books)) {
+      if (book.user_id === userId) delete db.books[id];
+    }
+    saveDb();
+    sendJsonResponse(res, 200, { ok: true }, origin);
     return;
   }
 
@@ -1570,14 +2161,19 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       for await (const chunk of req) bodyStr += chunk;
       const params = JSON.parse(bodyStr || '{}');
 
+      const authCtx = getAuthContext(req, url);
+      const userId = params.userId || authCtx.userId || 'user_default';
+      params.userId = userId;
+
       const childKey = (params.childName || '').trim().toLowerCase();
+      const userChildKey = childKey ? `${userId}_${childKey}` : '';
 
       // Защита от дубликатов: если генерация для этого ребенка уже идет или завершена, возвращаем результат
-      if (childKey) {
-        // Проверяем, не готова ли уже сказка для этого ребенка
-        const cached = recentReadyStories.get(childKey);
+      if (userChildKey) {
+        // Проверяем, не готова ли уже сказка для этого ребенка и пользователя
+        const cached = recentReadyStories.get(userChildKey);
         if (cached && Date.now() - cached.readyAt < 15 * 60 * 1000 && cached.story?.scenes?.length >= 4) {
-          console.log(`[API Bridge] ⚡️ Возвращаем готовую сказку из кэша для «${params.childName}»`);
+          console.log(`[API Bridge] ⚡️ Возвращаем готовую сказку из кэша для «${params.childName}» (user: ${userId})`);
           sendJsonResponse(
             res,
             200,
@@ -1590,11 +2186,11 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         const existingJob = [...jobs.entries()].find(
           ([id, j]) =>
             j.status === 'pending' &&
-            j.childKey === childKey &&
+            j.childKey === userChildKey &&
             Date.now() - j.createdAt < 300000
         );
         if (existingJob) {
-          console.log(`[API Bridge] ⚡️ Переиспользуем активную задачу ${existingJob[0]} для «${params.childName}»`);
+          console.log(`[API Bridge] ⚡️ Переиспользуем активную задачу ${existingJob[0]} для «${params.childName}» (user: ${userId})`);
           sendJsonResponse(res, 202, { jobId: existingJob[0], status: 'pending' }, origin);
           return;
         }
@@ -1603,7 +2199,8 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const jobId = 'story_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       jobs.set(jobId, {
         status: 'pending',
-        childKey,
+        userId,
+        childKey: userChildKey,
         stage: 'writing',
         progress: 15,
         message: 'Автор придумывает сюжет и character bible...',
@@ -1618,18 +2215,20 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         }
       }, jobId)
         .then((story) => {
-          if (childKey) {
-            recentReadyStories.set(childKey, {
+          if (userChildKey) {
+            recentReadyStories.set(userChildKey, {
               story,
               jobId,
               readyAt: Date.now(),
+              userId,
             });
           }
-          console.log(`[StoryEngine] 🎉 Сказка «${story.title}» полностью готова! (jobId: ${jobId})`);
+          console.log(`[StoryEngine] 🎉 Сказка «${story.title}» полностью готова! (jobId: ${jobId}, user: ${userId})`);
           jobs.set(jobId, {
             status: 'ready',
             story,
-            childKey,
+            userId,
+            childKey: userChildKey,
             stage: 'finishing',
             progress: 100,
             message: 'Сказка готова!',
@@ -1638,7 +2237,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         })
         .catch((err) => {
           console.error('[API Bridge Error generate-story]:', err.message, err.cause || '');
-          jobs.set(jobId, { status: 'error', childKey, error: err.message, createdAt: Date.now() });
+          jobs.set(jobId, { status: 'error', userId, childKey: userChildKey, error: err.message, createdAt: Date.now() });
         });
 
       // Мгновенный ответ клиенту (менее 10мс!)
@@ -1699,9 +2298,16 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
   res.end(JSON.stringify({ error: 'Endpoint not found' }));
 });
 
-server.listen(BRIDGE_PORT, '0.0.0.0', () => {
-  console.log(`[API Bridge] ⚡️ Локальный сервер запущен на порту ${BRIDGE_PORT}`);
-});
+const isMainModule = Boolean(
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+);
+
+if (isMainModule) {
+  server.listen(BRIDGE_PORT, '0.0.0.0', () => {
+    console.log(`[API Bridge] ⚡️ Локальный сервер запущен на порту ${BRIDGE_PORT}`);
+  });
+}
 
 // ========================================================
 // 4. ТУННЕЛИ: localtunnel важнее случайного serveo
@@ -1846,10 +2452,52 @@ async function startLocalTunnel() {
 }
 
 let consecutiveWatchdogFailures = 0;
-// Watchdog: каждые 25 сек проверяет живость активного туннеля
-setInterval(async () => {
-  if (!publicTunnelUrl) {
-    if (!serveoProc && !pinggyProc && !currentTunnel && !cloudflareProc) {
+if (isMainModule) {
+  setInterval(async () => {
+    if (!publicTunnelUrl) {
+      if (!serveoProc && !pinggyProc && !currentTunnel && !cloudflareProc) {
+        const binPath = path.resolve('bot/cloudflared');
+        if (fs.existsSync(binPath)) {
+          startCloudflareTunnel();
+        } else {
+          startPinggyTunnel();
+        }
+      }
+      return;
+    }
+    const healthy = await checkTunnelHealth(publicTunnelUrl, 10000);
+    if (healthy) {
+      consecutiveWatchdogFailures = 0;
+      return;
+    }
+    consecutiveWatchdogFailures++;
+    const hasPendingJob = Array.from(jobs.values()).some((j) => j.status === 'pending');
+    const maxFailures = hasPendingJob ? 15 : 6;
+    console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/${maxFailures})...`);
+    if (consecutiveWatchdogFailures < maxFailures) {
+      return;
+    }
+    consecutiveWatchdogFailures = 0;
+    console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) признан неработающим. Автоматический перезапуск...`);
+    if (activeTunnelSource === 'cloudflare') {
+      if (cloudflareProc) {
+        try { cloudflareProc.kill(); } catch {}
+        cloudflareProc = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
+      startCloudflareTunnel();
+    } else if (activeTunnelSource === 'serveo') {
+      stopServeoTunnel();
+      startServeoTunnel();
+    } else {
+      stopPinggyTunnel();
+      if (currentTunnel) {
+        try { currentTunnel.close(); } catch {}
+        currentTunnel = null;
+      }
+      publicTunnelUrl = '';
+      activeTunnelSource = '';
       const binPath = path.resolve('bot/cloudflared');
       if (fs.existsSync(binPath)) {
         startCloudflareTunnel();
@@ -1857,49 +2505,8 @@ setInterval(async () => {
         startPinggyTunnel();
       }
     }
-    return;
-  }
-  const healthy = await checkTunnelHealth(publicTunnelUrl, 10000);
-  if (healthy) {
-    consecutiveWatchdogFailures = 0;
-    return;
-  }
-  consecutiveWatchdogFailures++;
-  const hasPendingJob = Array.from(jobs.values()).some((j) => j.status === 'pending');
-  const maxFailures = hasPendingJob ? 15 : 6;
-  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/${maxFailures})...`);
-  if (consecutiveWatchdogFailures < maxFailures) {
-    return;
-  }
-  consecutiveWatchdogFailures = 0;
-  console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) признан неработающим. Автоматический перезапуск...`);
-  if (activeTunnelSource === 'cloudflare') {
-    if (cloudflareProc) {
-      try { cloudflareProc.kill(); } catch {}
-      cloudflareProc = null;
-    }
-    publicTunnelUrl = '';
-    activeTunnelSource = '';
-    startCloudflareTunnel();
-  } else if (activeTunnelSource === 'serveo') {
-    stopServeoTunnel();
-    startServeoTunnel();
-  } else {
-    stopPinggyTunnel();
-    if (currentTunnel) {
-      try { currentTunnel.close(); } catch {}
-      currentTunnel = null;
-    }
-    publicTunnelUrl = '';
-    activeTunnelSource = '';
-    const binPath = path.resolve('bot/cloudflared');
-    if (fs.existsSync(binPath)) {
-      startCloudflareTunnel();
-    } else {
-      startPinggyTunnel();
-    }
-  }
-}, 25000);
+  }, 25000).unref();
+}
 
 let serveoProc = null;
 let serveoReconnectTimer = null;
@@ -2189,14 +2796,16 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-if (SKIP_TUNNELS) {
-  console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
-} else {
-  const binPath = path.resolve('bot/cloudflared');
-  if (fs.existsSync(binPath)) {
-    startCloudflareTunnel();
+if (isMainModule) {
+  if (SKIP_TUNNELS) {
+    console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
   } else {
-    startPinggyTunnel();
+    const binPath = path.resolve('bot/cloudflared');
+    if (fs.existsSync(binPath)) {
+      startCloudflareTunnel();
+    } else {
+      startPinggyTunnel();
+    }
   }
 }
 
@@ -2413,6 +3022,13 @@ async function startPolling() {
             const isAdmin = ADMIN_USERNAMES.includes(username);
 
             if (text.startsWith('/admin') || text.startsWith('/credits') || text.startsWith('/add_credits')) {
+              if (!isAdmin) {
+                await callTelegram('sendMessage', {
+                  chat_id: chatId,
+                  text: '⛔️ У вас нет прав администратора.',
+                });
+                continue;
+              }
               const adminAppUrl = getAppUrlWithApi(publicTunnelUrl, true);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
@@ -2473,8 +3089,10 @@ async function startPolling() {
   }
 }
 
-if (SKIP_TELEGRAM) {
-  console.log('[Bot] SKIP_TELEGRAM=true — long polling отключён (режим API-моста)');
-} else {
-  startPolling();
+if (isMainModule) {
+  if (SKIP_TELEGRAM) {
+    console.log('[Bot] SKIP_TELEGRAM=true — long polling отключён (режим API-моста)');
+  } else {
+    startPolling();
+  }
 }
