@@ -105,7 +105,7 @@
           "scene_index": 1,
           "index": 1,
           "text": "Шур-шур! Шёлковые ленты плясали на столе. В мастерской пахло чистой тканью, а озорной солнечный луч скользил по полу. Золотые зеркала отражали рулоны бархата и шёлка. Марк погладил свой изумрудный костюм с мягким рукавом. Он искал для него сияющую деталь. Рядом сидел Робот. Щёлк! Робот повернул пуговичные глаза, достал крошечный ключик и тихо запел колыбельную. Марк улыбнулся и взял голубую ленту.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_1.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "3D Pixar-style medium shot inside a sunny Paris workshop; silk ribbons flutter beside golden mirrors, and the boy touches an emerald outfit while the toy robot awakens. Warm sunlight, colorful fabric rolls."
         },
         {
@@ -113,7 +113,7 @@
           "scene_index": 2,
           "index": 2,
           "text": "На манекене висел наряд. Он был почти готов: бархатный воротник, шёлковый пояс, звёздные пуговицы. Но одной важной детали не хватало. Марк посмотрел в зеркала. Там мелькнула серебряная застёжка. Робот потянул её раз — не вышло. Потянул два — щёлк, и застёжка снова ускользнула. Робот опустил глаза и тихо напел одну грустную нотку. Марк заметил его растерянность и протянул ладонь.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "3D Pixar-style close shot of a mannequin surrounded by mirror reflections; a silver clasp slips away as the toy robot worries and the boy reaches toward it. Soft golden workshop lighting."
         },
         {
@@ -121,7 +121,7 @@
           "scene_index": 3,
           "index": 3,
           "text": "— Не бойся, Робот, — сказал Марк. — Мы попробуем вместе. Он надел на застёжку мягкую ленту, добавил бархатный кружок и спрятал край под шёлковым поясом. Теперь деталь не кололась и легко двигалась. Робот снова повернул ключик. Ля-ля-ля! Наряд засиял, словно улыбнулся. Марк и Робот понесли его на солнечную парижскую площадь. Там друзья хлопали, ленты кружились, а новый образ вышел на добрый показ. Марк поднял руку и радостно приветствовал шедевр.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_3.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "3D Pixar-style tracking shot from workshop to a sunny Paris square; the boy and toy robot finish a comfortable outfit with ribbon, velvet, and silk, then present it among smiling friends. Bright joyful daylight."
         },
         {
@@ -129,7 +129,7 @@
           "scene_index": 4,
           "index": 4,
           "text": "На площади звучала тихая мелодия Робота. Шёлковые детали плавно двигались, бархат мягко блестел, а звёздные пуговицы ловили солнечные зайчики. Друзья показывали свои наряды и смеялись. Потом Марк обнял Робота. Он почувствовал мягкие швы и тёплый бок игрушки. Робот довольно запел колыбельную, а друзья благодарно улыбнулись. Солнечный Париж остался в памяти Марка: ленты, смех и дружный показ. Все детали нашли друг друга заботливыми руками.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_4.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "3D Pixar-style gentle wide shot of the sunny Paris square after the fashion show; silk ribbons sway, friends smile, and the boy hugs the toy robot. Soft late-afternoon golden light."
         }
       ],
@@ -299,7 +299,7 @@
           "scene_index": 2,
           "index": 2,
           "text": "Звёздочка дрожала над ночником и никак не могла найти своё место. От её мерцания на стене прыгали сонные тени: то круглая, то длинная, то похожая на смешной нос. Ракета ласково подмигнула и показала на сложенное одеяло. Между складками прятался крошечный серебряный компас, потерявший стрелку. Лев сел на подушке и положил компас в кармашек свитера, чтобы тот не укатился. Затем он медленно вдохнул, медленно выдохнул и прислушался. В шелесте занавески звенело далёкое «пи-пи», будто звёздочка звала домой. Лев поднял ночник ближе к окну, а Ракета тихо покатилась по краю одеяла, отыскивая стрелку. Под подушкой что-то блеснуло. Лев осторожно протянул руку и достал находку.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_url": "https://api.wellflow.dev/v1/media/b868cfe0-cfc2-453a-83a1-581d80c176e9/0?exp=1794132000&sig=b110b1863dbc84dac241342ef070dc42c7f2b81ca67d8422bee51b250b4a663c",
           "image_prompt": "Close view over the bed as the child searches beneath a pillow while the toy rocket rolls along the blanket edge. Soft nightlight shadows ripple across the wall; the round window holds a faint star."
         },
         {
@@ -353,7 +353,7 @@
           "scene_index": 1,
           "index": 1,
           "text": "Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению. Тимофей надел свой любимый синий уютный свитер, провёл ладонью по мягкому воротнику и спрятал в кармашек несколько деталей конструктора. Рядом зашагал робот Боб. В его маленьком кармашке тихо поблёскивал крошечный ключик. Дверца привела друзей на площадь Дружбы. Там висели разноцветные ленты, стояли скамейки, соединённые рукопожатиями, и лежал круглый коврик для друзей. Боб повернул ключик — динь-динь! — и сыграл короткую колыбельную. Тимофей заметил на воротах замочек в форме сердца. — Интересно, что он открывает? — прошептал он, беря Боба за ладошку.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_1.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "Wide sunny shot of Friendship City square: ribbons, linked benches, a round friendship rug, and a heart-shaped lock on a colorful gate. The boy and robot investigate together; cheerful midday lighting."
         },
         {
@@ -361,7 +361,7 @@
           "scene_index": 2,
           "index": 2,
           "text": "За воротами друзья увидели маленькую площадку. Там зверята готовили сюрприз: натягивали дружеские браслеты, раскладывали печенье и надували мыльные пузыри. Но праздничный мостик к сцене рассыпался. Без него никто не мог пройти к большому кругу дружбы. — Мы соберём новый! — решил Тимофей. Он достал детали конструктора и заметил: пузырьки переливаются радугой потому, что свет отражается от их тонкой мыльной плёнки. Тимофей сложил разноцветные опоры, а Боб подал ему синюю деталь. Вдруг один край мостика закачался. Боб испуганно отступил, и его ключик застрял между кубиками. Тимофей присел рядом и осторожно потянулся к нему.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "Medium view of a party platform with friendship bracelets, cookies, soap bubbles, and a collapsed toy bridge. The boy reaches carefully toward the robot’s stuck key among colorful construction bricks."
         },
         {
@@ -369,7 +369,7 @@
           "scene_index": 3,
           "index": 3,
           "text": "«Не бойся, Боб, я рядом», — сказал Тимофей. Он придержал робота за округлое плечо, снял одну деталь и освободил ключик. Боб благодарно загорелся мягкими огоньками и тихо заиграл свою колыбельную. Тимофей услышал в мелодии ровный ритм: тук-тук, тук-тук. По нему он стал укладывать кубики парами, чтобы мостик не качался. В этот момент над сценой вспыхнули светлячки. Тимофей заметил: они светятся без огня, потому что внутри у них происходит особая светящаяся реакция. — Вот и наш секретный фонарь! — обрадовался он. Друзья поднесли пузыри к светлячкам, и мостик засиял разноцветными кругами. Боб первым прошёл по нему, а Тимофей последовал рядом, крепко держась с ним за руки.",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_3.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "Close three-quarter shot of the boy supporting the robot while rebuilding the bridge in paired blocks. Glowing fireflies and rainbow soap bubbles illuminate the completed bridge with warm magical daylight."
         },
         {
@@ -377,7 +377,7 @@
           "scene_index": 4,
           "index": 4,
           "text": "По сияющему мостику прошли все друзья. На сцене их ждали браслеты, печенье и большой круглый стол с яркой скатертью. Зверята надели браслет Тимофею, а он завязал такой же на руке Боба. Робот повернул крошечный ключик и сыграл весёлую мелодию, совсем не колыбельную. Пузыри взлетели над площадью, ленты зашелестели, и каждый обнял кого-то рядом. Тимофей почувствовал тепло мягкого синего свитера и улыбнулся: рядом были Боб и новые друзья. Потом он поправил Бобу маленький кармашек, чтобы ключик не потерялся. Все рассмеялись и устроили дружный хоровод вокруг сияющего мостика. Как здорово, когда рядом есть тот, кому можно помочь и с кем можно радоваться!",
-          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_4.jpg",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
           "image_prompt": "Bright wide shot of the friendship celebration: children and animal friends wear matching bracelets, share cookies, hug around a round table, and dance beneath bubbles and ribbons."
         }
       ],

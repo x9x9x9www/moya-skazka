@@ -422,7 +422,7 @@ export const App: React.FC = () => {
       title: 'Аэлита и тайна Звёздного Китёнка',
       status: 'ILLUSTRATED',
       format: 'ILLUSTRATED',
-      cover_url: resolveAssetUrl('/illustrations/demo/cover.jpg'),
+      cover_url: resolveAssetUrl('/illustrations/cover_star.jpg'),
       created_at: new Date().toISOString(),
     },
   ];

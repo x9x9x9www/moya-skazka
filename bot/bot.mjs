@@ -607,23 +607,22 @@ export function resolveChildAvatarKey(params) {
   return `${gender}_brown`;
 }
 
-function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0, params = null) {
+export function getThemedFallbackIllustration(themeOrInterest, sceneIndex = 0, params = null) {
   const baseUrl = 'https://x9x9x9www.github.io/moya-skazka';
-  if (sceneIndex === 0) {
-    if (params) {
-      const avatarKey = resolveChildAvatarKey(params);
-      return `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
-    }
-    const t = (themeOrInterest || '').toLowerCase();
-    if (t.includes('дино')) return `${baseUrl}/illustrations/cover_dino.jpg`;
-    if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) return `${baseUrl}/illustrations/cover_star.jpg`;
-    return `${baseUrl}/illustrations/demo/cover.jpg`;
+  // Если есть профиль ребёнка — всегда отдаём его персонализированный аватар, исключая чужие иллюстрации
+  if (params) {
+    const avatarKey = resolveChildAvatarKey(params);
+    return `${baseUrl}/illustrations/avatars/${avatarKey}.webp`;
   }
-  if (sceneIndex === 1) return `${baseUrl}/illustrations/demo/scene_1.jpg`;
-  if (sceneIndex === 2) return `${baseUrl}/illustrations/demo/scene_2.jpg`;
-  if (sceneIndex === 3) return `${baseUrl}/illustrations/demo/scene_3.jpg`;
-  if (sceneIndex === 4) return `${baseUrl}/illustrations/demo/scene_4.jpg`;
-  return `${baseUrl}/illustrations/demo/cover.jpg`;
+  const t = (themeOrInterest || '').toLowerCase();
+  if (t.includes('дино')) return `${baseUrl}/illustrations/cover_dino.jpg`;
+  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон') || t.includes('ночь')) {
+    return `${baseUrl}/illustrations/cover_star.jpg`;
+  }
+  if (t.includes('лес') || t.includes('животн') || t.includes('звер')) {
+    return `${baseUrl}/illustrations/cover_forest.jpg`;
+  }
+  return `${baseUrl}/illustrations/cover_star.jpg`;
 }
 
 export function resolveAvatarReferenceUrl(params) {
@@ -652,19 +651,18 @@ export function resolveAvatarReferenceUrl(params) {
   return `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarKey}.webp`;
 }
 
-async function generateWellflowImageAI(prompt, retries = 1, referenceImageUrl = null) {
+async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = null) {
   if (!WELLFLOW_IMAGE_KEY) {
     throw new Error('WELLFLOW_IMAGE_KEY not set');
   }
   const models = [WELLFLOW_IMAGE_MODEL || 'nano-banana-2'].filter(Boolean);
-  // Story Engine уже добавил 3D Pixar-стиль и character bible. Не оборачиваем
-  // промпт в старый акварельный шаблон, иначе стиль сломается.
+  // Story Engine уже добавил 3D Pixar-стиль и character bible.
   const finalPrompt = prompt;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const currentModel = models[attempt] || models[0];
     try {
-      console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${currentModel} (попытка ${attempt + 1})...`);
+      console.log(`[Wellflow] 🎨 Генерация иллюстрации через ${currentModel} (попытка ${attempt + 1}/${retries + 1})...`);
       const bodyPayload = {
         model: currentModel,
         prompt: finalPrompt,
@@ -684,7 +682,7 @@ async function generateWellflowImageAI(prompt, retries = 1, referenceImageUrl = 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(bodyPayload),
-      }, 28000);
+      }, 45000);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -702,10 +700,12 @@ async function generateWellflowImageAI(prompt, retries = 1, referenceImageUrl = 
       return url;
     } catch (err) {
       console.warn(`[Wellflow] ⚠️ Попытка ${attempt + 1} (${currentModel}) не удалась: ${err.message}`);
-      if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || err.message.includes('timeout') || attempt >= retries) {
+      // Баланс/квота или исчерпаны все попытки — завершаем
+      if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || attempt >= retries) {
         throw err;
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      // При таймауте или сетевом сбое повторяем попытку с паузой
+      await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
     }
   }
 }
@@ -790,7 +790,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     let companionName = params.appearance?.toy || 'Светлячок Лучик';
     let trialText = 'пушистый сонный туман, в котором потерялась тропинка';
     let climaxText = 'поляна озарилась тысячами добрых мерцающих светлячков';
-    let coverImg = `${baseUrl}/illustrations/demo/cover.jpg`;
+    let coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
 
     if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
       worldName = 'Звёздная Галактика';
@@ -803,7 +803,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       companionName = params.appearance?.toy || 'Дельфинёнок Флип';
       trialText = 'волна мягких светящихся пузырьков';
       climaxText = 'жемчужный цветок распустился и наполнил море изумрудным светом';
-      coverImg = `${baseUrl}/illustrations/demo/cover.jpg`;
+      coverImg = `${baseUrl}/illustrations/cover_forest.jpg`;
     } else if (t.includes('дино') || t.includes('древн') || t.includes('джунгл')) {
       worldName = 'Долина Исполинов';
       companionName = params.appearance?.toy || 'Маленький Трикки';
@@ -825,6 +825,8 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
         : ` На герое был специальный ${clothes}.`;
     }
 
+    const sceneImg = avatarUrl || coverImg;
+
     const mockStory = {
       title: `${child} и тайна: «${theme}»`,
       cover_url: avatarUrl || coverImg,
@@ -836,25 +838,25 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
         {
           index: 1,
           text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо.${costumeIntro ? ' ' + costumeIntro : ''}${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
-          image_url: `${baseUrl}/illustrations/demo/scene_1.jpg`,
+          image_url: sceneImg,
           visual: `3D Pixar style scene 1 of ${child} meeting ${companionName}`,
         },
         {
           index: 2,
           text: `Сделав смелый шаг, ${child} и ${companionName} вместе ${vStepped} на мягкую тропинку, где повсюду оживали ${interest}. «Здравствуй, ${child}! — радостно прошептал спутник. — Только твое чуткое сердце и смелость помогут нам найти путь к волшебной полянке!»`,
-          image_url: `${baseUrl}/illustrations/demo/scene_2.jpg`,
+          image_url: sceneImg,
           visual: `3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
         },
         {
           index: 3,
           text: `Впереди на дорожку опустился ${trialText}. ${child} ${vSmiled} друга за руку. ${companionName} засветился еще теплее и ярче, разгоняя сумерки, и вместе они легко нашли дорогу вперед, доказав, что дружба побеждает любые преграды!`,
-          image_url: `${baseUrl}/illustrations/demo/scene_3.jpg`,
+          image_url: sceneImg,
           visual: `3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
         },
         {
           index: 4,
           text: `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось теплом, радостью и гордостью. Это удивительное приключение ${vProved}: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
-          image_url: `${baseUrl}/illustrations/demo/scene_4.jpg`,
+          image_url: sceneImg,
           visual: `3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
         },
       ],
@@ -949,11 +951,15 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   const executeImageJob = async (job) => {
     let url;
     try {
-      const remoteUrl = await generateWellflowImageAI(job.prompt, 1, avatarReferenceUrl);
+      const remoteUrl = await generateWellflowImageAI(job.prompt, 2, avatarReferenceUrl);
       url = await saveGeneratedImage(remoteUrl, jobId, job.name);
     } catch (error) {
-      console.error(`[StoryEngine] ⚠️ ${job.name}: используем fallback — ${error.message}`);
-      url = job.fallback;
+      console.error(`[StoryEngine] ⚠️ ${job.name}: ошибка генерации — ${error.message}`);
+      // При сбое ни в коем случае не используем чужие демо-картинки из другого сюжета!
+      // Используем: 1) готовую обложку этой сказки; 2) аватар этого ребенка; 3) тематический фон
+      url = (story.cover_url && !story.cover_url.includes('/demo/'))
+        ? story.cover_url
+        : (avatarReferenceUrl || job.fallback);
     }
 
     if (job.kind === 'cover') {
@@ -979,7 +985,8 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   };
 
   const imageQueue = [...imageTasks];
-  const workers = Array.from({ length: Math.min(5, imageQueue.length) }, async () => {
+  const workers = Array.from({ length: Math.min(5, imageQueue.length) }, async (_, i) => {
+    if (i > 0) await new Promise((r) => setTimeout(r, i * 200));
     while (imageQueue.length > 0) {
       const job = imageQueue.shift();
       if (job) await executeImageJob(job);
@@ -987,10 +994,14 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   });
   await Promise.all(workers);
 
-  // Гарантия: у каждой сцены и обложки есть URL
-  if (!story.cover_url) story.cover_url = getThemedFallbackIllustration(params.theme, 0);
+  // Гарантия: у каждой сцены и обложки есть URL, строго связанный с этим героем
+  if (!story.cover_url || story.cover_url.includes('/demo/')) {
+    story.cover_url = avatarReferenceUrl || getThemedFallbackIllustration(params.theme, 0, params);
+  }
   for (const scene of story.scenes) {
-    if (!scene.image_url) scene.image_url = getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index);
+    if (!scene.image_url || scene.image_url.includes('/demo/')) {
+      scene.image_url = story.cover_url || avatarReferenceUrl || getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index, params);
+    }
     if (!scene.image_prompt) scene.image_prompt = scene.visual;
   }
 

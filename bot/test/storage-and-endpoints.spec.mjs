@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveAvatarReferenceUrl, resolveChildAvatarKey } from '../bot.mjs';
+import { resolveAvatarReferenceUrl, resolveChildAvatarKey, getThemedFallbackIllustration } from '../bot.mjs';
 import { buildCoverPrompt, buildScenePrompt } from '../../packages/story-engine/src/index.mjs';
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -266,5 +266,29 @@ test('Алгоритм таймера генерации монотонно уб
     );
   }
   assert.equal(history[history.length - 1], 0);
+});
+
+test('getThemedFallbackIllustration категорически исключает шаблонные демо-картинки (illustrations/demo/*)', () => {
+  const cases = [
+    { theme: 'Космос', index: 0, params: null },
+    { theme: 'Динозавры', index: 1, params: null },
+    { theme: 'Лес', index: 2, params: null },
+    { theme: 'Супергерои', index: 3, params: null },
+    { theme: 'Сон', index: 4, params: null },
+    { theme: 'Звёзды', index: 2, params: { childName: 'Лев', gender: 'boy', appearance: { hairColor: 'русые' } } },
+    { theme: 'Мода', index: 1, params: { childName: 'Аэлита', gender: 'girl', appearance: { hairColor: 'светлые' } } },
+  ];
+
+  for (const c of cases) {
+    const url = getThemedFallbackIllustration(c.theme, c.index, c.params);
+    assert.ok(
+      !url.includes('/demo/'),
+      `URL не должен содержать демо-заглушек: ${url}`
+    );
+    assert.ok(
+      url.includes('/avatars/') || url.includes('/cover_'),
+      `URL должен быть персональным аватаром или тематической обложкой: ${url}`
+    );
+  }
 });
 

@@ -107,7 +107,7 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   let climaxText = isBedtimeMood
     ? 'все сонные колокольчики нежно зазвенели в ответ, благодаря за заботу'
     : 'поляна озарилась тысячами ярких искр, а лесные жители устроили весёлый праздник в честь друзей';
-  let coverUrl = resolveAssetUrl('/illustrations/demo/cover.jpg');
+  let coverUrl = params.avatarUrl || resolveAssetUrl('/illustrations/cover_forest.jpg');
 
   if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('планет')) {
     worldName = 'Звёздная Поляна';
@@ -154,11 +154,12 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
 
   const title = `${declined.nom} и тайна: «${theme}»`;
 
-  // Ровно 5 уникальных иллюстраций (1 обложка + 4 сцены)
-  const scene1Img = resolveAssetUrl('/illustrations/demo/scene_1.jpg');
-  const scene2Img = resolveAssetUrl('/illustrations/demo/scene_2.jpg');
-  const scene3Img = resolveAssetUrl('/illustrations/demo/scene_3.jpg');
-  const scene4Img = resolveAssetUrl('/illustrations/demo/scene_4.jpg');
+  // Иллюстрации сцен привязаны к теме или аватару героя (без чужих демо-картинок)
+  const defaultSceneImg = params.avatarUrl || coverUrl;
+  const scene1Img = defaultSceneImg;
+  const scene2Img = defaultSceneImg;
+  const scene3Img = defaultSceneImg;
+  const scene4Img = defaultSceneImg;
 
   const finaleBedtimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось тихим теплом и радостью. Приключение счастливо завершилось, ${companionName} уютно устроился рядом, напевая нежную колыбельную. На небе мягко засияли добрые звёзды. Самое время сладко закрыть глазки и уснуть.`;
   const finaleDaytimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось ликованием и солнечным теплом. Приключение завершилось настоящей победой добра! ${declined.nom} и ${companionName} дали друг другу пять и весело засмеялись. Впереди их ждало ещё множество удивительных открытий, новых игр и счастливых моментов!`;
@@ -763,22 +764,12 @@ export async function callWellflowStory(
 }
 
 export function getFairytaleFallbackIllustration(themeOrInterest?: string, sceneIndex = 1): string {
-  const num = Number(sceneIndex) || 1;
-  let path = '/illustrations/demo/cover.jpg';
-  if (num === 1) path = '/illustrations/demo/scene_1.jpg';
-  else if (num === 2) path = '/illustrations/demo/scene_2.jpg';
-  else if (num === 3) path = '/illustrations/demo/scene_3.jpg';
-  else if (num === 4) path = '/illustrations/demo/scene_4.jpg';
-  else {
-    const t = (themeOrInterest || '').toLowerCase();
-    if (t.includes('дино')) path = '/illustrations/cover_dino.jpg';
-    else if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон')) {
-      path = '/illustrations/cover_star.jpg';
-    } else {
-      path = '/illustrations/demo/cover.jpg';
-    }
+  const t = (themeOrInterest || '').toLowerCase();
+  if (t.includes('дино')) return resolveAssetUrl('/illustrations/cover_dino.jpg');
+  if (t.includes('косм') || t.includes('звезд') || t.includes('звёзд') || t.includes('сон') || t.includes('ночь')) {
+    return resolveAssetUrl('/illustrations/cover_star.jpg');
   }
-  return resolveAssetUrl(path);
+  return resolveAssetUrl('/illustrations/cover_forest.jpg');
 }
 
 export interface StoryProgressUpdate {
