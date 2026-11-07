@@ -15,7 +15,7 @@
  * 7. Очистка от AI-канцеляризмов, клише и пугающих слов перед сном.
  */
 
-import { declineRussianName, removeAgeFromText, fixGenderAgreements, countWords } from './declension.mjs';
+import { declineRussianName, removeAgeFromText, fixGenderAgreements, countWords, classifyClothingNarrativeRole } from './declension.mjs';
 
 const CYR_PRE = '(?<![а-яёА-ЯЁ0-9a-zA-Z])';
 const CYR_POST = '(?![а-яёА-ЯЁ0-9a-zA-Z])';
@@ -563,7 +563,14 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     }
   }
 
-  // 3. Проверка и бережная интеграция одежды героя в первую сцену
+  // 3. Проверка и бережная интеграция одежды/костюма героя в первую сцену
+  const classification = classifyClothingNarrativeRole({
+    appearance: params.appearance,
+    theme: params.theme,
+    storyMood: params.storyMood || params.mood,
+    customWishes: params.customWishes,
+  });
+
   const item = (params.appearance?.clothingItem || '').trim();
   const color = (params.appearance?.clothingColor || '').trim();
   let clothingRus = item;
@@ -573,18 +580,29 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     clothingRus = color ? `${color} одежда` : '';
   }
 
-  if (clothingRus && scenes[0]) {
+  // КРИТИЧЕСКИ ВАЖНО: Если одежда повседневная (свитер, толстовка, комбинезон, простое платье),
+  // мы НЕ вставляем её принудительно в текст! Это устраняет однотипные шаблонные фразы («Миша поправил свитер...»).
+  // Одежда вплетается только если это специальный сюжетный костюм (супергерой, скафандр, мантия) или функциональная одежда.
+  if (classification.isNarrativelyRelevant && clothingRus && scenes[0]) {
     const clothingKeywords = [
-      'дождевик', 'сапожк', 'сапог', 'пижам', 'кигуруми', 'плать', 'свитер', 'кофт',
-      'комбинезон', 'толстовк', 'худи', 'скафандр', 'космонавт', 'супергеро', 'манти',
-      'куртк', 'шапочк', 'кармаш', 'капюшон', 'наряд',
+      'дождевик', 'сапожк', 'сапог', 'пижам', 'кигуруми', 'плать', 'скафандр',
+      'космонавт', 'супергеро', 'манти', 'доспех', 'рыцар', 'шлем', 'костюм', 'плащ',
     ];
     const hasClothingMention = clothingKeywords.some((w) => fullText.toLowerCase().includes(w));
     if (!hasClothingMention) {
-      const verb = isGirl ? 'поправила' : 'поправил';
-      const pronoun = isGirl ? 'свою' : 'свой';
-      scenes[0].text += ` ${childName} с улыбкой ${verb} ${pronoun} ${clothingRus}, чувствуя уютное тепло и готовность к новому приключению.`;
-      fixes.push(`Одежда героя («${clothingRus}») бережно вплетена в первую сцену`);
+      if (classification.role === 'costume') {
+        const isSuper = classification.costumeType === 'superhero';
+        if (isSuper) {
+          scenes[0].text += ` ${childName} с гордостью надел${isGirl ? 'а' : ''} ${clothingRus}, готовясь к настоящим добрым подвигам!`;
+          fixes.push(`Супергеройский костюм («${clothingRus}») органично добавлен в первую сцену`);
+        } else {
+          scenes[0].text += ` Для этого сказочного похода ${childName} выбрал${isGirl ? 'а' : ''} ${clothingRus}.`;
+          fixes.push(`Сюжетный костюм («${clothingRus}») органично добавлен в первую сцену`);
+        }
+      } else {
+        scenes[0].text += ` ${childName} в удобном ${clothingRus} с радостью отправил${isGirl ? 'а' : ''}сь навстречу новому приключению.`;
+        fixes.push(`Функциональная одежда («${clothingRus}») бережно добавлена в первую сцену`);
+      }
     }
   }
 

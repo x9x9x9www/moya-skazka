@@ -287,3 +287,94 @@ export function fixGenderAgreements(text, arg2 = 'Герой', arg3 = 'boy') {
 
   return clean;
 }
+
+/**
+ * Классифицирует роль одежды в сюжете сказки:
+ * - 'costume': ролевой или сюжетный костюм (супергерой, космонавт, маг, рыцарь, бальное платье, кигуруми)
+ * - 'functional': одежда, оправданная погодой или ритуалом (дождевик для луж, пуховик для снега, пижама для сна)
+ * - 'thematic_fashion': тема напрямую связана с модой, переодеванием или созданием стиля
+ * - 'everyday': обычная повседневная одежда (свитер, толстовка, комбинезон, платье), которая не должна отвлекать сюжет
+ */
+export function classifyClothingNarrativeRole({ appearance = {}, theme = '', storyMood = '', customWishes = '' } = {}) {
+  const item = String(appearance?.clothingItem || appearance?.clothing || appearance?.outfit || '').toLowerCase();
+  const t = String(theme || '').toLowerCase();
+  const w = String(customWishes || '').toLowerCase();
+  const m = String(storyMood || '').toLowerCase();
+
+  // 1. Тема «Мода и стиль» или переодевание
+  if (t.includes('мод') || t.includes('стиль') || t.includes('наряд') || t.includes('карнавал') || t.includes('показ')) {
+    return {
+      role: 'thematic_fashion',
+      isNarrativelyRelevant: true,
+      costumeType: 'fashion',
+      allowBestowal: true,
+    };
+  }
+
+  // 2. Сюжетные костюмы: супергерой, космонавт, маг/волшебник, рыцарь, бальное платье, кигуруми
+  const isSuperhero = item.includes('супергеро') || item.includes('плащ супергеро') || item.includes('маск') || t.includes('супергеро') || w.includes('супергеро');
+  const isAstronaut = item.includes('скафандр') || item.includes('космонавт') || (t.includes('косм') && (item.includes('шлем') || item.includes('комбинезон со звезд')));
+  const isWizard = item.includes('манти') || item.includes('маг') || item.includes('волшебн') || item.includes('колпак') || t.includes('школа волшебств');
+  const isKnight = item.includes('доспех') || item.includes('рыцар') || item.includes('латы');
+  const isKigurumi = item.includes('кигуруми') || item.includes('костюм динозавр') || item.includes('костюм звер');
+  const isBallDress = item.includes('бальн') || item.includes('королевск') || (t.includes('бал') && item.includes('плать'));
+
+  if (isSuperhero || isAstronaut || isWizard || isKnight || isKigurumi || isBallDress) {
+    let costumeType = 'costume';
+    if (isSuperhero) costumeType = 'superhero_costume';
+    else if (isAstronaut) costumeType = 'astronaut_suit';
+    else if (isWizard) costumeType = 'wizard_robe';
+    else if (isKnight) costumeType = 'knight_armor';
+    else if (isBallDress) costumeType = 'ball_dress';
+    else if (isKigurumi) costumeType = 'kigurumi';
+
+    return {
+      role: 'costume',
+      isNarrativelyRelevant: true,
+      costumeType,
+      allowBestowal: true,
+    };
+  }
+
+  // 3. Функциональная одежда (дождевик и сапожки в сырую погоду, пуховик в мороз, пижамка перед сном)
+  const isRainwear = item.includes('дождевик') || item.includes('сапожк') || item.includes('резинов');
+  const isRainContext = t.includes('дожд') || t.includes('луж') || t.includes('осен') || t.includes('руче');
+  if (isRainwear && (isRainContext || item.includes('дождевик'))) {
+    return {
+      role: 'functional',
+      isNarrativelyRelevant: true,
+      costumeType: 'weather_rain',
+      allowBestowal: false,
+    };
+  }
+
+  const isWinterwear = item.includes('пуховик') || item.includes('шапк с помпон') || item.includes('варежк') || item.includes('зимн');
+  const isWinterContext = t.includes('зим') || t.includes('снег') || t.includes('мороз') || t.includes('нов');
+  if (isWinterwear && isWinterContext) {
+    return {
+      role: 'functional',
+      isNarrativelyRelevant: true,
+      costumeType: 'weather_winter',
+      allowBestowal: false,
+    };
+  }
+
+  const isSleepwear = item.includes('пижам') || item.includes('ночн');
+  const isBedtime = m.includes('сон') || t.includes('сон') || t.includes('ночь');
+  if (isSleepwear && isBedtime) {
+    return {
+      role: 'functional',
+      isNarrativelyRelevant: true,
+      costumeType: 'bedtime_pajamas',
+      allowBestowal: false,
+    };
+  }
+
+  // 4. Повседневная одежда (свитер, толстовка, комбинезончик, платье)
+  return {
+    role: 'everyday',
+    isNarrativelyRelevant: false,
+    costumeType: 'everyday_casual',
+    allowBestowal: false,
+  };
+}

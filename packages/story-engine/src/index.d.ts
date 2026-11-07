@@ -228,3 +228,27 @@ export function verifyNarrativeIntegrity(story: unknown, params?: Partial<StoryP
   fixes: string[];
   story: any;
 };
+
+export interface ClothingNarrativeClassification {
+  role: 'costume' | 'functional' | 'thematic_fashion' | 'everyday';
+  isNarrativelyRelevant: boolean;
+  costumeType: string | null;
+  allowBestowal: boolean;
+}
+
+export function classifyClothingNarrativeRole(input?: {
+  appearance?: ChildAppearance;
+  theme?: string;
+  storyMood?: string;
+  customWishes?: string | null;
+}): ClothingNarrativeClassification;
+
+export function formatClothingNarrativePrompt(input?: {
+  appearance?: ChildAppearance;
+  theme?: string;
+  storyMood?: string;
+  customWishes?: string | null;
+  childName?: string;
+  gender?: 'boy' | 'girl' | string;
+}): string;
+

@@ -166,11 +166,21 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   const finaleBedtimePrompt = `3D Pixar style scene 4: peaceful cozy bedtime finale, starry night sky, child sleeping peacefully, glowing warm light`;
   const finaleDaytimePrompt = `3D Pixar style scene 4: joyful daytime finale, smiling child celebrating victory with friend, bright sunlight, happy vibrant colors`;
 
+  const isCostume = /супергеро|скафандр|космонавт|манти|волшебн|рыцар|доспех|кигуруми|дождевик|бальн.*плат|пижам/i.test(clothes) ||
+    /супергеро|космос|рыцар|маги|волшеб/i.test(theme);
+  const allowBestowal = /супергеро|космос|рыцар/i.test(theme) || /супергеро|скафандр|доспех/i.test(clothes);
+  let costumeSentence = '';
+  if (isCostume) {
+    costumeSentence = allowBestowal
+      ? ` Друзья приготовили для ${declined.gen} особенный ${clothes}, чтобы отправиться в славный путь!`
+      : ` ${heroRef} был надет ${clothes}.`;
+  }
+
   const rawScenes = [
     {
       id: 'scene_1',
       scene_index: 1,
-      text: `Однажды солнечным утром ${declined.nom} ${vFelt}, что день готовит нечто по-настоящему чудесное. ${heroRef} была ${clothes}, а ${hair} искрились в мягких лучах света. Рядом был любимый спутник — ${companionName}, ласково согревая ладошку. Вдруг тёплый ветерок зашелестел листвой, приглашая в удивительный мир — ${worldName}!`,
+      text: `Однажды солнечным утром ${declined.nom} ${vFelt}, что день готовит нечто по-настоящему чудесное.${costumeSentence ? ' ' + costumeSentence : ''} Рядом был любимый спутник — ${companionName}, ласково согревая ладошку. Вдруг тёплый ветерок зашелестел листвой, приглашая в удивительный мир — ${worldName}!`,
       image_url: scene1Img,
       image_prompt: `3D Pixar style scene 1: ${declined.nom} as a cute child smiling with ${companionName} in ${worldName}, Pixar render`,
     },

@@ -23,6 +23,7 @@ import {
   fixGenderAgreements,
   getOPreposition,
   countWords,
+  classifyClothingNarrativeRole,
 } from './declension.mjs';
 export {
   declineRussianName,
@@ -30,6 +31,7 @@ export {
   fixGenderAgreements,
   getOPreposition,
   countWords,
+  classifyClothingNarrativeRole,
 };
 
 import {
@@ -74,7 +76,7 @@ You DO NOT write the full literary story text. Instead, you design a comprehensi
    - ABSOLUTE BAN ON CLICHÉS: NEVER introduce freezing animals, shivering from cold, getting lost in dark woods, or fear of darkness UNLESS the parent explicitly chose a winter/cold/darkness theme!
    - In themes like "Fashion and Style" or "Circus" or "Cars", the action is about creativity, designing, playful mix-up, invention, or friendly cooperation — NOT about shivering or surviving the elements!
 4. FOUR-SCENE DRAMATURGY:
-   - Scene 1: Hook, atmosphere, child in their specific clothing, meeting/waking the toy.
+   - Scene 1: Hook, atmosphere, meeting/waking the toy companion in the themed world (if a special costume like superhero suit or spacesuit is relevant, weave its role naturally).
    - Scene 2: Gentle mystery or playful challenge, ending with a natural pause for Question 1.
    - Scene 3: Climax where the child's kind choice or action solves the situation (integrating parent wishes if provided).
    - Scene 4: Grounding bedtime calm, tactile reassurance, safe embrace, ending with Question 2.
@@ -115,14 +117,14 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 - MEANING & MORAL: Every fairytale must have a clear, heartwarming meaning (friendship, kindness, perseverance, mutual aid, curiosity, courage). The moral MUST be expressed through the child's own courageous, kind, or ingenious ACTION in Scene 3, NEVER through preachy didactic lectures at the end.
 - No brands, no real people, no pop-culture references, no advertisements.
 
-### 3. CHARACTER BIBLE & IMMUTABLE WARDROBE (CRITICAL & STRICT)
+### 3. CHARACTER BIBLE & NARRATIVE COSTUME ROLES (CRITICAL & STRICT)
 - Every character MUST be a separate object in \`characters[]\`. NEVER merge the hero and the companion into one object.
 - Required: exactly one \`role: "hero"\` (the child). Add one or two companions with \`role: "companion"\` or \`role: "friend"\`.
-- IMMUTABLE CHARACTER ANCHOR: The child's facial appearance, exact hairstyle, exact hair length, hair color, skin tone, eye color, AND exact clothing outfit MUST remain IDENTICAL across the cover and all 4 scenes.
-- MANDATORY CLOTHING INTEGRATION IN RUSSIAN STORY TEXT:
-  * In Scene 1, explicitly introduce the child in their chosen clothing outfit and color.
-  * Weave tactile interactions with clothing into the plot (reaching into pockets, pulling up warm hood, cozy sleeves).
-  * The clothing outfit stays identical across all 4 scenes and cover visual.
+- IMMUTABLE CHARACTER ANCHOR (VISUAL FIELDS ONLY): The child's facial appearance, exact hairstyle, exact hair length, hair color, skin tone, eye color, AND exact clothing outfit MUST remain IDENTICAL across the cover and all 4 scenes in all visual description fields (\`characters[].visual_description\`, \`cover_visual\`, \`scenes[].visual\`).
+- NARRATIVE CLOTHING PRINCIPLES IN RUSSIAN STORY TEXT:
+  * STRICT BAN ON REPETITIVE CLOTHING BOILERPLATE: In everyday fairytales, casual clothes (sweaters, hoodies, casual dresses, overalls) do NOT drive the plot. NEVER waste opening lines mechanically describing what the child is wearing («Маша в любимом свитере поправила рукава» is STRICTLY FORBIDDEN). Start directly with action, wonder, dialogue, or theme!
+  * THEMATIC COSTUMES & FUNCTIONAL GEAR: When the outfit is a special costume (superhero suit, astronaut spacesuit, wizard robe, knight armor) or functionally relevant to the setting (raincoat for puddles, cozy pajamas for bedtime), weave it as an active story element!
+  * COSTUME BESTOWAL / ADVENTURE GEAR: For superheroes or special quests, the costume can either be the child's proud gear OR BESTOWED/GIVEN to the hero by friends/mentors in Scene 1 or 2 as special equipment for their kind mission!
 - FAVORITE TOY & COMPANION CONTINUITY:
   * The favorite toy comes to life as the companion. Keep its toy nature visible (plush texture, stitches, button eyes).
   * The companion toy MUST be at the child's side from Scene 1 to the final bedtime embrace in Scene 4.
@@ -411,6 +413,56 @@ export function appearanceHints(appearance = {}) {
   const glasses = hasGlasses ? ', wearing cute round glasses' : '';
 
   return { hairColor, hairType, eyes, skin, clothes, toy, glasses, hasGlasses };
+}
+
+/**
+ * Формирует детальные правила интеграции одежды/костюма в промпты генерации сказки
+ */
+export function formatClothingNarrativePrompt({ appearance = {}, theme = '', storyMood = '', customWishes = '', childName = 'Малыш' } = {}) {
+  const fullClothingRus = formatFullClothingRus(appearance);
+  const hints = appearanceHints(appearance);
+  const classification = classifyClothingNarrativeRole({ appearance, theme, storyMood, customWishes });
+
+  if (classification.isNarrativelyRelevant) {
+    if (classification.role === 'costume') {
+      const isSuper = /superhero|супергеро/i.test(classification.costumeType || '');
+      return `
+- ОДЕЖДА И КОСТЮМ ГЕРОЯ («${fullClothingRus}») — СЮЖЕТНЫЙ ЭЛЕМЕНТ:
+  * В этой сказке одежда героя играет активную роль: это специальный ${isSuper ? 'супергеройский костюм' : 'сказочный костюм'} для приключений и добрых дел!
+  * СЮЖЕТНЫЙ ХОД (выбери самый органичный для фабулы):
+    ${isSuper ? `1) ВАРИАНТ «ВРУЧЕНИЕ КОСТЮМА»: в Сцене 1 или 2 спутник/волшебные друзья торжественно дарят или вручают ${childName} этот супергеройский костюм («${fullClothingRus}») для важной миссии по спасению друзей! Герой с гордостью надевает его и обретает уверенность.\n    2) ВАРИАНТ «СНАРЯЖЕНИЕ ГОТОВО»: ${childName} уже надел${childName.endsWith('а') || childName.endsWith('я') ? 'а' : ''} свой любимый костюм для игры в супергероя и отправляется на подвиг.` : `1) Герой уже одет в свой любимый ${fullClothingRus} для сказочного похода.\n    2) Герою вручают или помогают примерить ${fullClothingRus} как символ дружбы и посвящения в тайну.`}
+  * Костюм должен служить действию (развеваться на ветру, согревать, помогать в полете или преодолении испытания), а НЕ быть сухим каталожным описанием ткани.
+  * В 3D Pixar иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
+`.trim();
+    }
+
+    if (classification.role === 'thematic_fashion') {
+      return `
+- ОДЕЖДА ГЕРОЯ («${fullClothingRus}») — ЦЕНТРАЛЬНАЯ ТЕМА СКАЗКИ:
+  * Тема посвящена стилю, моде, примерке и пошиву нарядов.
+  * Обыграй выбор, преображение или создание наряда («${fullClothingRus}») как увлекательный творческий процесс и радость совместного праздника.
+  * В 3D Pixar иллюстрациях строго сохраняй: ${hints.clothes}.
+`.trim();
+    }
+
+    // Functional
+    return `
+- ОДЕЖДА ГЕРОЯ («${fullClothingRus}») — ПРАКТИЧЕСКАЯ ДЕТАЛЬ СИТУАЦИИ:
+  * Одежда («${fullClothingRus}») защищает героя или помогает в обстановке (сапожки для весёлых брызг в лужах, тёплый пуховик от свежего ветерка, мягкая пижамка для засыпания).
+  * Упомяни её ТОЛЬКО через реальное действие в сюжете (прыгнул в лужу в сапожках, уютно поправил воротник), БЕЗ шаблонного занудного описания цветов и пуговиц.
+  * В 3D Pixar иллюстрациях строго сохраняй: ${hints.clothes}.
+`.trim();
+  }
+
+  // Everyday casual (свитер, толстовка, комбинезончик, платье)
+  return `
+- ОДЕЖДА ГЕРОЯ («${fullClothingRus}») — ТОЛЬКО ВИЗУАЛЬНЫЙ ЯКОРЬ ДЛЯ ИЛЛЮСТРАЦИЙ (ПОВСЕДНЕВНАЯ ОДЕЖДА):
+  * КАТЕГОРИЧЕСКИЙ ЗАПРЕТ ШАБЛОННЫХ ОПИСАНИЙ ОДЕЖДЫ В РУССКОМ ТЕКСТЕ!
+  * СТРОГО ЗАПРЕЩЕНО начинать сказку со стереотипного описания одежды («${childName} в своём любимом свитере/платьице поправил рукава...» — ЗАПРЕЩЕНО!).
+  * Повседневная одежда не играет роли в этом сюжете. Не трать на неё драгоценные слова сказки: начинай СРАЗУ с интриги, настроения, звука, действия или живого диалога со спутником.
+  * Упоминать одежду в тексте можно ТОЛЬКО мимолётно при конкретном осязаемом действии (например, «положил камушек в кармашек»). Специально описывать фасон, цвет или ткань свитера/платья ЗАПРЕЩЕНО.
+  * В 3D Pixar иллюстрациях (visual-поля) обязательно сохраняй: ${hints.clothes} для 100% консистентности персонажа на картинках.
+`.trim();
 }
 
 // --------------------------------------------------------
@@ -985,10 +1037,13 @@ export function buildStoryPrompt(params = {}, options = {}) {
 - Пол: ${genderRus}
 - Падежные формы имени: Родительный (кого? чьё?): «сердце ${declinedName.gen}», Дательный (кому?): «навстречу ${declinedName.dat}», Творительный (с кем?): «вместе с ${declinedName.ins}».
 - ВАЖНЕЙШЕЕ ПРАВИЛО ГРАММАТИКИ: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала», «решила»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
-- ОДЕЖДА ГЕРОЯ (КРИТИЧЕСКИ ВАЖНО ВПЛЕСТИ В ТЕКСТ): ${fullClothingRus}.
-  * В Сцене 1 ОБЯЗАТЕЛЬНО покажи героя в этой одежде («${params.childName} в своём любимом ${fullClothingRus}...»).
-  * Сделай одежду осязаемой деталью сюжета: пусть герой спрячет что-то в кармашек, натянет капюшон, отряхнёт сапожки, почувствует тепло мягкой ткани или воротника.
-  * Герой сохраняет ЭТУ ЖЕ одежду во всех 4 сценах и на обложке!
+${formatClothingNarrativePrompt({
+  appearance: params.appearance,
+  theme: params.theme,
+  storyMood: mood,
+  customWishes: params.customWishes,
+  childName: params.childName,
+})}
 - Волосы, глаза и кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}.
 - Любимая игрушка-спутник: ${toy}.
   * Игрушка-спутник оживает, сохраняя свою форму, и находится рядом с героем с самого начала Сцены 1 до ${isBedtime ? 'финального сна' : 'победного финала'} в Сцене 4!
@@ -1022,7 +1077,7 @@ ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (В�
 
 5. ТРЕБОВАНИЯ ПО ТЗ (РАЗДЕЛЫ 6 И 15):
 - Ровно 4 сцены. Общий объём: ${band.total[0]}–${band.total[1]} русских слов. Ориентир на каждую сцену: ${band.perScene[0]}–${band.perScene[1]} слов. Стиль предложений: ${band.sentences}.
-- Сцена 1: Знакомство с миром, ${params.childName} в одежде (${fullClothingRus}) и встреча со спутником (${toy}).
+- Сцена 1: Знакомство с миром, погружение в тему «${params.theme || 'Дружба'}» и встреча со спутником (${toy})${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? `, органичное сюжетное раскрытие костюма (${fullClothingRus})` : ''}.
 - Сцена 2: Добрая интрига / маленькая задача. Завершается действием и паузой для Вопроса 1.
 - Сцена 3: Кульминация и доброе решение: ${dna.hero_anchor}${params.customWishes ? `, исполнение пожелания «${params.customWishes}»` : ''}.
 ${scene4Requirement}
@@ -1078,7 +1133,9 @@ export function normalizeBlueprint(raw, params = {}) {
       scene_1_hook: {
         setting: asString(s1.setting) || `Уютная комната или начало сказочного мира темы «${theme}»`,
         sensory_hook: asString(s1.sensory_hook) || `Тихий шелест или мягкий огонёк, привлекающий внимание`,
-        clothing_action: asString(s1.clothing_action) || `${child} в любимой одежде (${clothing}) ощущает тепло ткани или прячет ручки в кармашки`,
+        clothing_action: asString(s1.clothing_action) || (classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant
+          ? `${child} надевает или получает ${clothing} для своего доброго подвига`
+          : `${child} легко и свободно двигается навстречу чуду без отвлечения на одежду`),
         toy_awakening: asString(s1.toy_awakening) || `${toy} ласково оживает и ободряюще подмигивает пуговичным глазком`,
       },
       scene_2_intrigue: {
@@ -1130,7 +1187,7 @@ export function buildArchitectPrompt(params = {}, options = {}) {
 - Характер и темперамент: ${dna.personality_profile?.traitLabel || params.personality || 'Добрый'}
 - Ключевые черты характера для раскрытия:
 ${(dna.personality_profile?.guidelines || ['Сделай акцент на доброте и помощи другу.']).map((g) => `  * ${g}`).join('\n')}
-- Одежда героя: ${fullClothingRus} (сохраняется во всех сценах)
+- Одежда и костюм героя: ${fullClothingRus} (${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? 'сюжетный костюм / снаряжение героя для миссии или вручение по сюжету' : 'только визуальный якорь для иллюстраций; в сюжете не акцентировать'})
 - Любимая игрушка-спутник: ${toy} (живой компаньон с повадкой: «${dna.companion_quirk}»)
 
 2. ТЕМА, НАСТРОЕНИЕ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
@@ -1166,7 +1223,7 @@ ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты из недавних с
     "scene_1_hook": {
       "setting": "где начинается история",
       "sensory_hook": "открывающий звук, запах или ощущение",
-      "clothing_action": "как ${params.childName || 'Малыш'} взаимодействует с одеждой (${fullClothingRus})",
+      "clothing_action": "${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? `как костюм (${fullClothingRus}) задействован в сюжете или вручён ${params.childName || 'герою'}` : `естественное действие ${params.childName || 'героя'} (без фиксации на описании одежды)`}",
       "toy_awakening": "как оживает или включается ${toy}"
     },
     "scene_2_intrigue": {
@@ -1229,7 +1286,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 • Сцена 1 (Завязка):
   - Место и атмосфера: ${bp.scene_by_scene_blueprint.scene_1_hook.setting}
   - Сенсорный крючок начала: ${bp.scene_by_scene_blueprint.scene_1_hook.sensory_hook}
-  - Действие с одеждой (${fullClothingRus}): ${bp.scene_by_scene_blueprint.scene_1_hook.clothing_action}
+  - Действие в начале: ${bp.scene_by_scene_blueprint.scene_1_hook.clothing_action}${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? ` (костюм: ${fullClothingRus})` : ''}
   - Оживление игрушки (${toy}): ${bp.scene_by_scene_blueprint.scene_1_hook.toy_awakening}
 • Сцена 2 (Интрига и задача):
   - Загадка/задача: ${bp.scene_by_scene_blueprint.scene_2_intrigue.gentle_mystery}
@@ -1253,7 +1310,13 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 - Пол: ${genderRus}
 - Падежные формы имени: Родительный («сердце ${declinedName.gen}»), Дательный («навстречу ${declinedName.dat}»), Творительный («вместе с ${declinedName.ins}»)
 - ГРАММАТИЧЕСКОЕ ПРАВИЛО: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
-- Одежда героя: ${fullClothingRus} (обязательно вплести осязаемо в Сцену 1, сохранять во всех сценах)
+${formatClothingNarrativePrompt({
+  appearance: params.appearance,
+  theme: params.theme,
+  storyMood: mood,
+  customWishes: params.customWishes,
+  childName: params.childName,
+})}
 - Любимая игрушка-спутник: ${toy} (рядом от первой фразы до ${isBedtime ? 'засыпания' : 'победного финала'})
 - Волосы, глаза, кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)»)!

@@ -21,6 +21,7 @@ import {
   fallbackQuestions,
   declineRussianName,
   runEditorialAgent,
+  classifyClothingNarrativeRole,
 } from '../packages/story-engine/src/index.mjs';
 import { Agent, ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import localtunnel from 'localtunnel';
@@ -816,6 +817,14 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     const vSmiled = isGirl ? 'не испугалась, улыбнулась и крепко взяла' : 'не испугался, улыбнулся и крепко взял';
     const vProved = isGirl ? 'доказала' : 'доказал';
 
+    const clothingRole = classifyClothingNarrativeRole(params);
+    let costumeIntro = '';
+    if (clothingRole.isNarrativelyRelevant) {
+      costumeIntro = clothingRole.allowBestowal
+        ? ` Друзья приготовили для ${declined.gen} особенный ${clothes}, чтобы отправиться в путь.`
+        : ` На герое был специальный ${clothes}.`;
+    }
+
     const mockStory = {
       title: `${child} и тайна: «${theme}»`,
       cover_url: avatarUrl || coverImg,
@@ -826,7 +835,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       scenes: [
         {
           index: 1,
-          text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо. На герое была ${clothes}, а ${hair} согревали лучи ласкового солнца.${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
+          text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо.${costumeIntro ? ' ' + costumeIntro : ''}${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
           image_url: `${baseUrl}/illustrations/demo/scene_1.jpg`,
           visual: `3D Pixar style scene 1 of ${child} meeting ${companionName}`,
         },
