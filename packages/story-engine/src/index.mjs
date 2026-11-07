@@ -617,6 +617,40 @@ function getThemedWorld(params, random) {
     });
   }
 
+  // Динамическая адаптация мира под кастомные интересы ребёнка
+  for (const rawInterest of params.interests || []) {
+    const i = String(rawInterest).trim();
+    if (i.length >= 3) {
+      const iLow = i.toLowerCase();
+      if (iLow.includes('пузыр')) {
+        pool.push({
+          type: 'Glade of Rainbow Soap Bubbles (Поляна радужных мыльных пузырей)',
+          desc: 'солнечная поляна, где летают огромные переливающиеся мыльные пузыри, в которых отражаются цветы и улыбки друзей',
+        });
+      } else if (iLow.includes('робот') || iLow.includes('лего') || iLow.includes('конструкт')) {
+        pool.push({
+          type: `Invention Workshop (Мастерская добрых открытий и ${i})`,
+          desc: `уютный сказочный городок с яркими кубиками, шестерёнками из карамели и весёлыми механическими помощниками`,
+        });
+      } else if (iLow.includes('рис') || iLow.includes('краск') || iLow.includes('творч')) {
+        pool.push({
+          type: 'Valley of Living Colors (Долина живых красок)',
+          desc: 'волшебная поляна, где травы меняют цвет от добрых поступков, а камушки расписываются сказочными узорами',
+        });
+      } else if (iLow.includes('музык') || iLow.includes('песн') || iLow.includes('танц')) {
+        pool.push({
+          type: 'Grove of Melodic Bells (Роща звонких колокольчиков)',
+          desc: 'сказочный лес, где лёгкий ветерок играет добрую музыку на хрустальных листьях и цветах',
+        });
+      } else if (iLow.includes('пазл') || iLow.includes('головолом')) {
+        pool.push({
+          type: 'Secret Mosaic Garden (Сад мозаичных дорожек)',
+          desc: 'удивительный парк, где друзья собирают разноцветные дорожки-пазлы, открывая тайные цветочные поляны',
+        });
+      }
+    }
+  }
+
   if (pool.length > 0) {
     return pick(pool, random);
   }
@@ -925,6 +959,8 @@ export function buildStoryPrompt(params = {}, options = {}) {
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
+  const interestsList = (params.interests || []).filter(Boolean);
+  const childInterestsText = interestsList.length > 0 ? interestsList.join(', ') : 'приключения и добрые открытия';
 
   const fullClothingRus = formatFullClothingRus(params.appearance);
 
@@ -968,7 +1004,8 @@ ${(dna.personality_profile?.guidelines || ['Сделай акцент на до�
   * КРИТИЧЕСКИЙ ЗАКОН: Главная тема «${params.theme || 'Дружба'}» определяет весь мир, атмосферу и конфликт сказки!
   * На КАЖДОЙ из 4 страниц ОБЯЗАТЕЛЬНО должны присутствовать минимум 2–3 осязаемых физических атрибута этой темы!
   * Если тема праздничная, сезонная или конкретная (например, «Новогодние праздники», «Зимняя сказка», «Поход в цирк»), весь сюжет должен дышать этой атмосферой (снег, наряженная ёлка, гирлянды, новогодние шары, запах мандаринов, ожидание полуночного чуда). Категорически ЗАПРЕЩЕНО игнорировать тему или заменять её абстрактным лесом!
-- Интересы ребёнка: ${(params.interests || []).join(', ') || 'приключения и открытия'}
+- Интересы и увлечения ребёнка: ${childInterestsText}
+  * ОБЯЗАТЕЛЬНОЕ ВПЛЕТЕНИЕ ИНТЕРЕСОВ: Органично вплети любимые интересы ребёнка (${childInterestsText}) в сюжет сказки! Пусть герой играет в то, что любит, использует элементы этих увлечений или свои умения в преодолении трудностей.
 ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (ВЫСШИЙ ПРИОРИТЕТ ДЛЯ СЮЖЕТА): «${params.customWishes}». Обязательно вплети это пожелание в кульминацию Сцены 3 как главное доброе событие!` : '- Особые пожелания: нет'}
 
 3. ВЫБРАННАЯ ДНК ЭТОЙ СКАЗКИ (строй сюжет вокруг неё):
@@ -1102,6 +1139,7 @@ ${(dna.personality_profile?.guidelines || ['Сделай акцент на до�
   * Сюжетный фокус: ${dna.mood_profile?.engineFocus || 'Искренняя дружба и совместная радость'}
   * Направленность конфликта: ${dna.mood_profile?.conflictType || 'Добрая задача для друзей'}
 - Интересы ребёнка: ${(params.interests || []).join(', ') || 'приключения и открытия'}
+  * Вплети эти увлечения в метафору и занятия героя.
 ${params.customWishes ? `- Особые пожелания родителя (ВЫСШИЙ ПРИОРИТЕТ): «${params.customWishes}»` : '- Особые пожелания родителя: нет'}
 
 3. БАЗОВАЯ ДНК МИРА:
@@ -1220,6 +1258,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 - Волосы, глаза, кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}
 - СТРОЖАЙШИЙ ЗАПРЕТ СКОБОК: Категорически ЗАПРЕЩЕНО вставлять в текст сказки возраст в скобках (никаких «(${Number(params.age) || 4} лет)»)!
 - Возраст для калибровки простоты: ${Number(params.age) || 4} лет (${band.label})
+- Интересы и увлечения ребёнка: ${(params.interests || []).join(', ') || 'приключения и открытия'} (органично вплети в сюжет и занятия героя)
 
 3. АНГЛИЙСКИЕ ПОДСКАЗКИ ДЛЯ CHARACTER BIBLE (characters[].visual_description):
 - hero: ${hints.hairColor} ${hints.hairType} hair; ${hints.eyes}; ${hints.skin}; wearing ${hints.clothes}${hints.glasses}

@@ -234,3 +234,37 @@ test('Кастомные интересы фильтруются без учет
   assert.deepEqual(customList, ['Роботы', 'Лего']);
 });
 
+test('Алгоритм таймера генерации монотонно убывает и исключает отскок назад', () => {
+  let prev = 75;
+  const history = [prev];
+
+  // Имитация 40 секунд фазы writing
+  for (let sec = 0; sec < 40; sec++) {
+    if (prev > 26) prev = prev - 1;
+    history.push(prev);
+  }
+  assert.equal(prev, 35);
+
+  // Переход в фазу drawing (progress: 50 -> 95)
+  const progressSnapshots = [50, 59, 68, 77, 86, 95];
+  for (const prog of progressSnapshots) {
+    const remainingRatio = Math.max(0, (96 - prog) / 46);
+    const targetSec = Math.max(2, Math.round(remainingRatio * 24));
+    prev = Math.min(prev, Math.max(2, targetSec));
+    history.push(prev);
+  }
+
+  // Завершение
+  prev = 0;
+  history.push(prev);
+
+  // Проверка монотонности: каждое последующее значение <= предыдущего
+  for (let i = 1; i < history.length; i++) {
+    assert.ok(
+      history[i] <= history[i - 1],
+      `Таймер не должен отскакивать назад: history[${i}] (${history[i]}) > history[${i - 1}] (${history[i - 1]})`
+    );
+  }
+  assert.equal(history[history.length - 1], 0);
+});
+

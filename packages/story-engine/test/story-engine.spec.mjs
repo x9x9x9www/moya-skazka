@@ -244,3 +244,37 @@ test('scoreStory не падает на валидной сказке', () => {
   assert.ok(score.score >= 0 && score.score <= 100);
   assert.ok(Array.isArray(score.issues));
 });
+
+test('chooseStoryDna адаптирует мир под кастомные интересы (мыльные пузыри и лего)', () => {
+  const dnaBubbles = chooseStoryDna({
+    interests: ['Мыльные пузыри'],
+    theme: 'Дружба',
+  });
+  assert.match(dnaBubbles.world_scale, /Soap Bubbles|мыльных пузырей/i);
+
+  const dnaLego = chooseStoryDna({
+    interests: ['Конструктор Лего'],
+    theme: 'Дружба',
+  });
+  assert.match(dnaLego.world_scale, /Invention|открытий|кубик/i);
+});
+
+test('buildStoryPrompt корректно обрабатывает пустые интересы без пустых скобок', () => {
+  const promptEmpty = buildStoryPrompt({
+    childName: 'Света',
+    age: 4,
+    gender: 'girl',
+    interests: [],
+  });
+  assert.ok(!promptEmpty.user.includes('любимые интересы ребёнка ()'));
+  assert.match(promptEmpty.user, /приключения и добрые открытия/);
+
+  const promptCustom = buildStoryPrompt({
+    childName: 'Света',
+    age: 4,
+    gender: 'girl',
+    interests: ['Пазлы', 'Мыльные пузыри'],
+  });
+  assert.match(promptCustom.user, /Пазлы, Мыльные пузыри/);
+  assert.match(promptCustom.user, /ОБЯЗАТЕЛЬНОЕ ВПЛЕТЕНИЕ ИНТЕРЕСОВ/);
+});

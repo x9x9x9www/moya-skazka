@@ -1174,12 +1174,15 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         <button
           onClick={() => {
             const trimmed = customInterest.trim().slice(0, 40);
-            if (trimmed && !data.interests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
-              onChange({ ...data, interests: [...data.interests, trimmed] });
+            let updatedInterests = [...data.interests];
+            if (trimmed && !updatedInterests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
+              updatedInterests.push(trimmed);
+              setCustomInterest('');
             }
+            onChange({ ...data, interests: updatedInterests });
             onNext();
           }}
-          disabled={!data.childName.trim() || data.interests.length === 0}
+          disabled={!data.childName.trim() || (data.interests.length === 0 && !customInterest.trim())}
           className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           <span>Дальше к сказке</span>

@@ -6,15 +6,15 @@
       "first_name": "x9x9x9ww",
       "username": "x9x9x9ww",
       "role": "USER",
-      "free_text_claimed_at": null,
+      "free_text_claimed_at": "2026-11-07T09:21:29.353Z",
       "default_questions_enabled": true,
       "timezone": "UTC+3",
       "balance": {
-        "total": 5,
-        "paid": 5,
+        "total": 4,
+        "paid": 4,
         "gift": 0,
         "reserved": 0,
-        "available": 5
+        "available": 4
       },
       "createdAt": "2026-11-06T01:03:42.243Z"
     },
@@ -46,16 +46,49 @@
       "default_questions_enabled": true,
       "timezone": "UTC+3",
       "balance": {
-        "total": 3,
-        "paid": 3,
+        "total": 2,
+        "paid": 2,
         "gift": 0,
         "reserved": 0,
-        "available": 3
+        "available": 2
       },
       "createdAt": "2026-11-06T01:04:58.385Z"
     }
   },
-  "children": {},
+  "children": {
+    "child_1794043139177_lrq4": {
+      "id": "child_1794043139177_lrq4",
+      "user_id": "1212593604",
+      "name": "Лев",
+      "age": 6,
+      "gender": "boy",
+      "interests": [
+        "Волшебство",
+        "Космос"
+      ],
+      "appearance": {
+        "avatar_id": "boy_brown",
+        "gender": "boy",
+        "hair": "русые волосы",
+        "clothing": "уютный свитер",
+        "personality": "Мечтатель и фантазёр",
+        "hairColor": "русые",
+        "hairType": "короткие прямые",
+        "hairLength": "короткие",
+        "hairStructure": "прямые",
+        "clothingItem": "уютный свитер",
+        "clothingColor": "изумрудный",
+        "toy": "Ракета",
+        "eyeColor": "карие",
+        "skinTone": "персиковая",
+        "distinctiveFeatures": "",
+        "storyPreference": "Уютные и добрые истории",
+        "bedtimeRitual": "Чтение в тёплых объятиях"
+      },
+      "is_active": true,
+      "updatedAt": "2026-11-07T09:18:59.177Z"
+    }
+  },
   "books": {
     "story_1793927098387_auegk3": {
       "id": "story_1793927098387_auegk3",
@@ -180,6 +213,192 @@
       ],
       "can_upgrade": false,
       "created_at": "2026-11-07T08:30:37.787Z"
+    },
+    "story_1794042416903_fmp665": {
+      "id": "story_1794042416903_fmp665",
+      "user_id": "user_default",
+      "child_id": "default",
+      "child_name": "Владушка",
+      "title": "Владушка и пузырьковый сад",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/c88e409f-ea0d-460d-aaf8-784850bd1114/0?exp=1794132000&sig=eb90d2f7a2ae7a13f519dac98e4ead35917d08153a8d544993c0f7d448c51201",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению. Он пробежал по мягкому коврику детсадовской группы и золотом вспыхнул на кубиках. За дверью начинался волшебный сад: там росли огромные ромашки, звенели листочки, а на дорожке блестели капли росы. Владушка пришла туда в своём уютном вязаном свитере. Мягкий рукав щекотал ладошку, когда она взяла за лапку своего плюшевого медвежонка Пуговичку. Медвежонок вдруг ласково подмигнул пуговичным глазком. Рядом весело зажужжал маленький робот Тик: «Сегодня украсим сад пузырями!» Владушка улыбнулась и достала из кармашка свитера мыльное колечко.",
+          "image_url": "https://api.wellflow.dev/v1/media/48da4c25-e244-4765-a6bc-4b3ad517f91f/0?exp=1794132000&sig=93d6510429e9253abc92256505844565edd95b58be7290e6afdac716bd5557bb",
+          "image_prompt": "Wide view from the kindergarten playroom toward a sunny magical garden filled with giant daisies, dewdrops, leafy arches, and colorful blocks. The girl, teddy bear, and small robot begin their garden adventure in bright golden light."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Тик налил мыльный раствор в маленький лоток, а Владушка осторожно подула в колечко. Пузыри покатились над цветами, переливаясь розовым и голубым. Но роботова насадка вдруг накренилась, и пузыри стали лопаться ещё до того, как поднимались в воздух. Тик опустил антенну. «Я хотел сделать самый красивый пузырьковый фонтан», — тихо сказал он. Владушка заметила, как его огоньки потускнели. Она присела рядом, погладила его руку мягким рукавом, а Пуговичка прижался плюшевым боком к её ладони. «Давай попробуем вместе», — предложила она и стала искать, чем укрепить насадку. Как Владушка могла бы поддержать Тика?",
+          "image_url": "https://api.wellflow.dev/v1/media/5cf976fc-98d5-452a-9253-2c32d7a76d8a/0?exp=1794132000&sig=440d06d9c34e5eb90ffd7d7011339c786e74200cd2dacd3d5a2d69f323026b25",
+          "image_prompt": "Medium shot beside a flower-lined garden path, where a tilted bubble wand rests over a small soap tray and a few bubbles pop in the sunlight. The friends gather close around the disappointed robot."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Владушка заглянула в корзинку с садовыми мелочами. Там лежали мягкая травинка, лента и гладкий кубик. — Лента удержит насадку, а кубик станет подставкой! — придумала она. Тик всё ещё смотрел вниз, и Владушка протянула ему ленту: «Ты лучше всех умеешь соединять детали. Поможешь мне?» Пуговичка подмигнул и придержал насадку лапками. Владушка обернула её лентой, Тик закрепил узел, а кубик подставили под край лотка. Теперь колечко стояло ровно. Тик нажал кнопку, Владушка подула — и вверх поднялся большой радужный пузырь. В нём отразились ромашки и три улыбающихся друга. Тик засмеялся, а Владушка радостно хлопнула в ладоши: вместе у них получилось!",
+          "image_url": "https://api.wellflow.dev/v1/media/70ce0de5-11f9-45e8-932e-424dba9de5ef/0?exp=1794132000&sig=f303d6c8899bc0115dbf6884bb89004e84f3fa0cc7de050d6b0cbb23f32688a9",
+          "image_prompt": "Close view of the friends working together beside the soap tray, securing the bubble wand with a ribbon and a smooth block. A large rainbow bubble rises among bright flowers in warm sunlight."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Сад наполнился пузырями. Они плыли над ромашками, цеплялись за листья и мягко отражали цветные кубики у дорожки. Тик снова поднял антенну, чтобы направлять пузырьки, а Владушка ловко пускала их один за другим. Пуговичка сидел рядом, верный плюшевый помощник, и иногда смешно подмигивал. Друзья устроили в садике маленький праздник. Они делились мыльным колечком, смеялись и благодарили друг друга за помощь. Потом Владушка крепко обняла Тика и прижала к себе Пуговичку. Тёплый свитер согревал плечи, а на ладони лопнул последний пузырь — легко и щекотно. «Как хорошо, когда рядом друзья», — прошептала она. Какой момент этого праздника больше всего обрадовал Владушку?",
+          "image_url": "https://api.wellflow.dev/v1/media/56bc6934-3dc5-4dcb-ae78-211c227d87b7/0?exp=1794132000&sig=e293beecda77ff411075953c5fd32e4b65b9a30b03ee5e459f52e0c6cc10fcf0",
+          "image_prompt": "Wide sunny garden celebration with soap bubbles floating above giant daisies, leafy arches, and colorful blocks. The friends share a joyful group hug in soft golden daylight."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Как Владушка заметила, что Тику нужна поддержка?",
+          "parent_hint": "Предложите вспомнить выражение Тика и заботливый жест Владушки.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Что больше всего обрадовало Владушку на празднике?",
+          "parent_hint": "Помогите ребёнку назвать любимый момент или придумать свой.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-07T09:08:48.967Z"
+    },
+    "story_1794043174572_xfno1e": {
+      "id": "story_1794043174572_xfno1e",
+      "user_id": "1212593604",
+      "child_id": "child_1794043138338",
+      "child_name": "Лев",
+      "title": "Лев и тихий маячок Марса",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/48d63714-0062-40ea-918c-0bcd8bc11a38/0?exp=1794132000&sig=de5d98da8c175e63c20c26d3393915f37b3ab2da3c596d7ed19ee915128833e5",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "За круглым вечерним окном тихо вспыхнула крошечная золотая звёздочка, оставив в небе искрящийся хвостик. Лев лежал на мягкой постели и слушал, как колыбельный ветерок шуршит занавеской. На нём был его любимый изумрудный уютный свитер. Тёплая вязка ласково касалась шеи, а рукава прятали ладони, словно маленькие зелёные домики. Рядом, у подушки, стояла игрушечная Ракета. Вдруг она мягко качнулась: тук-тук! Пуговичный глаз подмигнул, а маленький огонёк на хвостике согрел ладонь Льва. Золотая звёздочка за окном мигнула ещё раз и опустилась к ночнику. Лев поправил одеяло, потрогал прохладную наволочку и прошептал: «Тебе нужен тихий путь ко сну?» Ракета согласно кивнула и устроилась возле его локтя.",
+          "image_url": "https://api.wellflow.dev/v1/media/b868cfe0-cfc2-453a-83a1-581d80c176e9/0?exp=1794132000&sig=b110b1863dbc84dac241342ef070dc42c7f2b81ca67d8422bee51b250b4a663c",
+          "image_prompt": "Medium shot of a cozy bedroom at dusk: a tiny golden star glows beyond the round window while the living toy rocket nudges the child’s hand beside a soft bed. Warm nightlight, blankets, pillows, gentle curtain movement."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Звёздочка дрожала над ночником и никак не могла найти своё место. От её мерцания на стене прыгали сонные тени: то круглая, то длинная, то похожая на смешной нос. Ракета ласково подмигнула и показала на сложенное одеяло. Между складками прятался крошечный серебряный компас, потерявший стрелку. Лев сел на подушке и положил компас в кармашек свитера, чтобы тот не укатился. Затем он медленно вдохнул, медленно выдохнул и прислушался. В шелесте занавески звенело далёкое «пи-пи», будто звёздочка звала домой. Лев поднял ночник ближе к окну, а Ракета тихо покатилась по краю одеяла, отыскивая стрелку. Под подушкой что-то блеснуло. Лев осторожно протянул руку и достал находку.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_prompt": "Close view over the bed as the child searches beneath a pillow while the toy rocket rolls along the blanket edge. Soft nightlight shadows ripple across the wall; the round window holds a faint star."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Это была тонкая красная стрелка. Лев вставил её в компас, но стрелка всё равно кружилась. Тогда он заметил: звёздочка смотрит не на небо, а на раскрытый альбом возле подушки. На странице была нарисована планета Марс — красная, круглая, с тёмными пятнышками. «Давай изучим Марс вместе, чт��бы тебе стало спокойнее», — предложил Лев. Он укрыл Ракету краешком одеяла, положил альбом рядом с ночником и стал рассматривать рисунок. Лев нашёл на Марсе высокие горы, широкие равнины и следы древних долин. Ракета подсветила каждую деталь своим тёплым огоньком. Когда Лев тихо назвал планету по имени, компас перестал кружиться и указал прямо на Марс. Звёздочка опустилась на страницу, словно маленький маячок. Её свет стал ровным, мягким и добрым.",
+          "image_url": "https://api.wellflow.dev/v1/media/428b1efa-7312-4ccc-8ab6-e3998eb7501f/0?exp=1794132000&sig=51ea1419c3639860d479f812b3aad75160a8a2825628ea83ae29ae87a8b6ae1d",
+          "image_prompt": "Overhead view of the bed as the child and toy rocket study a blank illustrated Mars album beside the nightlight. A tiny star settles onto the page, bathing blankets and pillows in calm amber light."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Комната сразу стала тише. Тени легли на стену ровными полосками, занавеска перестала шуршать, а ночник засветился, как маленькая луна. Лев закрыл альбом и убрал компас в кармашек свитера. Потом он разгладил одеяло, взбил подушку и оставил Ракету у самого плеча. Игрушечная Ракета согревала его ладонь мягким боком. За окном мерцала золотая звёздочка, а на альбоме покоилась карта Марса. Лев дышал медленно и спокойно: вдох — тёплый, выдох — тихий. Ракета подмигнула пуговичным глазком. Одеяло стало тяжёлым и уютным, как облако. Лев улыбнулся, прижал Ракету к груди и уснул, слушая ровное дыхание, шелест далёких листьев и спокойный свет звёзд.",
+          "image_url": "https://api.wellflow.dev/v1/media/57604b5b-f095-46b6-a212-64800a9d5794/0?exp=1794132000&sig=3f575796ba6bb1c8d53ba938cb9d0da09596d2e4d74af77d835412ff97fa809e",
+          "image_prompt": "Gentle close-up of the child asleep beneath a soft blanket, hugging the toy rocket beside a pillow and glowing nightlight. The Mars album rests nearby; starlight filters through the round window."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Что почувствовал Лев, когда нашёл стрелку?",
+          "parent_hint": "Попросите ребёнка показать это чувство лицом или жестом.",
+          "skill_tag": "emotions"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Как Лев помог звёздочке уснуть?",
+          "parent_hint": "Предложите вспомнить добрые действия Льва по порядку.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-07T09:21:42.452Z"
+    },
+    "story_1794043214679_g2cr78": {
+      "id": "story_1794043214679_g2cr78",
+      "user_id": "test_user_eval",
+      "child_id": "default",
+      "child_name": "Тимофей",
+      "title": "Тимофей и секретный мост дружбы",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_blonde.webp",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению. Тимофей надел свой любимый синий уютный свитер, провёл ладонью по мягкому воротнику и спрятал в кармашек несколько деталей конструктора. Рядом зашагал робот Боб. В его маленьком кармашке тихо поблёскивал крошечный ключик. Дверца привела друзей на площадь Дружбы. Там висели разноцветные ленты, стояли скамейки, соединённые рукопожатиями, и лежал круглый коврик для друзей. Боб повернул ключик — динь-динь! — и сыграл короткую колыбельную. Тимофей заметил на воротах замочек в форме сердца. — Интересно, что он открывает? — прошептал он, беря Боба за ладошку.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_1.jpg",
+          "image_prompt": "Wide sunny shot of Friendship City square: ribbons, linked benches, a round friendship rug, and a heart-shaped lock on a colorful gate. The boy and robot investigate together; cheerful midday lighting."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "За воротами друзья увидели маленькую площадку. Там зверята готовили сюрприз: натягивали дружеские браслеты, раскладывали печенье и надували мыльные пузыри. Но праздничный мостик к сцене рассыпался. Без него никто не мог пройти к большому кругу дружбы. — Мы соберём новый! — решил Тимофей. Он достал детали конструктора и заметил: пузырьки переливаются радугой потому, что свет отражается от их тонкой мыльной плёнки. Тимофей сложил разноцветные опоры, а Боб подал ему синюю деталь. Вдруг один край мостика закачался. Боб испуганно отступил, и его ключик застрял между кубиками. Тимофей присел рядом и осторожно потянулся к нему.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_prompt": "Medium view of a party platform with friendship bracelets, cookies, soap bubbles, and a collapsed toy bridge. The boy reaches carefully toward the robot’s stuck key among colorful construction bricks."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "«Не бойся, Боб, я рядом», — сказал Тимофей. Он придержал робота за округлое плечо, снял одну деталь и освободил ключик. Боб благодарно загорелся мягкими огоньками и тихо заиграл свою колыбельную. Тимофей услышал в мелодии ровный ритм: тук-тук, тук-тук. По нему он стал укладывать кубики парами, чтобы мостик не качался. В этот момент над сценой вспыхнули светлячки. Тимофей заметил: они светятся без огня, потому что внутри у них происходит особая светящаяся реакция. — Вот и наш секретный фонарь! — обрадовался он. Друзья поднесли пузыри к светлячкам, и мостик засиял разноцветными кругами. Боб первым прошёл по нему, а Тимофей последовал рядом, крепко держась с ним за руки.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_3.jpg",
+          "image_prompt": "Close three-quarter shot of the boy supporting the robot while rebuilding the bridge in paired blocks. Glowing fireflies and rainbow soap bubbles illuminate the completed bridge with warm magical daylight."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "По сияющему мостику прошли все друзья. На сцене их ждали браслеты, печенье и большой круглый стол с яркой скатертью. Зверята надели браслет Тимофею, а он завязал такой же на руке Боба. Робот повернул крошечный ключик и сыграл весёлую мелодию, совсем не колыбельную. Пузыри взлетели над площадью, ленты зашелестели, и каждый обнял кого-то рядом. Тимофей почувствовал тепло мягкого синего свитера и улыбнулся: рядом были Боб и новые друзья. Потом он поправил Бобу маленький кармашек, чтобы ключик не потерялся. Все рассмеялись и устроили дружный хоровод вокруг сияющего мостика. Как здорово, когда рядом есть тот, кому можно помочь и с кем можно радоваться!",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_4.jpg",
+          "image_prompt": "Bright wide shot of the friendship celebration: children and animal friends wear matching bracelets, share cookies, hug around a round table, and dance beneath bubbles and ribbons."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Почему Тимофей решил помочь Бобу?",
+          "parent_hint": "Попросите ребёнка назвать чувство Тимофея и показать заботливый жест.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Что больше всего обрадовало Тимофея на празднике?",
+          "parent_hint": "Предложите вспомнить мостик, Боба, пузыри или объятия друзей.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-07T09:21:38.153Z"
     }
   }
 }

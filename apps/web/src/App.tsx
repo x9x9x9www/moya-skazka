@@ -125,7 +125,7 @@ export const App: React.FC = () => {
 
   // Состояния визарда создания сказки
   const [wizardData, setWizardData] = useState<WizardHeroData>({
-    childName: 'Миша',
+    childName: '',
     age: 4,
     gender: 'boy',
     interests: ['Динозавры', 'Космос'],
@@ -314,7 +314,7 @@ export const App: React.FC = () => {
     const newChild: ChildProfileDTO = {
       id: newChildId,
       user_id: currentUser?.id || 'user_demo',
-      name: data.name.trim() || (data.gender === 'girl' ? 'Алиса' : 'Миша'),
+      name: data.name.trim() || 'Малыш',
       age: data.age,
       interests: data.interests.length > 0 ? data.interests : ['Динозавры', 'Волшебство'],
       appearance: {
@@ -386,14 +386,14 @@ export const App: React.FC = () => {
     setActiveTab('home');
   };
 
-  const DAILY_IDEAS = [
+  const getDailyIdeas = (name = 'Малыш') => [
     {
-      title: 'Миша и потерянная звёздочка',
+      title: `${name} и потерянная звёздочка`,
       blurb: 'Добрая сказка о смелости, дружбе и о том, как зажечь свет в темноте.',
       theme: 'Смелость',
     },
     {
-      title: 'Миша и тайна сонного облачка',
+      title: `${name} и тайна сонного облачка`,
       blurb: 'Уютная терапевтическая история для мягкого и спокойного отхода ко сну.',
       theme: 'Спокойный сон',
     },
@@ -403,7 +403,7 @@ export const App: React.FC = () => {
       theme: 'Дружба',
     },
     {
-      title: 'Миша и волшебный огонёк доброты',
+      title: `${name} и волшебный огонёк доброты`,
       blurb: 'Сказка о заботе, внимании к окружающим и теплых словах поддержки.',
       theme: 'Доброта и забота',
     },
@@ -470,17 +470,22 @@ export const App: React.FC = () => {
   };
 
   const loadDailyIdea = async (childId: string) => {
+    const child = children.find((c) => c.id === childId) || activeChild;
+    const childName = child?.name || wizardData.childName || 'Малыш';
     try {
       const idea = await api.getDailyIdea(childId);
       setDailyIdea(idea);
     } catch {
-      setDailyIdea(DAILY_IDEAS[0]);
+      const ideas = getDailyIdeas(childName);
+      setDailyIdea(ideas[0]);
     }
   };
 
   const refreshLocalDailyIdea = () => {
-    const nextIndex = Math.floor(Math.random() * DAILY_IDEAS.length);
-    setDailyIdea(DAILY_IDEAS[nextIndex]);
+    const childName = activeChild?.name || wizardData.childName || 'Малыш';
+    const ideas = getDailyIdeas(childName);
+    const nextIndex = Math.floor(Math.random() * ideas.length);
+    setDailyIdea(ideas[nextIndex]);
     haptic.selection();
   };
 
@@ -586,19 +591,22 @@ export const App: React.FC = () => {
     setJobProgress(15);
     updateCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет и character bible...');
-    setRemainingSeconds(60);
+    setRemainingSeconds(75);
     haptic.medium();
 
     // Плавный адаптивный таймер обратного отсчёта, синхронизированный с реальными этапами
     const countdownInterval = setInterval(() => {
       const stage = creationStageRef.current;
       setRemainingSeconds((prev) => {
-        if (stage === 'finishing') return Math.max(1, prev - 1);
-        if (stage === 'drawing') return prev > 6 ? prev - 1 : 6;
-        return prev > 25 ? prev - 1 : 25;
+        if (stage === 'finishing') return Math.max(0, prev - 1);
+        if (stage === 'drawing') return Math.max(2, prev - 1);
+        // writing: плавное движение от 75 к ~26s, затем мягкое замедление к 20s без резких остановок
+        if (prev > 26) return prev - 1;
+        if (prev > 20) return Math.random() < 0.35 ? prev - 1 : prev;
+        return prev;
       });
-      const stageCeiling = stage === 'writing' ? 45 : stage === 'drawing' ? 92 : 98;
-      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.3) : prev));
+      const stageCeiling = stage === 'writing' ? 48 : stage === 'drawing' ? 95 : 99;
+      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.35) : prev));
     }, 1000);
 
     const currentUserId =
@@ -636,13 +644,16 @@ export const App: React.FC = () => {
         (update) => {
           updateCreationStage(update.stage);
           if (update.message) setCreationMessage(update.message);
-          if (update.stage === 'drawing') {
-            setRemainingSeconds((prev) => (prev < 15 ? 35 : prev));
-          } else if (update.stage === 'finishing') {
-            setRemainingSeconds(2);
-          }
           if (typeof update.progress === 'number') {
             setJobProgress((prev) => Math.max(prev, update.progress));
+          }
+          if (update.stage === 'drawing') {
+            const drawingProgress = Math.max(50, typeof update.progress === 'number' ? update.progress : 50);
+            const remainingRatio = Math.max(0, (96 - drawingProgress) / 46);
+            const targetSec = Math.max(2, Math.round(remainingRatio * 24));
+            setRemainingSeconds((prev) => Math.min(prev, Math.max(2, targetSec)));
+          } else if (update.stage === 'finishing') {
+            setRemainingSeconds(0);
           }
         }
       );

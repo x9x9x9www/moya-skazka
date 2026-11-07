@@ -103,7 +103,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
 const ADMIN_USERNAMES = ['dinar_fazlyev'];
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.5';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.6';
 if (!BOT_TOKEN && isMainModule) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -324,7 +324,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 
 async function callWellflowDirect(messages, label, options = {}) {
   const maxTokens = options.max_tokens || 4500;
-  const timeoutMs = options.timeoutMs || 240000;
+  const timeoutMs = options.timeoutMs || 90000;
   let res;
   try {
     res = await fetchWithTimeout(
@@ -389,41 +389,41 @@ async function generateWellflowStoryAI(params) {
   );
 
   console.log(
-    `[StoryEngine] 🧠 Двухэтапный запуск для «${input.childName || 'Малыш'}» (${input.age || 4} г., ${dna.personality_profile?.traitLabel || input.personality || 'Добрый'}): тема «${input.theme || 'Дружба'}»`
+    `[StoryEngine] 🚀 Генерация для «${input.childName || 'Малыш'}» (${input.age || 4} г., ${dna.personality_profile?.traitLabel || input.personality || 'Добрый'}): тема «${input.theme || 'Дружба'}»`
   );
 
   let storyPrompt = null;
-  let blueprint = null;
+  if (params.useTwoStage) {
+    try {
+      const architectPrompt = buildArchitectPrompt(input, { dna });
+      console.log(`[StoryEngine/Этап 1] 🏛 Архитектор анализирует характер и проектирует метафору...`);
+      const architectContent = await callWithRetry(
+        [
+          { role: 'system', content: architectPrompt.system },
+          { role: 'user', content: architectPrompt.user },
+        ],
+        'architect',
+        1,
+        { max_tokens: 500, timeoutMs: 75000 }
+      );
 
-  // ЭТАП 1: Агент-Методист & Сюжетный Архитектор (Анализ психологии, темы, характера)
-  try {
-    const architectPrompt = buildArchitectPrompt(input, { dna });
-    console.log(`[StoryEngine/Этап 1] 🏛 Архитектор анализирует характер и проектирует метафору...`);
-    const architectContent = await callWithRetry(
-      [
-        { role: 'system', content: architectPrompt.system },
-        { role: 'user', content: architectPrompt.user },
-      ],
-      'architect',
-      1,
-      { max_tokens: 500, timeoutMs: 25000 }
-    );
+      const rawBlueprint = parseJsonContent(architectContent);
+      const blueprint = normalizeBlueprint(rawBlueprint, input);
+      console.log(
+        `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: «${blueprint.creative_concept.core_metaphor}» | Сила героя: ${blueprint.psychological_profile.character_strength}`
+      );
 
-    const rawBlueprint = parseJsonContent(architectContent);
-    blueprint = normalizeBlueprint(rawBlueprint, input);
-    console.log(
-      `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: «${blueprint.creative_concept.core_metaphor}» | Сила героя: ${blueprint.psychological_profile.character_strength}`
-    );
-
-    storyPrompt = buildStoryFromBlueprintPrompt(input, blueprint, { dna });
-  } catch (archErr) {
-    console.warn(`[StoryEngine/Этап 1] ⚠️ Сбой этапа Архитектора (${archErr.message}), используем прямой фоллбэк StoryPrompt`);
+      storyPrompt = buildStoryFromBlueprintPrompt(input, blueprint, { dna });
+    } catch (archErr) {
+      console.warn(`[StoryEngine/Этап 1] ⚠️ Сбой этапа Архитектора (${archErr.message}), используем прямой фоллбэк StoryPrompt`);
+      storyPrompt = buildStoryPrompt(input, { dna });
+    }
+  } else {
     storyPrompt = buildStoryPrompt(input, { dna });
   }
 
-  // ЭТАП 2: Агент-Сказочник & Литературный Режиссёр (Написание 4 сцен по паспорту)
   console.log(
-    `[StoryEngine/Этап 2] ✍️ Сказочник (${WELLFLOW_TEXT_MODEL}) пишет 4 сцены по утверждённому сценарию...`
+    `[StoryEngine] ✍️ Сказочник (${WELLFLOW_TEXT_MODEL}) пишет 4 сцены...`
   );
 
   const content = await callWithRetry(
@@ -433,7 +433,7 @@ async function generateWellflowStoryAI(params) {
     ],
     'story',
     2,
-    { max_tokens: 2200, timeoutMs: 55000 }
+    { max_tokens: 1800, timeoutMs: 90000 }
   );
 
   let raw;
@@ -506,7 +506,8 @@ async function generateWellflowStoryAI(params) {
         { role: 'assistant', content },
         { role: 'user', content: repair },
       ],
-      'repair'
+      'repair',
+      { max_tokens: 1800, timeoutMs: 50000 }
     );
     const repairedRaw = parseJsonContent(repairedContent);
     try {
@@ -529,9 +530,9 @@ async function generateWellflowStoryAI(params) {
         console.warn('[StoryEngine] ⚠️ Вопросы заменены fallback-вопросами');
         return story;
       }
-      if (!input._forceWellflow && WELLFLOW_TEXT_KEY) {
+      if (!input._retried && WELLFLOW_TEXT_KEY) {
         console.warn('[StoryEngine] ⚠️ Repair не удался, пробуем резервный генератор Wellflow...');
-        return await generateWellflowStoryAI({ ...params, _forceWellflow: true });
+        return await generateWellflowStoryAI({ ...params, _retried: true });
       }
       throw repairError;
     }
@@ -898,8 +899,12 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   try {
     story = await generateWellflowStoryAI(params);
   } catch (err) {
-    console.warn(`[StoryEngine] ⚠️ Ошибка основного провайдера сюжета: ${err.message}. Пробуем резервный генератор Wellflow...`);
-    story = await generateWellflowStoryAI({ ...params, _forceWellflow: true });
+    if (!params._retried) {
+      console.warn(`[StoryEngine] ⚠️ Ошибка основного провайдера сюжета: ${err.message}. Пробуем резервный генератор Wellflow...`);
+      story = await generateWellflowStoryAI({ ...params, _retried: true });
+    } else {
+      throw err;
+    }
   } finally {
     clearInterval(writingTimer);
   }

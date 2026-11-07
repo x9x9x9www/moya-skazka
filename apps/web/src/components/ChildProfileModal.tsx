@@ -405,7 +405,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Например, Петька"
+                placeholder="Как зовут вашего малыша?"
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium"
               />

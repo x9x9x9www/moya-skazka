@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -117,6 +117,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     'Волшебство',
   ]);
   const [customInterest, setCustomInterest] = useState('');
+  const customInterestInputRef = useRef<HTMLInputElement>(null);
 
   // Варианты внешности
   const HAIR_COLORS = [
@@ -333,10 +334,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   };
 
   const handleNextStep = () => {
-    // Если родитель не ввёл имя, аккуратно подставим "Малыш"
-    if (!name.trim()) {
-      setName(gender === 'girl' ? 'Алиса' : 'Миша');
-    }
+    if (!name.trim()) return;
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -344,7 +342,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const finalToy = isCustomToy && customToy.trim() ? customToy.trim() : toy;
-    const finalName = name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша');
+    const finalName = name.trim() || 'Малыш';
 
     let finalInterests = [...selectedInterests];
     const trimmedCustom = customInterest.trim().slice(0, 40);
@@ -523,7 +521,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
             <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-inner border-2 border-amber-300/80 shrink-0 bg-cream-50 ring-2 ring-amber-400/20">
               <img
                 src={currentAvatarSrc}
-                alt={name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша')}
+                alt={name.trim() || 'Ваш малыш'}
                 className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
               />
             </div>
@@ -532,7 +530,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 Будущий герой сказки
               </div>
               <div className="font-serif font-bold text-lg text-stone-900 leading-tight truncate">
-                {name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша')}
+                {name.trim() || 'Ваш малыш'}
               </div>
               <div className="text-xs text-stone-600 flex items-center gap-1.5 mt-0.5 truncate">
                 <span>{age} {age < 5 ? 'года' : 'лет'}</span>
@@ -559,7 +557,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Например, Миша, София, Лев"
+              placeholder="Как зовут вашего малыша?"
               className="w-full px-4 py-3 rounded-2xl bg-cream-50 border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-base text-stone-900 placeholder:text-stone-400 placeholder:font-normal"
             />
           </div>
@@ -1017,12 +1015,23 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => {
+                  customInterestInputRef.current?.focus();
+                }}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-cream-100 hover:bg-cream-200 text-stone-700 active:scale-95 border border-dashed border-stone-300"
+              >
+                <Plus className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                <span>Своё увлечение...</span>
+              </button>
             </div>
 
             {/* Поле добавления собственного увлечения */}
             <div className="space-y-2 pt-2 border-t border-cream-200">
               <div className="flex gap-2">
                 <input
+                  ref={customInterestInputRef}
                   type="text"
                   value={customInterest}
                   onChange={(e) => setCustomInterest(e.target.value)}
@@ -1079,7 +1088,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           <button
             type="button"
             onClick={handleNextStep}
-            className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            disabled={!name.trim()}
+            className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 active:scale-[0.98] text-white font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
           >
             <span>Дальше: Что любит малыш</span>
             <ArrowRight className="w-5 h-5" />

@@ -220,6 +220,12 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
               {heroData.appearance?.hairColor ? `${heroData.appearance.hairColor} волосы • ` : ''}
               {heroData.appearance?.toy ? `Спутник: ${heroData.appearance.toy}` : (heroData.appearance?.clothingItem || 'Маленький герой')}
             </div>
+            {heroData.interests && heroData.interests.length > 0 && (
+              <div className="text-[11px] text-brand-800 font-medium truncate mt-0.5 flex items-center gap-1">
+                <span className="text-rose-500">❤️</span>
+                <span>Любит: {heroData.interests.join(', ')}</span>
+              </div>
+            )}
           </div>
         </div>
 
