@@ -41,6 +41,8 @@ jobs:
 
       - name: Test Bot
         run: npm run test:bot
+        env:
+          TELEGRAM_BOT_TOKEN: "mock_ci_token"
 
       - name: Test API
         run: npm run test --workspace=@moya-skazka/api
