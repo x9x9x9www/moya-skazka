@@ -55,6 +55,9 @@ export {
   verifyNarrativeIntegrity,
 };
 
+import { generateDailyIdea } from './dailyIdeaGenerator.mjs';
+export { generateDailyIdea };
+
 // --------------------------------------------------------
 // 2. Системные промпты (Архитектор и Сказочник)
 // --------------------------------------------------------

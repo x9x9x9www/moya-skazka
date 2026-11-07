@@ -2,6 +2,7 @@ import {
   BookDetailsDTO,
   BookSummaryDTO,
   ChildProfileDTO,
+  DailyIdeaDTO,
   UserBalanceDTO,
   UserDTO,
 } from '@moya-skazka/shared';
@@ -148,16 +149,29 @@ class ApiClient {
     });
   }
 
-  // 4. Сказка дня
-  public async getDailyIdea(childId: string) {
-    return await this.request<any>(`/daily-idea?child_id=${childId}`);
+  // 4. Сказка дня (Пункт 14 ТЗ)
+  public async getDailyIdea(childId: string, localDate?: string): Promise<DailyIdeaDTO> {
+    const dateQuery = localDate ? `&date=${encodeURIComponent(localDate)}` : '';
+    return await this.request<DailyIdeaDTO>(`/daily-idea?child_id=${encodeURIComponent(childId)}${dateQuery}`);
   }
 
-  public async refreshDailyIdea(childId: string) {
-    return await this.request<any>('/daily-idea/refresh', {
+  public async refreshDailyIdea(childId: string, localDate?: string): Promise<DailyIdeaDTO> {
+    return await this.request<DailyIdeaDTO>('/daily-idea/refresh', {
       method: 'POST',
-      body: JSON.stringify({ child_id: childId }),
+      body: JSON.stringify({ child_id: childId, local_date: localDate }),
     });
+  }
+
+  public async saveDailyIdea(childId: string, ideaId?: string): Promise<{ ok: boolean; is_saved: boolean; idea?: DailyIdeaDTO }> {
+    return await this.request<{ ok: boolean; is_saved: boolean; idea?: DailyIdeaDTO }>('/daily-idea/save', {
+      method: 'POST',
+      body: JSON.stringify({ child_id: childId, idea_id: ideaId }),
+    });
+  }
+
+  public async getSavedDailyIdeas(childId?: string): Promise<any[]> {
+    const q = childId ? `?child_id=${encodeURIComponent(childId)}` : '';
+    return await this.request<any[]>(`/daily-idea/saved${q}`);
   }
 
   // 5. Книги и задачи

@@ -205,3 +205,23 @@ export interface UserBalanceDTO {
   reserved: number;
   available: number;
 }
+
+export interface DailyIdeaDTO {
+  id: string;
+  child_id: string;
+  local_date: string;
+  title: string;
+  blurb: string;
+  theme: string;
+  cover_url?: string | null;
+  status: DailyIdeaStatus;
+  is_saved?: boolean;
+  suggested_params?: {
+    theme?: string;
+    childName?: string;
+    interests?: string[];
+    customWishes?: string;
+    mood?: string;
+  };
+  created_at: string;
+}

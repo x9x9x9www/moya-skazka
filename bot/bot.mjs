@@ -22,6 +22,7 @@ import {
   declineRussianName,
   runEditorialAgent,
   classifyClothingNarrativeRole,
+  generateDailyIdea,
 } from '../packages/story-engine/src/index.mjs';
 import { Agent, ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import localtunnel from 'localtunnel';
@@ -147,6 +148,8 @@ function initDb() {
         users: {},
         children: {},
         books: {},
+        daily_ideas: {},
+        saved_ideas: {},
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), 'utf-8');
       return initialDb;
@@ -157,10 +160,12 @@ function initDb() {
       users: parsed.users || {},
       children: parsed.children || {},
       books: parsed.books || {},
+      daily_ideas: parsed.daily_ideas || {},
+      saved_ideas: parsed.saved_ideas || {},
     };
   } catch (err) {
     console.error('[DB] Ошибка чтения db.json:', err.message);
-    return { users: {}, children: {}, books: {} };
+    return { users: {}, children: {}, books: {}, daily_ideas: {}, saved_ideas: {} };
   }
 }
 
@@ -1129,6 +1134,160 @@ setInterval(() => {
 }, 120 * 1000).unref();
 
 // ========================================================
+// 2.9. «СКАЗКА ДНЯ» И УДЕРЖАНИЕ (Пункт 14 ТЗ)
+// ========================================================
+export function getDailyIdeaForChild(childId, localDate, userId) {
+  const dateStr = localDate || new Date().toISOString().split('T')[0];
+
+  let child = childId ? db.children[childId] : null;
+  if (!child && userId) {
+    child = Object.values(db.children).find((c) => c.user_id === userId);
+  }
+  if (!child) {
+    child = {
+      id: childId || 'child_default',
+      name: 'Малыш',
+      age: 4,
+      gender: 'boy',
+      interests: ['Волшебство'],
+    };
+  }
+
+  const key = `${child.id}_${dateStr}`;
+  if (db.daily_ideas && db.daily_ideas[key]) {
+    const cached = { ...db.daily_ideas[key] };
+    if (db.saved_ideas && db.saved_ideas[cached.id]) {
+      cached.is_saved = true;
+      cached.status = 'SAVED';
+    }
+    return cached;
+  }
+
+  // Собираем последние 3–5 прочитанных книг ребенка для исключения повторений
+  const recentBooks = Object.values(db.books || {})
+    .filter((b) => b.child_id === child.id || (userId && b.user_id === userId))
+    .slice(-5)
+    .map((b) => ({ title: b.title, theme: b.theme }));
+
+  const idea = generateDailyIdea({
+    child,
+    recentBooks,
+    dateStr,
+    seed: 0,
+  });
+
+  if (db.saved_ideas && db.saved_ideas[idea.id]) {
+    idea.is_saved = true;
+    idea.status = 'SAVED';
+  }
+
+  if (!db.daily_ideas) db.daily_ideas = {};
+  db.daily_ideas[key] = idea;
+  saveDb();
+  console.log(`[DB] 🌟 Сгенерирована «Сказка дня» «${idea.title}» для ребёнка ${child.name} (${child.id}) на ${dateStr}`);
+  return idea;
+}
+
+export function refreshDailyIdeaForChild(childId, localDate, userId) {
+  const dateStr = localDate || new Date().toISOString().split('T')[0];
+
+  let child = childId ? db.children[childId] : null;
+  if (!child && userId) {
+    child = Object.values(db.children).find((c) => c.user_id === userId);
+  }
+  if (!child) {
+    child = {
+      id: childId || 'child_default',
+      name: 'Малыш',
+      age: 4,
+      gender: 'boy',
+      interests: ['Волшебство'],
+    };
+  }
+
+  const key = `${child.id}_${dateStr}`;
+  const existing = db.daily_ideas ? db.daily_ideas[key] : null;
+  const excludeTitles = existing ? [existing.title] : [];
+  const refreshCount = (existing?._refreshCount || 0) + 1;
+
+  const recentBooks = Object.values(db.books || {})
+    .filter((b) => b.child_id === child.id || (userId && b.user_id === userId))
+    .slice(-5)
+    .map((b) => ({ title: b.title, theme: b.theme }));
+
+  const newIdea = generateDailyIdea({
+    child,
+    recentBooks,
+    dateStr,
+    seed: refreshCount,
+    excludeTitles,
+  });
+
+  newIdea._refreshCount = refreshCount;
+  newIdea.status = 'REFRESHED';
+  if (db.saved_ideas && db.saved_ideas[newIdea.id]) {
+    newIdea.is_saved = true;
+    newIdea.status = 'SAVED';
+  }
+
+  if (!db.daily_ideas) db.daily_ideas = {};
+  db.daily_ideas[key] = newIdea;
+  saveDb();
+  console.log(`[DB] 🔄 Обновлена «Сказка дня» для ${child.name}: «${newIdea.title}» (попытка #${refreshCount})`);
+  return newIdea;
+}
+
+export function saveDailyIdeaForChild(childId, ideaId, userId) {
+  if (!db.saved_ideas) db.saved_ideas = {};
+  if (!db.daily_ideas) db.daily_ideas = {};
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  let targetIdea = null;
+
+  if (ideaId) {
+    for (const idea of Object.values(db.daily_ideas)) {
+      if (idea.id === ideaId) {
+        targetIdea = idea;
+        break;
+      }
+    }
+  }
+
+  if (!targetIdea && childId) {
+    const key = `${childId}_${dateStr}`;
+    targetIdea = db.daily_ideas[key];
+  }
+
+  const targetId = ideaId || targetIdea?.id || `idea_${Date.now()}`;
+  db.saved_ideas[targetId] = {
+    id: targetId,
+    child_id: childId || targetIdea?.child_id,
+    user_id: userId,
+    title: targetIdea?.title || 'Сохранённая сказка',
+    theme: targetIdea?.theme || '',
+    saved_at: new Date().toISOString(),
+  };
+
+  if (targetIdea) {
+    targetIdea.is_saved = true;
+    targetIdea.status = 'SAVED';
+  }
+
+  saveDb();
+  console.log(`[DB] 🔖 Идея дня «${targetIdea?.title || targetId}» сохранена в закладки для ${userId}`);
+  return { ok: true, is_saved: true, idea: targetIdea };
+}
+
+export function getSavedDailyIdeas(childId, userId) {
+  if (!db.saved_ideas) return [];
+  return Object.values(db.saved_ideas).filter((item) => {
+    if (childId && item.child_id === childId) return true;
+    if (userId && item.user_id === userId) return true;
+    return false;
+  });
+}
+
+// ========================================================
 // 3. СЕРВЕРНЫЙ МОСТ ДЛЯ MINI APP (CORS, Proxy, Job Queue)
 // ========================================================
 const server = http.createServer(async (req, res) => {
@@ -1760,20 +1919,45 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
   }
 
   if ((url.pathname === '/api/v1/daily-idea' || url.pathname === '/daily-idea') && req.method === 'GET') {
-    sendJsonResponse(res, 200, {
-      title: 'Тайна сонного облачка',
-      blurb: 'Уютная терапевтическая история для мягкого и спокойного отхода ко сну.',
-      theme: 'Спокойный сон',
-    }, origin);
+    const { userId } = getAuthContext(req, url);
+    const childId = url.searchParams.get('child_id') || url.searchParams.get('childId') || '';
+    const dateStr = url.searchParams.get('date') || url.searchParams.get('local_date') || new Date().toISOString().split('T')[0];
+    const idea = getDailyIdeaForChild(childId, dateStr, userId);
+    sendJsonResponse(res, 200, idea, origin);
     return;
   }
 
   if ((url.pathname === '/api/v1/daily-idea/refresh' || url.pathname === '/daily-idea/refresh') && req.method === 'POST') {
-    sendJsonResponse(res, 200, {
-      title: 'Маленький исследователь и волшебная звёздочка',
-      blurb: 'Добрая сказка о смелости, дружбе и о том, как зажечь свет в темноте.',
-      theme: 'Смелость',
-    }, origin);
+    const { userId } = getAuthContext(req, url);
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    let payload = {};
+    try { payload = JSON.parse(bodyStr || '{}'); } catch {}
+    const childId = payload.child_id || payload.childId || url.searchParams.get('child_id') || '';
+    const dateStr = payload.local_date || payload.date || new Date().toISOString().split('T')[0];
+    const idea = refreshDailyIdeaForChild(childId, dateStr, userId);
+    sendJsonResponse(res, 200, idea, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/daily-idea/save' || url.pathname === '/daily-idea/save') && req.method === 'POST') {
+    const { userId } = getAuthContext(req, url);
+    let bodyStr = '';
+    for await (const chunk of req) bodyStr += chunk;
+    let payload = {};
+    try { payload = JSON.parse(bodyStr || '{}'); } catch {}
+    const childId = payload.child_id || payload.childId || '';
+    const ideaId = payload.idea_id || payload.ideaId || '';
+    const result = saveDailyIdeaForChild(childId, ideaId, userId);
+    sendJsonResponse(res, 200, result, origin);
+    return;
+  }
+
+  if ((url.pathname === '/api/v1/daily-idea/saved' || url.pathname === '/daily-idea/saved') && req.method === 'GET') {
+    const { userId } = getAuthContext(req, url);
+    const childId = url.searchParams.get('child_id') || '';
+    const list = getSavedDailyIdeas(childId, userId);
+    sendJsonResponse(res, 200, list, origin);
     return;
   }
 

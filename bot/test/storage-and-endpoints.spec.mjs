@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveAvatarReferenceUrl, resolveChildAvatarKey, getThemedFallbackIllustration } from '../bot.mjs';
+import {
+  resolveAvatarReferenceUrl,
+  resolveChildAvatarKey,
+  getThemedFallbackIllustration,
+  getDailyIdeaForChild,
+  refreshDailyIdeaForChild,
+  saveDailyIdeaForChild,
+  getSavedDailyIdeas,
+} from '../bot.mjs';
 import { buildCoverPrompt, buildScenePrompt } from '../../packages/story-engine/src/index.mjs';
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -290,5 +298,49 @@ test('getThemedFallbackIllustration категорически исключае�
       `URL должен быть персональным аватаром или тематической обложкой: ${url}`
     );
   }
+});
+
+test('getDailyIdeaForChild возвращает стабильную идею дня и сохраняет в db.daily_ideas', () => {
+  const childId = 'child_test_1';
+  const dateStr = '2026-11-07';
+  const userId = 'user_test_daily';
+
+  const idea1 = getDailyIdeaForChild(childId, dateStr, userId);
+  assert.ok(idea1, 'Идея должна быть создана');
+  assert.ok(idea1.title, 'Заголовок должен присутствовать');
+  assert.ok(idea1.blurb, 'Аннотация должна присутствовать');
+  assert.equal(idea1.local_date, dateStr);
+
+  // Повторный запрос в тот же день возвращает ту же самую идею
+  const idea2 = getDailyIdeaForChild(childId, dateStr, userId);
+  assert.equal(idea1.id, idea2.id);
+  assert.equal(idea1.title, idea2.title);
+});
+
+test('refreshDailyIdeaForChild обновляет идею дня и помечает REFRESHED', () => {
+  const childId = 'child_test_2';
+  const dateStr = '2026-11-07';
+  const userId = 'user_test_refresh';
+
+  const initial = getDailyIdeaForChild(childId, dateStr, userId);
+  const refreshed = refreshDailyIdeaForChild(childId, dateStr, userId);
+
+  assert.notEqual(initial.title, refreshed.title);
+  assert.equal(refreshed.status, 'REFRESHED');
+});
+
+test('saveDailyIdeaForChild сохраняет идею в закладки (SAVED)', () => {
+  const childId = 'child_test_3';
+  const dateStr = '2026-11-07';
+  const userId = 'user_test_save';
+
+  const idea = getDailyIdeaForChild(childId, dateStr, userId);
+  const res = saveDailyIdeaForChild(childId, idea.id, userId);
+
+  assert.equal(res.ok, true);
+  assert.equal(res.is_saved, true);
+
+  const savedList = getSavedDailyIdeas(childId, userId);
+  assert.ok(savedList.some((item) => item.id === idea.id));
 });
 

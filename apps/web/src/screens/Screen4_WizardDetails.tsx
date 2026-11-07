@@ -144,7 +144,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
     const initial = getInitialThemeId();
     return initial === 'custom' ? (heroData.theme || '') : '';
   });
-  const [customWishes, setCustomWishes] = useState('');
+  const [customWishes, setCustomWishes] = useState(() => heroData.customWishes || '');
   const [includeQuestions, setIncludeQuestions] = useState(true);
 
   React.useEffect(() => {
@@ -153,7 +153,10 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
     if (initialId === 'custom' && heroData.theme) {
       setCustomThemeInput(heroData.theme);
     }
-  }, [heroData.theme]);
+    if (heroData.customWishes) {
+      setCustomWishes(heroData.customWishes);
+    }
+  }, [heroData.theme, heroData.customWishes]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

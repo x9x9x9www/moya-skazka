@@ -43,6 +43,8 @@ export interface WizardHeroData {
   gender: 'boy' | 'girl';
   interests: string[];
   theme: string;
+  mood?: string;
+  customWishes?: string;
   appearance: {
     avatar_id: string;
     avatar_url?: string;

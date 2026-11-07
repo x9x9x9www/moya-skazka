@@ -6,25 +6,28 @@ import {
   Gift,
   Bookmark,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import {
   FairyStarIcon,
   FairyGiftIcon,
   FairyBookIcon,
 } from '../components/FairytaleIcons';
-import { ChildProfileDTO } from '@moya-skazka/shared';
+import { ChildProfileDTO, DailyIdeaDTO } from '@moya-skazka/shared';
 import { resolveChildAvatar } from '../utils/avatarResolver';
 
 interface Screen2HomeProps {
   activeChild: ChildProfileDTO | null;
   canClaimFreeStory: boolean;
   balance: number;
-  dailyIdea: any;
+  dailyIdea: DailyIdeaDTO | any;
   booksCount?: number;
   onStartCreateStory: () => void;
+  onStartFromDailyIdea?: (idea: any) => void;
   onNavigateTab: (tab: string) => void;
   onRefreshIdea: () => void;
   onSaveIdea: () => void;
+  isRefreshingIdea?: boolean;
 }
 
 function pluralizeBooks(count: number): string {
@@ -52,9 +55,11 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
   dailyIdea,
   booksCount,
   onStartCreateStory,
+  onStartFromDailyIdea,
   onNavigateTab,
   onRefreshIdea,
   onSaveIdea,
+  isRefreshingIdea,
 }) => {
   const [isSaved, setIsSaved] = useState(false);
   const childName = activeChild ? activeChild.name : 'малыша';
@@ -300,12 +305,19 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
       {/* 3. КАРТОЧКА «СКАЗКА ДНЯ»: Раскрытая книга с градиентом корешка */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="font-serif font-bold text-lg text-stone-900">
-            Сказка дня
-          </h3>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 shadow-inner-paper">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="font-serif font-bold text-lg text-stone-900 truncate">
+              Сказка дня
+            </h3>
+            {activeChild && (
+              <span className="text-[11px] font-medium text-amber-900/80 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200/60 shrink-0">
+                для {activeChild.name}
+              </span>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200 shadow-inner-paper shrink-0">
             <FairyBookIcon className="w-3.5 h-3.5" />
-            <span>Выбор дня</span>
+            <span>{dailyIdea?.theme || 'Выбор дня'}</span>
           </span>
         </div>
 
@@ -317,12 +329,16 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
 
           {/* Контент раскрытых страниц */}
           <div className="relative z-0 p-4">
-            <div className="flex gap-4 items-center">
+            <div className="flex gap-4 items-start">
               {/* Иллюстрация: rounded-2xl и золотая кайма border border-amber-200/50 */}
-              <div className="relative w-20 h-24 rounded-2xl overflow-hidden bg-amber-50 shrink-0 border border-amber-200/50 shadow-md">
+              <div className="relative w-24 h-28 rounded-2xl overflow-hidden bg-amber-50 shrink-0 border border-amber-200/50 shadow-md">
                 <img
-                  src={dailyIdea?.coverUrl || './illustrations/cover_star.jpg'}
-                  alt="Сказка дня"
+                  src={
+                    dailyIdea?.cover_url ||
+                    dailyIdea?.coverUrl ||
+                    './illustrations/cover_star.jpg'
+                  }
+                  alt={dailyIdea?.title || 'Сказка дня'}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 shadow-inner rounded-2xl pointer-events-none" />
@@ -330,13 +346,29 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
 
               {/* Текст и аннотация */}
               <div className="flex-1 min-w-0">
-                <h4 className="font-serif font-bold text-sm text-stone-900 truncate mb-1">
+                <h4 className="font-serif font-bold text-sm text-stone-900 leading-snug mb-1.5 line-clamp-2">
                   {dailyIdea?.title || `${childName} и потерянная звёздочка`}
                 </h4>
-                <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed font-sans">
+                <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed font-sans mb-3">
                   {dailyIdea?.blurb ||
                     'Добрая история о смелости, дружбе и о том, как зажечь свет в темноте.'}
                 </p>
+
+                {/* Главная кнопка действия: Создать сказку по этой идее */}
+                <button
+                  onClick={() => {
+                    if (onStartFromDailyIdea) {
+                      onStartFromDailyIdea(dailyIdea);
+                    } else {
+                      onStartCreateStory();
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#F5B955] to-[#E39E2F] hover:brightness-105 active:scale-[0.98] spring-transition text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 border border-amber-200/60 shadow-sm"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-stone-900" />
+                  <span>Создать сказку</span>
+                  <FairyStarIcon className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>
@@ -346,31 +378,39 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
             {/* Кнопка «Другая идея»: Прозрачная с иконкой компаса */}
             <button
               onClick={onRefreshIdea}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-transparent hover:bg-stone-200/40 active:scale-95 spring-transition border border-stone-300/70 text-stone-700 font-semibold text-xs flex items-center justify-center gap-1.5"
+              disabled={isRefreshingIdea}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-transparent hover:bg-stone-200/40 active:scale-95 spring-transition border border-stone-300/70 text-stone-700 font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
-              <Compass className="w-3.5 h-3.5 text-stone-600" />
-              <span>Другая идея</span>
+              {isRefreshingIdea ? (
+                <Loader2 className="w-3.5 h-3.5 text-stone-600 animate-spin" />
+              ) : (
+                <Compass className="w-3.5 h-3.5 text-stone-600" />
+              )}
+              <span>{isRefreshingIdea ? 'Подбираем...' : 'Другая идея'}</span>
             </button>
 
             {/* Кнопка «Сохранить»: Изящная шелковая закладка (ленточка) */}
             <button
-              onClick={handleSave}
+              onClick={() => {
+                setIsSaved(!isSaved);
+                onSaveIdea();
+              }}
               className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 spring-transition shadow-sm ${
-                isSaved
+                isSaved || dailyIdea?.is_saved
                   ? 'bg-amber-100 text-amber-900 border border-amber-300 glow-gold'
                   : 'bg-brand-500 text-white hover:bg-brand-600 border border-brand-400/40 glow-fairy'
               }`}
             >
               <Bookmark
                 className={`w-3.5 h-3.5 ${
-                  isSaved
+                  isSaved || dailyIdea?.is_saved
                     ? 'text-amber-700 fill-amber-500'
                     : 'text-amber-200 fill-amber-200/80'
                 }`}
               />
               <span className="inline-flex items-center gap-1">
-                <span>{isSaved ? 'В закладках' : 'Сохранить'}</span>
-                {isSaved && <FairyStarIcon className="w-3 h-3" />}
+                <span>{isSaved || dailyIdea?.is_saved ? 'В закладках' : 'Сохранить'}</span>
+                {(isSaved || dailyIdea?.is_saved) && <FairyStarIcon className="w-3 h-3" />}
               </span>
             </button>
           </div>

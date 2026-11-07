@@ -18,7 +18,7 @@ import { Screen9_Shop } from './screens/Screen9_Shop';
 import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
-import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, UserDTO } from '@moya-skazka/shared';
+import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, DailyIdeaDTO, UserDTO } from '@moya-skazka/shared';
 import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, getActiveApiUrl } from './services/storyGenerator';
 import { resolveChildAvatar } from './utils/avatarResolver';
 import { FairyStarIcon } from './components/FairytaleIcons';
@@ -121,7 +121,8 @@ export const App: React.FC = () => {
   const [children, setChildren] = useState<ChildProfileDTO[]>([]);
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [books, setBooks] = useState<BookSummaryDTO[]>([]);
-  const [dailyIdea, setDailyIdea] = useState<any>(null);
+  const [dailyIdea, setDailyIdea] = useState<DailyIdeaDTO | any>(null);
+  const [isRefreshingIdea, setIsRefreshingIdea] = useState(false);
 
   // Состояния визарда создания сказки
   const [wizardData, setWizardData] = useState<WizardHeroData>({
@@ -474,19 +475,64 @@ export const App: React.FC = () => {
     const childName = child?.name || wizardData.childName || 'Малыш';
     try {
       const idea = await api.getDailyIdea(childId);
-      setDailyIdea(idea);
-    } catch {
+      if (idea) {
+        setDailyIdea(idea);
+        return;
+      }
+    } catch (err) {
+      console.warn('[App] Сбой загрузки идеи дня из API, локальный фоллбэк:', err);
+    }
+    const ideas = getDailyIdeas(childName);
+    setDailyIdea(ideas[0]);
+  };
+
+  const handleRefreshDailyIdea = async () => {
+    setIsRefreshingIdea(true);
+    haptic.selection();
+    const childId = activeChildId || activeChild?.id || (children[0]?.id) || 'default_child';
+    try {
+      const refreshed = await api.refreshDailyIdea(childId);
+      if (refreshed) {
+        setDailyIdea(refreshed);
+        return;
+      }
+    } catch (err) {
+      console.warn('[App] Ошибка обновления идеи через API, локальный фоллбэк:', err);
+      const childName = activeChild?.name || wizardData.childName || 'Малыш';
       const ideas = getDailyIdeas(childName);
-      setDailyIdea(ideas[0]);
+      const nextIndex = Math.floor(Math.random() * ideas.length);
+      setDailyIdea(ideas[nextIndex]);
+    } finally {
+      setIsRefreshingIdea(false);
     }
   };
 
-  const refreshLocalDailyIdea = () => {
-    const childName = activeChild?.name || wizardData.childName || 'Малыш';
-    const ideas = getDailyIdeas(childName);
-    const nextIndex = Math.floor(Math.random() * ideas.length);
-    setDailyIdea(ideas[nextIndex]);
-    haptic.selection();
+  const handleSaveDailyIdea = async () => {
+    haptic.success();
+    const childId = activeChildId || activeChild?.id || (children[0]?.id) || 'default_child';
+    const ideaId = dailyIdea?.id;
+    try {
+      await api.saveDailyIdea(childId, ideaId);
+      setDailyIdea((prev: any) => (prev ? { ...prev, is_saved: true, status: 'SAVED' } : prev));
+    } catch (err) {
+      console.warn('[App] Ошибка сохранения идеи дня в закладки:', err);
+    }
+  };
+
+  const handleStartFromDailyIdea = (idea: any) => {
+    haptic.medium();
+    const child = activeChild || (children.length > 0 ? children[0] : null);
+    setWizardData((prev) => ({
+      ...prev,
+      childName: child?.name || prev.childName || 'Малыш',
+      gender: (child as any)?.gender || child?.appearance?.gender || prev.gender,
+      age: child?.age || prev.age || 4,
+      interests: (child?.interests && child.interests.length > 0) ? child.interests : prev.interests,
+      theme: idea?.suggested_params?.theme || idea?.theme || prev.theme,
+      mood: idea?.suggested_params?.mood || prev.mood,
+      customWishes: idea?.suggested_params?.customWishes || idea?.blurb || prev.customWishes,
+    }));
+    setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
   };
 
   const loadReferrals = async () => {
@@ -1002,16 +1048,12 @@ export const App: React.FC = () => {
             balance={balance}
             dailyIdea={dailyIdea}
             booksCount={books.length}
+            isRefreshingIdea={isRefreshingIdea}
             onStartCreateStory={() => setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero')}
+            onStartFromDailyIdea={handleStartFromDailyIdea}
             onNavigateTab={handleTabChange}
-            onRefreshIdea={refreshLocalDailyIdea}
-            onSaveIdea={() => {
-              if (dailyIdea?.theme) {
-                setWizardData((prev) => ({ ...prev, theme: dailyIdea.theme }));
-              }
-              haptic.success();
-              setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
-            }}
+            onRefreshIdea={handleRefreshDailyIdea}
+            onSaveIdea={handleSaveDailyIdea}
           />
         )}
 
@@ -1313,6 +1355,7 @@ export const App: React.FC = () => {
           const newChild = await api.createChild(data);
           setChildren((prev) => [...prev, newChild]);
           setActiveChildId(newChild.id);
+          loadDailyIdea(newChild.id);
         }}
       />
 
