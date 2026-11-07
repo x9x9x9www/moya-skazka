@@ -98,13 +98,16 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
 const ADMIN_USERNAMES = ['dinar_fazlyev'];
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.3';
 if (!BOT_TOKEN) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
 }
 
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.3';
-const AI_MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || process.env.AI_DISABLED === 'true';
+const AI_MOCK_MODE =
+  process.env.AI_MOCK_MODE === 'true' ||
+  process.env.AI_DISABLED === 'true' ||
+  !process.env.WELLFLOW_TEXT_KEY;
 const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow';
 const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
 const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || '';
@@ -397,8 +400,8 @@ async function generateWellflowStoryAI(params) {
         { role: 'user', content: architectPrompt.user },
       ],
       'architect',
-      2,
-      { max_tokens: 650, timeoutMs: 120000 }
+      1,
+      { max_tokens: 500, timeoutMs: 25000 }
     );
 
     const rawBlueprint = parseJsonContent(architectContent);
@@ -425,7 +428,7 @@ async function generateWellflowStoryAI(params) {
     ],
     'story',
     2,
-    { max_tokens: 2200, timeoutMs: 240000 }
+    { max_tokens: 2200, timeoutMs: 55000 }
   );
 
   let raw;
@@ -642,7 +645,10 @@ export function resolveAvatarReferenceUrl(params) {
   return `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarKey}.webp`;
 }
 
-async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = null) {
+async function generateWellflowImageAI(prompt, retries = 1, referenceImageUrl = null) {
+  if (!WELLFLOW_IMAGE_KEY) {
+    throw new Error('WELLFLOW_IMAGE_KEY not set');
+  }
   const models = [WELLFLOW_IMAGE_MODEL || 'nano-banana-2'].filter(Boolean);
   // Story Engine уже добавил 3D Pixar-стиль и character bible. Не оборачиваем
   // промпт в старый акварельный шаблон, иначе стиль сломается.
@@ -671,7 +677,7 @@ async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(bodyPayload),
-      }, 90000);
+      }, 28000);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -689,10 +695,10 @@ async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = 
       return url;
     } catch (err) {
       console.warn(`[Wellflow] ⚠️ Попытка ${attempt + 1} (${currentModel}) не удалась: ${err.message}`);
-      if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || attempt === retries) {
+      if (err.isQuota || err.message.includes('402') || err.message.includes('insufficient_quota') || err.message.includes('timeout') || attempt >= retries) {
         throw err;
       }
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 }
@@ -924,7 +930,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   const executeImageJob = async (job) => {
     let url;
     try {
-      const remoteUrl = await generateWellflowImageAI(job.prompt, 2, avatarReferenceUrl);
+      const remoteUrl = await generateWellflowImageAI(job.prompt, 1, avatarReferenceUrl);
       url = await saveGeneratedImage(remoteUrl, jobId, job.name);
     } catch (error) {
       console.error(`[StoryEngine] ⚠️ ${job.name}: используем fallback — ${error.message}`);
@@ -937,6 +943,8 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       const scene = story.scenes.find((item) => item.index === job.sceneIndex);
       if (scene) {
         scene.image_url = url;
+        scene.id = scene.id || `scene_${scene.index}`;
+        scene.scene_index = scene.index;
         scene.image_prompt = scene.visual;
       }
     }
@@ -1297,47 +1305,96 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     return;
   }
 
-  // Проверка статуса фоновой задачи (/job-status и /jobs/:id)
+  // Проверка статуса фоновой задачи (/job-status и /jobs/:id и /api/v1/ai/job/:id)
   const isJobStatus =
     (url.pathname === '/api/v1/ai/job-status' ||
       url.pathname === '/api/ai/job-status' ||
       url.pathname === '/ai/job-status' ||
-      url.pathname === '/job-status') &&
+      url.pathname === '/job-status' ||
+      url.pathname === '/api/v1/job-status' ||
+      url.pathname === '/api/job-status' ||
+      url.pathname === '/api/v1/ai/job' ||
+      url.pathname === '/api/ai/job' ||
+      url.pathname === '/ai/job' ||
+      url.pathname === '/api/v1/job' ||
+      url.pathname === '/api/job' ||
+      url.pathname === '/job') &&
     req.method === 'GET';
   if (isJobStatus) {
-    const jobId = url.searchParams.get('id');
+    const jobId = url.searchParams.get('id') || url.searchParams.get('jobId') || '';
     const job = jobs.get(jobId);
     if (!job) {
-      // Проверяем, может книга уже сохранена в db.books
+      // 1. Проверяем в db.books
       const savedBook = db.books[jobId];
       if (savedBook) {
         sendJsonResponse(res, 200, {
-          status: 'ready',
-          story: savedBook,
           jobId,
+          job_id: jobId,
+          status: 'ready',
+          state: 'COMPLETED',
+          stage: 'finishing',
           progress: 100,
+          progress_percentage: 100,
+          message: 'Сказка готова!',
+          story: savedBook,
         }, origin);
         return;
       }
-      sendJsonResponse(res, 404, { status: 'not_found' }, origin);
+      // 2. Проверяем в recentReadyStories
+      for (const item of recentReadyStories.values()) {
+        if (item.jobId === jobId && item.story) {
+          sendJsonResponse(res, 200, {
+            jobId,
+            job_id: jobId,
+            status: 'ready',
+            state: 'COMPLETED',
+            stage: 'finishing',
+            progress: 100,
+            progress_percentage: 100,
+            message: 'Сказка готова!',
+            story: item.story,
+          }, origin);
+          return;
+        }
+      }
+      sendJsonResponse(res, 404, { status: 'not_found', error: 'Job not found' }, origin);
       return;
     }
-    sendJsonResponse(res, 200, job, origin);
+    sendJsonResponse(res, 200, {
+      ...job,
+      jobId,
+      job_id: jobId,
+      status: job.status,
+      state: job.status === 'ready' ? 'COMPLETED' : job.status === 'error' ? 'FAILED_FINAL' : 'PROCESSING',
+      stage: job.stage || (job.status === 'ready' ? 'finishing' : 'writing'),
+      progress: job.progress || (job.status === 'ready' ? 100 : 25),
+      progress_percentage: job.progress || (job.status === 'ready' ? 100 : 25),
+      message: job.message || (job.status === 'ready' ? 'Сказка готова!' : 'Создаём сказку...'),
+      story: job.story,
+    }, origin);
     return;
   }
 
-  // Endpoint /api/v1/jobs/:id (совместимость с REST ApiClient)
-  const jobsMatch = url.pathname.match(/^\/(?:api\/v1\/)?jobs\/([a-zA-Z0-9_-]+)$/);
+  // Endpoint /api/v1/jobs/:id или /api/v1/ai/job/:id (совместимость с REST ApiClient и AI Job)
+  const jobsMatch = url.pathname.match(/^\/(?:api\/v1\/|api\/)?(?:ai\/)?(?:jobs?|job-status)\/([a-zA-Z0-9_-]+)$/);
   if (jobsMatch && req.method === 'GET') {
     const jobId = jobsMatch[1];
     const job = jobs.get(jobId);
     if (job) {
       sendJsonResponse(res, 200, {
+        ...job,
         job_id: jobId,
-        status: job.status === 'ready' ? 'COMPLETED' : job.status === 'error' ? 'FAILED_FINAL' : 'PROCESSING',
+        jobId,
+        status: job.status === 'ready' ? 'ready' : job.status,
+        state: job.status === 'ready' ? 'COMPLETED' : job.status === 'error' ? 'FAILED_FINAL' : 'PROCESSING',
+        readyStatus: job.status,
+        stage: job.stage || (job.status === 'ready' ? 'finishing' : 'writing'),
         attempts: 1,
+        progress: job.progress || (job.status === 'ready' ? 100 : 25),
         progress_percentage: job.progress || (job.status === 'ready' ? 100 : 25),
+        message: job.message || (job.status === 'ready' ? 'Сказка готова!' : 'Создаём сказку...'),
         story: job.story,
+        imageUrl: job.imageUrl,
         error: job.error,
       }, origin);
       return;
@@ -1346,14 +1403,38 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     if (book) {
       sendJsonResponse(res, 200, {
         job_id: jobId,
-        status: 'COMPLETED',
+        jobId,
+        status: 'ready',
+        state: 'COMPLETED',
+        readyStatus: 'ready',
+        stage: 'finishing',
         attempts: 1,
+        progress: 100,
         progress_percentage: 100,
+        message: 'Сказка готова!',
         story: book,
       }, origin);
       return;
     }
-    sendJsonResponse(res, 404, { error: 'Job not found' }, origin);
+    for (const item of recentReadyStories.values()) {
+      if (item.jobId === jobId && item.story) {
+        sendJsonResponse(res, 200, {
+          job_id: jobId,
+          jobId,
+          status: 'ready',
+          state: 'COMPLETED',
+          readyStatus: 'ready',
+          stage: 'finishing',
+          attempts: 1,
+          progress: 100,
+          progress_percentage: 100,
+          message: 'Сказка готова!',
+          story: item.story,
+        }, origin);
+        return;
+      }
+    }
+    sendJsonResponse(res, 404, { error: 'Job not found', status: 'not_found' }, origin);
     return;
   }
 
@@ -1375,6 +1456,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         200,
         {
           status: 'ready',
+          state: 'COMPLETED',
           story: cached.story,
           jobId: cached.jobId,
           message: 'Сказка готова!',
@@ -1382,6 +1464,28 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         origin
       );
       return;
+    }
+    // Резервный поиск в постоянной БД книг по имени ребёнка
+    if (childName) {
+      const booksList = Object.values(db.books || {});
+      for (let i = booksList.length - 1; i >= 0; i--) {
+        const b = booksList[i];
+        if ((b.child_name || '').toLowerCase() === childName) {
+          sendJsonResponse(
+            res,
+            200,
+            {
+              status: 'ready',
+              state: 'COMPLETED',
+              story: b,
+              jobId: b.id,
+              message: 'Сказка готова!',
+            },
+            origin
+          );
+          return;
+        }
+      }
     }
     sendJsonResponse(res, 404, { status: 'not_found' }, origin);
     return;
@@ -2205,26 +2309,13 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const childKey = (params.childName || '').trim().toLowerCase();
       const userChildKey = childKey ? `${userId}_${childKey}` : '';
 
-      // Защита от дубликатов: если генерация для этого ребенка уже идет или завершена, возвращаем результат
-      if (userChildKey) {
-        // Проверяем, не готова ли уже сказка для этого ребенка и пользователя
-        const cached = recentReadyStories.get(userChildKey);
-        if (cached && Date.now() - cached.readyAt < 15 * 60 * 1000 && cached.story?.scenes?.length >= 4) {
-          console.log(`[API Bridge] ⚡️ Возвращаем готовую сказку из кэша для «${params.childName}» (user: ${userId})`);
-          sendJsonResponse(
-            res,
-            200,
-            { status: 'ready', story: cached.story, jobId: cached.jobId, message: 'Сказка готова!' },
-            origin
-          );
-          return;
-        }
-
+      // Защита от случайного дабл-клика: если генерация для этого ребенка была запущена секунды назад (<45с), переиспользуем pending задачу
+      if (userChildKey && !params.forceNew) {
         const existingJob = [...jobs.entries()].find(
           ([id, j]) =>
             j.status === 'pending' &&
             j.childKey === userChildKey &&
-            Date.now() - j.createdAt < 300000
+            Date.now() - j.createdAt < 45000
         );
         if (existingJob) {
           console.log(`[API Bridge] ⚡️ Переиспользуем активную задачу ${existingJob[0]} для «${params.childName}» (user: ${userId})`);

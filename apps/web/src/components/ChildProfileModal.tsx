@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload, Scissors, Settings } from 'lucide-react';
+import { X, Check, UserPlus, Sparkles, Camera, Loader2, Upload, Scissors, Settings, Plus } from 'lucide-react';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 import { api } from '../api/client';
 import {
   BoyAvatar,
   GirlAvatar,
+  FairyStarIcon,
   FairytaleInterestIcon,
   FairytaleToyIcon,
   StraightHairIcon,
@@ -45,6 +46,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [clothingColor, setClothingColor] = useState('изумрудный');
   const [toy, setToy] = useState('плюшевый динозаврик');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(['Динозавры', 'Волшебство']);
+  const [customInterest, setCustomInterest] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -145,13 +147,22 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
 
+    let finalInterests = [...selectedInterests];
+    const trimmedCustom = customInterest.trim().slice(0, 40);
+    if (
+      trimmedCustom &&
+      !finalInterests.some((i) => i.toLowerCase() === trimmedCustom.toLowerCase())
+    ) {
+      finalInterests.push(trimmedCustom);
+    }
+
     setIsSubmitting(true);
     const avatarFileName = resolveChildAvatar({ gender, hairColor, skinTone, distinctiveFeatures }).split('/').pop()?.replace('.webp', '') || `${gender}_brown`;
     try {
       await onCreateChild({
         name: name.trim(),
         age,
-        interests: selectedInterests,
+        interests: finalInterests,
         appearance: {
           avatar_id: avatarFileName,
           gender,
@@ -171,10 +182,30 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
     }
   };
 
+  const standardInterestIds = interestsList.map((i) => i.id.toLowerCase());
+  const customInterestsList = selectedInterests.filter(
+    (i) => !standardInterestIds.includes(i.toLowerCase())
+  );
+
   const toggleInterest = (id: string) => {
     setSelectedInterests((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.some((i) => i.toLowerCase() === id.toLowerCase())
+        ? prev.filter((i) => i.toLowerCase() !== id.toLowerCase())
+        : [...prev, id]
     );
+  };
+
+  const handleAddCustomInterest = () => {
+    const trimmed = customInterest.trim().slice(0, 40);
+    if (!trimmed) return;
+    if (!selectedInterests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
+      setSelectedInterests((prev) => [...prev, trimmed]);
+    }
+    setCustomInterest('');
+  };
+
+  const handleRemoveCustomInterest = (item: string) => {
+    setSelectedInterests((prev) => prev.filter((i) => i.toLowerCase() !== item.toLowerCase()));
   };
 
   return (
@@ -528,9 +559,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                Что любит ребёнок?
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-stone-700">
+                  Что любит ребёнок?
+                </label>
+                <span className="text-[10px] font-normal text-stone-400">
+                  Выбрано: {selectedInterests.length}
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {interestsList.map((item) => {
                   const isSelected = selectedInterests.includes(item.id);
@@ -553,6 +589,57 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Поле добавления собственного увлечения */}
+              <div className="space-y-2 pt-2.5 mt-2 border-t border-cream-200">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customInterest}
+                    onChange={(e) => setCustomInterest(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomInterest();
+                      }
+                    }}
+                    placeholder="Добавьте своё увлечение..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-medium text-stone-800 placeholder:text-stone-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomInterest}
+                    disabled={!customInterest.trim()}
+                    className="px-3 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 active:scale-95 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Добавить</span>
+                  </button>
+                </div>
+
+                {/* Добавленные родительские интересы */}
+                {customInterestsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {customInterestsList.map((item) => (
+                      <span
+                        key={item}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 border border-brand-300 text-brand-900 text-[11px] font-semibold"
+                      >
+                        <FairyStarIcon className="w-3 h-3 text-brand-600" />
+                        <span>{item}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCustomInterest(item)}
+                          className="w-3.5 h-3.5 rounded-full bg-brand-200/70 hover:bg-brand-300 text-brand-800 flex items-center justify-center text-[9px] ml-0.5"
+                          title="Удалить"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

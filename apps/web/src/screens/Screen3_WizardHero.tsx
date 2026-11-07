@@ -234,16 +234,16 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   };
 
   const toggleInterest = (id: string) => {
-    const updated = data.interests.includes(id)
-      ? data.interests.filter((i) => i !== id)
+    const updated = data.interests.some((i) => i.toLowerCase() === id.toLowerCase())
+      ? data.interests.filter((i) => i.toLowerCase() !== id.toLowerCase())
       : [...data.interests, id];
     onChange({ ...data, interests: updated });
   };
 
   const handleAddCustomInterest = () => {
-    const trimmed = customInterest.trim();
+    const trimmed = customInterest.trim().slice(0, 40);
     if (!trimmed) return;
-    if (!data.interests.includes(trimmed)) {
+    if (!data.interests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
       onChange({ ...data, interests: [...data.interests, trimmed] });
     }
     setCustomInterest('');
@@ -468,8 +468,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   };
 
   // Список кастомных интересов (которые не входят в базовый список)
-  const standardInterestIds = interestsList.map((i) => i.id);
-  const customInterestsList = data.interests.filter((i) => !standardInterestIds.includes(i));
+  const standardInterestIds = interestsList.map((i) => i.id.toLowerCase());
+  const customInterestsList = data.interests.filter(
+    (i) => !standardInterestIds.includes(i.toLowerCase())
+  );
 
   // Пресеты аватаров, отфильтрованные по выбранному полу
   const currentGenderPresets = PRESET_AVATARS.filter((p) => p.gender === (data.gender || 'boy'));
@@ -1170,7 +1172,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       {/* ========================================================================= */}
       <div className="pt-2">
         <button
-          onClick={onNext}
+          onClick={() => {
+            const trimmed = customInterest.trim().slice(0, 40);
+            if (trimmed && !data.interests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
+              onChange({ ...data, interests: [...data.interests, trimmed] });
+            }
+            onNext();
+          }}
           disabled={!data.childName.trim() || data.interests.length === 0}
           className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >

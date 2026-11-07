@@ -403,20 +403,36 @@ async function pollJob<T>(
             message: data.message,
           });
         }
-        if (data.status === 'ready') {
+        if (data.status === 'ready' || data.status === 'COMPLETED' || data.state === 'COMPLETED') {
           onProgress?.({
             stage: 'finishing',
             progress: 96,
             message: 'Сказка готова! Открываем страницы...',
           });
-          return (data.story || data.imageUrl || data) as T;
+          return (data.story || data.book || data.imageUrl || data) as T;
         }
-        if (data.status === 'error') {
+        if (data.status === 'error' || data.status === 'FAILED_FINAL') {
           throw new Error(data.error || 'Job failed');
         }
       } else if (res.status === 404) {
         consecutiveErrors++;
-        if (consecutiveErrors > 25) {
+        // Пробуем альтернативный маршрут /api/v1/ai/job/:id
+        try {
+          const altPollUrl = `${currentBase}/api/v1/ai/job/${encodeURIComponent(jobId)}?_t=${Date.now()}`;
+          const altRes = await fetch(altPollUrl, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache, no-store' },
+          });
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            if (altData.status === 'ready' || altData.status === 'COMPLETED' || altData.state === 'COMPLETED') {
+              return (altData.story || altData.book || altData.imageUrl || altData) as T;
+            }
+          }
+        } catch {}
+
+        if (consecutiveErrors > 50) {
           throw new Error('Задача генерации не найдена на сервере');
         }
       } else {
@@ -674,7 +690,7 @@ export async function callWellflowStory(
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 2500);
+    const initTimer = setTimeout(() => initCtrl.abort(), 4500);
 
     try {
       const response = await fetch(candidate.url, {
@@ -694,8 +710,17 @@ export async function callWellflowStory(
 
       if (response.ok || response.status === 202) {
         const data = await response.json();
-        if (data.jobId) {
-          jobId = data.jobId;
+        if ((data.status === 'ready' || data.status === 'COMPLETED') && data.story && Array.isArray(data.story.scenes)) {
+          console.log('[StoryGenerator] ✅ Сказка готова сразу из ответа:', data.story.title);
+          return data.story;
+        } else if (data.story && Array.isArray(data.story.scenes)) {
+          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.story.title);
+          return data.story;
+        } else if (data.scenes && Array.isArray(data.scenes)) {
+          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
+          return data;
+        } else if (data.jobId || data.job_id) {
+          jobId = data.jobId || data.job_id;
           workingPollBase = candidate.pollBase;
           if (candidate.pollBase) {
             try {
@@ -703,9 +728,6 @@ export async function callWellflowStory(
             } catch {}
           }
           break;
-        } else if (data.scenes && Array.isArray(data.scenes)) {
-          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
-          return data;
         }
       } else {
         markApiUrlFailed(candidate.pollBase);
@@ -810,7 +832,7 @@ export async function generateDynamicStory(
   let storyData: any = null;
   let lastError: any = null;
   try {
-    storyData = await callWellflowStory(params, 180000, onProgress);
+    storyData = await callWellflowStory(params, 240000, onProgress);
   } catch (err: any) {
     lastError = err;
     console.warn('[StoryGenerator] Ошибка вызова callWellflowStory:', err.message);
@@ -823,10 +845,16 @@ export async function generateDynamicStory(
     const userParam = effectiveUserId ? `&userId=${encodeURIComponent(effectiveUserId)}` : '';
     if (apiBase && params.childName) {
       try {
-        const checkRes = await fetch(
+        let checkRes = await fetch(
           `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}${userParam}&_t=${Date.now()}`,
           { cache: 'no-store' }
         );
+        if (!checkRes.ok && effectiveUserId) {
+          checkRes = await fetch(
+            `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}&_t=${Date.now()}`,
+            { cache: 'no-store' }
+          );
+        }
         if (checkRes.ok) {
           const data = await checkRes.json();
           if (data?.status === 'ready' && data?.story?.scenes?.length >= 4) {

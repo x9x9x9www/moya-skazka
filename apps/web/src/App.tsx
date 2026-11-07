@@ -586,20 +586,20 @@ export const App: React.FC = () => {
     setJobProgress(15);
     updateCreationStage('writing');
     setCreationMessage('Сочиняем уникальный сюжет и character bible...');
-    const TOTAL_ESTIMATED_SEC = 45;
-    setRemainingSeconds(TOTAL_ESTIMATED_SEC);
+    setRemainingSeconds(60);
     haptic.medium();
 
-    // Плавный монотонный таймер обратного отсчёта, синхронизированный с этапом
-    const startTime = Date.now();
+    // Плавный адаптивный таймер обратного отсчёта, синхронизированный с реальными этапами
     const countdownInterval = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const left = Math.max(0, Math.ceil(TOTAL_ESTIMATED_SEC - elapsed));
-      setRemainingSeconds(left);
       const stage = creationStageRef.current;
-      const stageCeiling = stage === 'writing' ? 44 : stage === 'drawing' ? 89 : 98;
-      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.8) : prev));
-    }, 500);
+      setRemainingSeconds((prev) => {
+        if (stage === 'finishing') return Math.max(1, prev - 1);
+        if (stage === 'drawing') return prev > 6 ? prev - 1 : 6;
+        return prev > 25 ? prev - 1 : 25;
+      });
+      const stageCeiling = stage === 'writing' ? 45 : stage === 'drawing' ? 92 : 98;
+      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.3) : prev));
+    }, 1000);
 
     const currentUserId =
       currentUser?.id ||
@@ -635,8 +635,15 @@ export const App: React.FC = () => {
         },
         (update) => {
           updateCreationStage(update.stage);
-          setCreationMessage(update.message);
-          setJobProgress((prev) => Math.max(prev, update.progress));
+          if (update.message) setCreationMessage(update.message);
+          if (update.stage === 'drawing') {
+            setRemainingSeconds((prev) => (prev < 15 ? 35 : prev));
+          } else if (update.stage === 'finishing') {
+            setRemainingSeconds(2);
+          }
+          if (typeof update.progress === 'number') {
+            setJobProgress((prev) => Math.max(prev, update.progress));
+          }
         }
       );
 

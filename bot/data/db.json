@@ -1,5 +1,23 @@
 {
   "users": {
+    "1212593604": {
+      "id": "1212593604",
+      "telegram_user_id": "1212593604",
+      "first_name": "x9x9x9ww",
+      "username": "x9x9x9ww",
+      "role": "USER",
+      "free_text_claimed_at": null,
+      "default_questions_enabled": true,
+      "timezone": "UTC+3",
+      "balance": {
+        "total": 5,
+        "paid": 5,
+        "gift": 0,
+        "reserved": 0,
+        "available": 5
+      },
+      "createdAt": "2026-11-06T01:03:42.243Z"
+    },
     "test_user": {
       "id": "test_user",
       "telegram_user_id": "test_user",
@@ -17,8 +35,151 @@
         "available": 5
       },
       "createdAt": "2026-11-05T20:16:19.239Z"
+    },
+    "user_default": {
+      "id": "user_default",
+      "telegram_user_id": "user_default",
+      "first_name": "Родитель",
+      "username": "parent",
+      "role": "USER",
+      "free_text_claimed_at": "2026-11-06T01:07:48.816Z",
+      "default_questions_enabled": true,
+      "timezone": "UTC+3",
+      "balance": {
+        "total": 3,
+        "paid": 3,
+        "gift": 0,
+        "reserved": 0,
+        "available": 3
+      },
+      "createdAt": "2026-11-06T01:04:58.385Z"
     }
   },
   "children": {},
-  "books": {}
+  "books": {
+    "story_1793927098387_auegk3": {
+      "id": "story_1793927098387_auegk3",
+      "user_id": "user_default",
+      "child_id": "default",
+      "child_name": "Марк",
+      "title": "Марк и наряд из солнечных деталей",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Шур-шур! Шёлковые ленты плясали на столе. В мастерской пахло чистой тканью, а озорной солнечный луч скользил по полу. Золотые зеркала отражали рулоны бархата и шёлка. Марк погладил свой изумрудный костюм с мягким рукавом. Он искал для него сияющую деталь. Рядом сидел Робот. Щёлк! Робот повернул пуговичные глаза, достал крошечный ключик и тихо запел колыбельную. Марк улыбнулся и взял голубую ленту.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_1.jpg",
+          "image_prompt": "3D Pixar-style medium shot inside a sunny Paris workshop; silk ribbons flutter beside golden mirrors, and the boy touches an emerald outfit while the toy robot awakens. Warm sunlight, colorful fabric rolls."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "На манекене висел наряд. Он был почти готов: бархатный воротник, шёлковый пояс, звёздные пуговицы. Но одной важной детали не хватало. Марк посмотрел в зеркала. Там мелькнула серебряная застёжка. Робот потянул её раз — не вышло. Потянул два — щёлк, и застёжка снова ускользнула. Робот опустил глаза и тихо напел одну грустную нотку. Марк заметил его растерянность и протянул ладонь.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_2.jpg",
+          "image_prompt": "3D Pixar-style close shot of a mannequin surrounded by mirror reflections; a silver clasp slips away as the toy robot worries and the boy reaches toward it. Soft golden workshop lighting."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "— Не бойся, Робот, — сказал Марк. — Мы попробуем вместе. Он надел на застёжку мягкую ленту, добавил бархатный кружок и спрятал край под шёлковым поясом. Теперь деталь не кололась и легко двигалась. Робот снова повернул ключик. Ля-ля-ля! Наряд засиял, словно улыбнулся. Марк и Робот понесли его на солнечную парижскую площадь. Там друзья хлопали, ленты кружились, а новый образ вышел на добрый показ. Марк поднял руку и радостно приветствовал шедевр.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_3.jpg",
+          "image_prompt": "3D Pixar-style tracking shot from workshop to a sunny Paris square; the boy and toy robot finish a comfortable outfit with ribbon, velvet, and silk, then present it among smiling friends. Bright joyful daylight."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "На площади звучала тихая мелодия Робота. Шёлковые детали плавно двигались, бархат мягко блестел, а звёздные пуговицы ловили солнечные зайчики. Друзья показывали свои наряды и смеялись. Потом Марк обнял Робота. Он почувствовал мягкие швы и тёплый бок игрушки. Робот довольно запел колыбельную, а друзья благодарно улыбнулись. Солнечный Париж остался в памяти Марка: ленты, смех и дружный показ. Все детали нашли друг друга заботливыми руками.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/demo/scene_4.jpg",
+          "image_prompt": "3D Pixar-style gentle wide shot of the sunny Paris square after the fashion show; silk ribbons sway, friends smile, and the boy hugs the toy robot. Soft late-afternoon golden light."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Что почувствовал Робот, когда застёжка не слушалась?",
+          "parent_hint": "Помогите Марку назвать чувство Робота и показать его лицом.",
+          "skill_tag": "emotions"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Кому Марк хотел подарить свою заботу?",
+          "parent_hint": "Предложите вспомнить, как Марк помог Роботу и чему тот обрадовался.",
+          "skill_tag": "empathy"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-06T01:07:48.815Z"
+    },
+    "story_1794040063007_6a97ta": {
+      "id": "story_1794040063007_6a97ta",
+      "user_id": "user_default",
+      "child_id": "default",
+      "child_name": "Тест",
+      "title": "Созвездие тёплых ладоней",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/02181139-260f-4eec-a32b-5dc0a87c8eff/0?exp=1794128400&sig=2ecf1cb276b519387c51a087e851e9eed3c2edaabc2919c8bd439edbf15a4689",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "За круглым окном вспыхнула золотая звёздочка и оставила искрящийся хвостик. Сонный звездолёт тихо гудел над Звёздной тихой гаванью. В уютной каюте Тест погладил рельефные петли своего вязаного свитера, спрятал ладони в длинные рукава и почувствовал спокойное тепло. Рядом сидел плюшевый медвежонок Мишка Пуговкин. Вдруг он подмигнул пуговичным глазком, взял Теста за ладошку и согрел её мягкой лапкой. — Пойдём помогать? — прошептал Мишка. Тест улыбнулся, накинул свитер поплотнее и вместе с другом вышел к дружескому кругу иллюминаторов.",
+          "image_url": "https://api.wellflow.dev/v1/media/bbf506f0-7a9a-4b0c-af40-d76f6f1afe1a/0?exp=1794128400&sig=e09c3b5a08ad775f2df5f07c03e8025c7f1d72b19775a3e5980d28192f50cb6e",
+          "image_prompt": "Medium shot inside a cozy starship cabin above a quiet celestial harbor; a golden star streaks past the round window while the teddy bear gently warms the boy’s palm. Soft amber cabin light and blue moonlight."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "У иллюминаторов друзья собирали созвездие-сюрприз. Они прикрепляли светящиеся звёзды к тонким серебряным дугам, раскладывали лунные облака и ставили мягкие сигнальные флажки. Скоро должно было получиться созвездие-рукопожатие — подарок всему звездолёту. Но одна дружеская звезда никак не держалась. Тест внимательно посмотрел: звезда качалась, тихо звенела и снова падала на коврик. Мишка Пуговкин опустил ушки и перестал улыбаться. Тест присел рядом, погладил его мягкую лапку и задумался. Друзья остановились перед непослушной звездой. Кому сейчас нужна поддержка?",
+          "image_url": "https://api.wellflow.dev/v1/media/b44bedef-de9b-4688-8aec-3b22409f50c7/0?exp=1794128400&sig=b91eb7ff1ae0585eff9db31423202d2f59c970a48dc8bbf1e8473bdd77ba2e0a",
+          "image_prompt": "Close shot of a glowing friendship star slipping from silver constellation arcs beside moon clouds and soft signal flags. The teddy bear lowers his head as the boy studies the loose star under gentle starlight."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Тест заметил, как расстроился Мишка: его пуговичный глазок смотрел вниз, а лапки стали совсем тихими. «Не грусти, мы справимся вместе», — сказал Тест. Он подставил плечо, чтобы Мишка мог опереться, и поделился с ним маленькой золотой деталью от своей дуги. Тест придержал звезду, а Мишка аккуратно закрепил деталь. Раз — и звезда засияла! Свет побежал по дружескому маршруту, соединяя все иллюминаторы. Созвездие пригласило друзей на общий космический праздник. Тест, Мишка и остальные друзья захлопали лапками. Иллюминаторы замерцали их общему успеху, будто радостно подмигнули.",
+          "image_url": "https://api.wellflow.dev/v1/media/2affc34e-6bca-4d77-9ba1-c50a6a4b0dd6/0?exp=1794128400&sig=37940b6ee1042f4ac6e44c8eaa222d8ec772c76dc0710355d804e83d56be6cb3",
+          "image_prompt": "Wide shot of the boy supporting the teddy bear while they attach a golden piece to the friendship star. A glowing route spreads through the joined-hand constellation, lighting the harbor and twinkling portholes."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "В тёплом утреннем свете друзья смеялись, показывали свои творения и любовались победным созвездием. Лунные облака розовели, сигнальные флажки мягко покачивались, а дружеский маршрут светился от иллюминатора к иллюминатору. Тест обнял Мишку Пуговкина и прижал его к своему свитеру. Вязаные петли хранили мягкое победное тепло. Мишка ласково подмигнул, друзья улыбнулись, и в сердце Теста стало светло: каждый друг нужен, когда рядом есть забота. Звездолёт зазвучал тёплым гулом, а созвездие тихо сияло над общей праздничной каютой.",
+          "image_url": "https://api.wellflow.dev/v1/media/1ad15413-4bac-47b9-93c8-01360a50e481/0?exp=1794128400&sig=007d32521b4034f57136244db72558d8946955692792a7529e8bb41579b26728",
+          "image_prompt": "Gentle morning wide shot inside the starship celebration cabin, where friends admire the glowing constellation route among pink moon clouds and swaying signal flags. Warm sunrise light surrounds the child’s hug with the teddy bear."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Как Тест понял, что Мишке нужна помощь?",
+          "parent_hint": "Попросите ребёнка показать лицом, как выглядел расстроенный Мишка.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Какой заботливый поступок подарил друзьям радость?",
+          "parent_hint": "Предложите вспомнить, чем Тест поделился с Мишкой.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-07T08:30:37.787Z"
+    }
+  }
 }

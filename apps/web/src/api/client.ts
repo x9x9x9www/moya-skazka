@@ -71,6 +71,10 @@ class ApiClient {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const primaryBase = getApiBaseUrl();
     const candidates = [primaryBase];
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      if (!candidates.includes('http://localhost:4040')) candidates.push('http://localhost:4040');
+      if (!candidates.includes('http://127.0.0.1:4040')) candidates.push('http://127.0.0.1:4040');
+    }
     if (primaryBase !== '') {
       candidates.push('');
     }

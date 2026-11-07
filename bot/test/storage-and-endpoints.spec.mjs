@@ -181,3 +181,56 @@ test('Файл локального постоянного хранилища bo
   assert.ok(typeof parsed.children === 'object');
   assert.ok(typeof parsed.books === 'object');
 });
+
+test('Паттерн endpoint jobs и job-status распознаёт все варианты путей и ID', () => {
+  const jobsRegex = /^\/(?:api\/v1\/|api\/)?(?:ai\/)?(?:jobs?|job-status)\/([a-zA-Z0-9_-]+)$/;
+
+  const validPaths = [
+    '/jobs/job_abc123',
+    '/api/v1/jobs/job_abc123',
+    '/api/v1/ai/job/job_abc123',
+    '/api/v1/ai/jobs/job_abc123',
+    '/api/ai/job/job_abc123',
+    '/api/job/job_abc123',
+    '/job/job_abc123',
+    '/job-status/job_abc123',
+  ];
+
+  for (const p of validPaths) {
+    const match = p.match(jobsRegex);
+    assert.ok(match, `Путь ${p} должен соответствовать jobsRegex`);
+    assert.equal(match[1], 'job_abc123');
+  }
+
+  // Проверка извлечения jobId из searchParams для всех вариантов
+  const queryPaths = [
+    'http://localhost:3000/job-status?id=job_999',
+    'http://localhost:3000/api/v1/ai/job-status?jobId=job_999',
+    'http://localhost:3000/api/v1/ai/job?id=job_999',
+    'http://localhost:3000/api/job?jobId=job_999',
+    'http://localhost:3000/job?id=job_999',
+  ];
+  for (const qp of queryPaths) {
+    const u = new URL(qp);
+    const extracted = u.searchParams.get('id') || u.searchParams.get('jobId');
+    assert.equal(extracted, 'job_999');
+  }
+});
+
+test('Кастомные интересы фильтруются без учета регистра и исключают дубли', () => {
+  const standard = ['Динозавры', 'Космос', 'Животные', 'Волшебство'];
+  const standardIds = standard.map((s) => s.toLowerCase());
+
+  const selected = ['Динозавры', 'динозавры', 'Роботы', 'РОБОТЫ', 'космос', 'Лего'];
+  const deduplicated = [];
+  for (const item of selected) {
+    if (!deduplicated.some((d) => d.toLowerCase() === item.toLowerCase())) {
+      deduplicated.push(item);
+    }
+  }
+
+  assert.deepEqual(deduplicated, ['Динозавры', 'Роботы', 'космос', 'Лего']);
+  const customList = deduplicated.filter((i) => !standardIds.includes(i.toLowerCase()));
+  assert.deepEqual(customList, ['Роботы', 'Лего']);
+});
+

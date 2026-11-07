@@ -18,6 +18,7 @@ import {
   Coffee,
   Map,
   Pencil,
+  Plus,
 } from 'lucide-react';
 import {
   BoyAvatar,
@@ -109,12 +110,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const [customToy, setCustomToy] = useState('');
   const [isCustomToy, setIsCustomToy] = useState(false);
 
-  // Интересы (множественный выбор)
+  // Интересы (множественный выбор + добавление собственных)
   const [selectedInterests, setSelectedInterests] = useState<string[]>([
     'Динозавры',
     'Животные',
     'Волшебство',
   ]);
+  const [customInterest, setCustomInterest] = useState('');
 
   // Варианты внешности
   const HAIR_COLORS = [
@@ -220,12 +222,30 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     { id: 'Природа и лес', label: 'Природа' },
   ];
 
+  const standardInterestIds = INTERESTS_LIST.map((i) => i.id.toLowerCase());
+  const customInterestsList = selectedInterests.filter(
+    (i) => !standardInterestIds.includes(i.toLowerCase())
+  );
+
   const toggleInterest = (interestId: string) => {
     setSelectedInterests((prev) =>
-      prev.includes(interestId)
-        ? prev.filter((i) => i !== interestId)
+      prev.some((i) => i.toLowerCase() === interestId.toLowerCase())
+        ? prev.filter((i) => i.toLowerCase() !== interestId.toLowerCase())
         : [...prev, interestId]
     );
+  };
+
+  const handleAddCustomInterest = () => {
+    const trimmed = customInterest.trim().slice(0, 40);
+    if (!trimmed) return;
+    if (!selectedInterests.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
+      setSelectedInterests((prev) => [...prev, trimmed]);
+    }
+    setCustomInterest('');
+  };
+
+  const handleRemoveCustomInterest = (item: string) => {
+    setSelectedInterests((prev) => prev.filter((i) => i.toLowerCase() !== item.toLowerCase()));
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,6 +346,15 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     const finalToy = isCustomToy && customToy.trim() ? customToy.trim() : toy;
     const finalName = name.trim() || (gender === 'girl' ? 'Алиса' : 'Миша');
 
+    let finalInterests = [...selectedInterests];
+    const trimmedCustom = customInterest.trim().slice(0, 40);
+    if (
+      trimmedCustom &&
+      !finalInterests.some((i) => i.toLowerCase() === trimmedCustom.toLowerCase())
+    ) {
+      finalInterests.push(trimmedCustom);
+    }
+
     onComplete({
       name: finalName,
       age,
@@ -341,7 +370,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       personality,
       storyPreference,
       bedtimeRitual,
-      interests: selectedInterests.length > 0 ? selectedInterests : ['Динозавры', 'Волшебство'],
+      interests: finalInterests.length > 0 ? finalInterests : ['Динозавры', 'Волшебство'],
       toy: finalToy,
     });
   };
@@ -533,20 +562,6 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
               placeholder="Например, Миша, София, Лев"
               className="w-full px-4 py-3 rounded-2xl bg-cream-50 border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-base text-stone-900 placeholder:text-stone-400 placeholder:font-normal"
             />
-            {/* Быстрые подсказки имён */}
-            <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] text-stone-400 shrink-0">Популярные:</span>
-              {['Миша', 'Алиса', 'Тёма', 'Ева', 'Марк', 'Соня'].map((suggested) => (
-                <button
-                  key={suggested}
-                  type="button"
-                  onClick={() => setName(suggested)}
-                  className="px-2.5 py-0.5 rounded-full bg-cream-200/70 text-stone-700 text-[11px] font-medium hover:bg-cream-300 transition-colors shrink-0"
-                >
-                  {suggested}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Пол и Возраст */}
@@ -971,13 +986,17 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           </div>
 
           {/* Интересы ребёнка */}
-          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-2.5">
-            <label className="text-xs font-bold text-stone-900 flex items-center justify-between">
-              <span>Интересы и увлечения (выберите 2–3)</span>
+          <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-900">
+                Интересы и увлечения (выберите 2–3)
+              </label>
               <span className="text-[10px] font-normal text-stone-400">
                 Выбрано: {selectedInterests.length}
               </span>
-            </label>
+            </div>
+
+            {/* Сетка базовых увлечений */}
             <div className="flex flex-wrap gap-1.5">
               {INTERESTS_LIST.map((item) => {
                 const isSelected = selectedInterests.includes(item.id);
@@ -998,6 +1017,57 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Поле добавления собственного увлечения */}
+            <div className="space-y-2 pt-2 border-t border-cream-200">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customInterest}
+                  onChange={(e) => setCustomInterest(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomInterest();
+                    }
+                  }}
+                  placeholder="Добавьте своё увлечение (например: Мыльные пузыри, Пазлы...)"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-cream-50/70 border border-cream-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold text-stone-800 shadow-inner placeholder:text-stone-400 placeholder:font-normal"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomInterest}
+                  disabled={!customInterest.trim()}
+                  className="px-3.5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 active:scale-95 shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Добавить</span>
+                </button>
+              </div>
+
+              {/* Добавленные родительские интересы */}
+              {customInterestsList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {customInterestsList.map((item) => (
+                    <span
+                      key={item}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-300 text-brand-900 text-xs font-semibold shadow-xs"
+                    >
+                      <FairyStarIcon className="w-3 h-3 text-brand-600" />
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomInterest(item)}
+                        className="w-4 h-4 rounded-full bg-brand-200/70 hover:bg-brand-300 text-brand-800 flex items-center justify-center text-[10px] ml-0.5"
+                        title="Удалить"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
