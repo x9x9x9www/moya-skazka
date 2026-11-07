@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Sparkles, ShieldCheck, HeartHandshake, CheckCircle } from 'lucide-react';
 import { useTelegram } from '../hooks/useTelegram';
 
+import { api } from '../api/client';
+
 interface Screen10PaymentSheetProps {
   isOpen: boolean;
   sku: 'single_book_1' | 'pack_5';
@@ -32,20 +34,41 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
     setIsProcessing(true);
     haptic.medium();
 
-    try {
-      // В реальном Telegram WebApp вызывается tg.openInvoice(...)
-      // Для мгновенной проверки симулируем подтверждение и начисление
-      setTimeout(() => {
-        setIsProcessing(false);
-        setIsSuccess(true);
-        haptic.success();
+    const idempotencyKey = `ord_${sku}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
+    try {
+      const order = await api.createOrder(sku, idempotencyKey);
+      const tg = (window as any)?.Telegram?.WebApp;
+
+      if (tg?.openInvoice && order.invoice_link && !order.invoice_link.includes('$mock_invoice')) {
+        tg.openInvoice(order.invoice_link, (status: string) => {
+          setIsProcessing(false);
+          if (status === 'paid') {
+            setIsSuccess(true);
+            haptic.success();
+            setTimeout(() => {
+              onPaymentSuccess();
+              onClose();
+            }, 1200);
+          } else {
+            console.log('[Payment] Статус оплаты Telegram Stars:', status);
+          }
+        });
+      } else {
+        // Локальное/тестовое окружение или демо-режим без живого токена Telegram Stars
         setTimeout(() => {
-          onPaymentSuccess();
-          onClose();
-        }, 1200);
-      }, 1000);
-    } catch {
+          setIsProcessing(false);
+          setIsSuccess(true);
+          haptic.success();
+
+          setTimeout(() => {
+            onPaymentSuccess();
+            onClose();
+          }, 1200);
+        }, 1000);
+      }
+    } catch (err: any) {
+      console.error('[Payment] Ошибка создания заказа:', err);
       setIsProcessing(false);
     }
   };

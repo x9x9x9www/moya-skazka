@@ -220,7 +220,7 @@ class ApiClient {
   }
 
   public async createOrder(sku: string, idempotencyKey: string) {
-    return await this.request<{ order_id: string; stars_amount: number; status: string }>('/orders', {
+    return await this.request<{ order_id: string; stars_amount: number; status: string; invoice_link?: string }>('/orders', {
       method: 'POST',
       body: JSON.stringify({ sku, idempotency_key: idempotencyKey }),
     });

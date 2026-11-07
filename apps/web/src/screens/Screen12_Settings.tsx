@@ -27,6 +27,7 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
   isAdmin,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -216,21 +217,20 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
             </span>
           </div>
 
-          <a
-            href="https://example.com/privacy"
-            target="_blank"
-            rel="noreferrer"
-            className="p-3.5 flex items-center justify-between text-stone-700 hover:bg-cream-50 transition-colors"
+          <button
+            type="button"
+            onClick={() => setShowPrivacyModal(true)}
+            className="w-full p-3.5 flex items-center justify-between text-stone-700 hover:bg-cream-50 transition-colors text-left"
           >
             <div className="flex items-center gap-2.5">
               <FileText className="w-4 h-4 text-stone-500" />
               <span>Политика конфиденциальности (152-ФЗ)</span>
             </div>
             <span className="text-stone-400">›</span>
-          </a>
+          </button>
 
           <a
-            href="https://t.me/MoyaSkazkaSupport"
+            href="https://t.me/My_SSSkaska_bot"
             target="_blank"
             rel="noreferrer"
             className="p-3.5 flex items-center justify-between text-stone-700 hover:bg-cream-50 transition-colors"
@@ -247,7 +247,7 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
               <div className="flex items-center gap-2.5">
                 <span className="text-base">👑</span>
                 <div>
-                  <div className="font-bold text-xs text-stone-900">Администратор: @dinar_fazlyev</div>
+                  <div className="font-bold text-xs text-stone-900">Администратор системы</div>
                   <div className="text-[10px] text-amber-700 font-medium">Безлимитные кредиты и доступ к панели</div>
                 </div>
               </div>
@@ -317,6 +317,55 @@ export const Screen12_Settings: React.FC<Screen12SettingsProps> = ({
                 {isDeleting ? 'Удаляем...' : 'Да, удалить'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно Политики конфиденциальности и 152-ФЗ */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100 shrink-0">
+              <h4 className="font-serif font-bold text-lg text-stone-900">
+                Политика конфиденциальности
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyModal(false)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-stone-600 overflow-y-auto space-y-3 leading-relaxed pr-1 flex-1">
+              <p className="font-bold text-stone-900">
+                1. Соответствие 152-ФЗ «О персональных данных»
+              </p>
+              <p>
+                Сервис «Моя сказка» обрабатывает имя и возраст ребёнка исключительно для создания персонализированных литературных сюжетов. Базы данных и медиафайлы размещаются на серверах на территории Российской Федерации.
+              </p>
+              <p className="font-bold text-stone-900">
+                2. Zero-Storage обработка фотографий
+              </p>
+              <p>
+                Фотографии для генерации 3D-аватара обрабатываются исключительно в оперативной памяти (in-memory) для распознавания черт персонажа. Исходные фотографии никогда не сохраняются на диске и не передаются третьим лицам.
+              </p>
+              <p className="font-bold text-stone-900">
+                3. Право на удаление (Право на забвение)
+              </p>
+              <p>
+                Вы можете в любой момент полностью удалить свой аккаунт, профили детей и сгенерированные сказки по кнопке «Удалить аккаунт и данные». Все записи в базе данных и файлы в облачном хранилище стираются физически и безвозвратно.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(false)}
+              className="w-full py-3 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shrink-0 shadow-md"
+            >
+              Понятно
+            </button>
           </div>
         </div>
       )}

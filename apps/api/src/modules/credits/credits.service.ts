@@ -19,6 +19,7 @@ export class CreditsService {
         user_id: userId,
         status: 'CONFIRMED',
       },
+      orderBy: { created_at: 'asc' },
     });
 
     let paid = 0;
@@ -30,10 +31,22 @@ export class CreditsService {
       } else if (entry.source_type === 'GIFT') {
         gift += entry.delta;
       } else if (entry.source_type === 'SPEND') {
-        // Списание сначала гасит gift, затем paid
-        paid += entry.delta;
+        // Списание сначала гасит подарочные кредиты (gift), затем оплаченные (paid)
+        const spendAmount = Math.abs(entry.delta);
+        const giftDeduction = Math.min(gift, spendAmount);
+        gift -= giftDeduction;
+        const remainingSpend = spendAmount - giftDeduction;
+        paid -= remainingSpend;
       } else if (entry.source_type === 'ADMIN_ADJUSTMENT') {
-        paid += entry.delta;
+        if (entry.delta >= 0) {
+          paid += entry.delta;
+        } else {
+          const spendAmount = Math.abs(entry.delta);
+          const giftDeduction = Math.min(gift, spendAmount);
+          gift -= giftDeduction;
+          const remainingSpend = spendAmount - giftDeduction;
+          paid -= remainingSpend;
+        }
       }
     }
 

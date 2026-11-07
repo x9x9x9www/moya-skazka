@@ -6,6 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/database/package*.json ./packages/database/
 COPY packages/shared/package*.json ./packages/shared/
+COPY packages/story-engine/package*.json ./packages/story-engine/
 COPY apps/api/package*.json ./apps/api/
 
 RUN npm install
@@ -13,6 +14,7 @@ RUN npm install
 # Копируем исходный код
 COPY packages/database ./packages/database
 COPY packages/shared ./packages/shared
+COPY packages/story-engine ./packages/story-engine
 COPY apps/api ./apps/api
 COPY tsconfig.base.json ./
 

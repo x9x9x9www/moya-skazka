@@ -13,6 +13,7 @@ export interface GenerateStoryParams {
   customWishes?: string | null;
   includeQuestions: boolean;
   avatarUrl?: string;
+  format?: 'TEXT' | 'ILLUSTRATED';
   appearance?: {
     avatar_url?: string;
     avatar_id?: string;
@@ -668,6 +669,7 @@ export async function callWellflowStory(
     customWishes: params.customWishes,
     includeQuestions: params.includeQuestions,
     gender: params.gender,
+    format: params.format || 'ILLUSTRATED',
     recentBlacklist,
   };
 
@@ -917,6 +919,22 @@ export async function generateDynamicStory(
           }))
         : [],
   };
+
+  // Для бесплатной первой сказки (строго текстовый формат) пропускаем генерацию 5 картинок
+  if (params.format === 'TEXT') {
+    book.format = 'TEXT';
+    book.status = 'TEXT_READY';
+    book.cover_url = null;
+    scenes.forEach((s: any) => {
+      s.image_url = null;
+    });
+    onProgress?.({
+      stage: 'finishing',
+      progress: 100,
+      message: 'Текстовая сказка готова!',
+    });
+    return book;
+  }
 
   // Если какие-то сцены ещё не имеют image_url (например, при запросе в обход моста)
   const missingScenes = scenes.filter((s: any) => !s.image_url);

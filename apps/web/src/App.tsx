@@ -670,8 +670,11 @@ export const App: React.FC = () => {
       avatar_url: wizardData.appearance?.avatar_url || resolvedAvatar,
     };
 
+    const isFreeStory = !isAdmin && canClaimFree;
+    const storyFormat: 'TEXT' | 'ILLUSTRATED' = isFreeStory ? 'TEXT' : 'ILLUSTRATED';
+
     try {
-      // 1. Story Engine: текст, character bible, обложка и 4 иллюстрации с консистентным лицом
+      // 1. Story Engine: бесплатная первая сказка — строго текст; платная — текст + 4 3D-иллюстрации
       const generatedBook = await generateDynamicStory(
         {
           userId: currentUserId,
@@ -686,6 +689,7 @@ export const App: React.FC = () => {
           includeQuestions: details.includeQuestions,
           avatarUrl: appearanceWithAvatar.avatar_url,
           appearance: appearanceWithAvatar,
+          format: storyFormat,
         },
         (update) => {
           updateCreationStage(update.stage);
@@ -716,8 +720,8 @@ export const App: React.FC = () => {
         child_id: activeChildId || 'default',
         child_name: wizardData.childName,
         title: generatedBook.title,
-        status: 'ILLUSTRATED',
-        format: 'ILLUSTRATED',
+        status: storyFormat === 'TEXT' ? 'TEXT_READY' : 'ILLUSTRATED',
+        format: storyFormat,
         cover_url: resolveMediaUrl(generatedBook.cover_url || generatedBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || generatedBook.title),
         created_at: new Date().toISOString(),
       };
@@ -1121,11 +1125,10 @@ export const App: React.FC = () => {
               handleSceneIndexChange(1);
               setCurrentScreen('reader');
             }}
+            onCreateNewStory={() => {
+              setCurrentScreen('wizard_hero');
+            }}
             onGoToLibrary={() => {
-              if (currentReadingBook.can_upgrade) {
-                setSelectedBookForUpgrade(currentReadingBook.id);
-                setUpgradeModalOpen(true);
-              }
               setCurrentScreen('library');
             }}
           />

@@ -20,9 +20,15 @@ export class OrdersService {
     });
 
     if (existingOrder) {
+      const invoiceLink = await OrdersService.createInvoiceLink(
+        existingOrder.id,
+        existingOrder.sku === 'SINGLE_BOOK_1' ? 'single_book_1' : 'pack_5',
+        existingOrder.stars_amount
+      );
       return {
         order_id: existingOrder.id,
         stars_amount: existingOrder.stars_amount,
+        invoice_link: invoiceLink,
         status: existingOrder.status,
       };
     }
@@ -38,19 +44,68 @@ export class OrdersService {
       },
     });
 
+    const invoiceLink = await OrdersService.createInvoiceLink(order.id, sku, starsAmount);
+
     await prisma.event.create({
       data: {
         user_id: userId,
         event_name: 'checkout_started',
-        properties_json: { order_id: order.id, sku, stars_amount: starsAmount },
+        properties_json: { order_id: order.id, sku, stars_amount: starsAmount, invoice_link: invoiceLink },
       },
     });
 
     return {
       order_id: order.id,
       stars_amount: order.stars_amount,
+      invoice_link: invoiceLink,
       status: order.status,
     };
+  }
+
+  /**
+   * Генерация ссылки на инвойс Telegram Stars (валюта XTR)
+   */
+  public static async createInvoiceLink(
+    orderId: string,
+    sku: 'single_book_1' | 'pack_5',
+    starsAmount: number
+  ): Promise<string> {
+    const isSingle = sku === 'single_book_1';
+    const title = isSingle ? '1 волшебная сказка' : 'Пакет 5 сказок';
+    const description = isSingle
+      ? '1 книжный кредит на создание сказки с 3D-иллюстрациями'
+      : '5 книжных кредитов на создание сказок с 3D-иллюстрациями';
+
+    if (config.TELEGRAM_BOT_TOKEN && !config.TELEGRAM_BOT_TOKEN.startsWith('1234567890:ABC')) {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${config.TELEGRAM_BOT_TOKEN}/createInvoiceLink`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description,
+            payload: orderId,
+            currency: 'XTR',
+            prices: [{ label: 'Stars', amount: starsAmount }],
+          }),
+        });
+
+        if (res.ok) {
+          const json = (await res.json()) as { ok: boolean; result?: string; description?: string };
+          if (json.ok && json.result) {
+            return json.result;
+          }
+          console.warn('[OrdersService] Telegram createInvoiceLink вернул ошибку:', json);
+        } else {
+          console.warn(`[OrdersService] Telegram createInvoiceLink HTTP ${res.status}:`, await res.text().catch(() => ''));
+        }
+      } catch (err: any) {
+        console.error('[OrdersService] Ошибка вызова createInvoiceLink:', err.message);
+      }
+    }
+
+    // Fallback для тестов и демо-режима
+    return `https://t.me/$mock_invoice_${orderId}?stars=${starsAmount}`;
   }
 
   /**

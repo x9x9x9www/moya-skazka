@@ -1,9 +1,12 @@
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '@moya-skazka/database';
 import { MockAIProvider } from '../../services/ai/mock.ai.provider';
 import { WellflowAIProvider } from '../../services/ai/wellflow.ai.provider';
 import { config } from '../../config/index';
 import { CreditsService } from '../credits/credits.service';
 import { buildCoverPrompt } from '@moya-skazka/story-engine';
+import { storageService } from '../../services/storage';
 
 const textProvider =
   config.AI_TEXT_PROVIDER === 'mock'
@@ -262,10 +265,13 @@ export class JobWorker {
     });
     totalCost += coverImg.generationCost;
 
+    const coverTargetKey = `books/${book.id}/cover.jpg`;
+    const coverStorageKey = await this.fetchAndPersistImage(coverImg.imageUrl, coverTargetKey);
+
     const coverAsset = await prisma.asset.create({
       data: {
         owner_id: book.user_id,
-        storage_key: coverImg.storageKey,
+        storage_key: coverStorageKey,
         type: 'COVER',
         status: 'READY',
         generation_cost: coverImg.generationCost,
@@ -287,10 +293,13 @@ export class JobWorker {
       });
       totalCost += sceneImg.generationCost;
 
+      const sceneTargetKey = `books/${book.id}/scene_${scene.scene_index}.jpg`;
+      const sceneStorageKey = await this.fetchAndPersistImage(sceneImg.imageUrl, sceneTargetKey);
+
       const sceneAsset = await prisma.asset.create({
         data: {
           owner_id: book.user_id,
-          storage_key: sceneImg.storageKey,
+          storage_key: sceneStorageKey,
           type: 'SCENE',
           status: 'READY',
           generation_cost: sceneImg.generationCost,
@@ -323,6 +332,36 @@ export class JobWorker {
         properties_json: { book_id: book.id, total_cost: totalCost },
       },
     });
+  }
+
+  private async fetchAndPersistImage(imageUrl: string, targetKey: string): Promise<string> {
+    let buffer: Buffer;
+    let contentType = 'image/jpeg';
+
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      const res = await fetch(imageUrl);
+      if (!res.ok) {
+        throw new Error(`Не удалось скачать сгенерированную иллюстрацию (${res.status} ${res.statusText})`);
+      }
+      const ct = res.headers.get('content-type');
+      if (ct) contentType = ct;
+      const ab = await res.arrayBuffer();
+      buffer = Buffer.from(ab);
+    } else if (imageUrl.startsWith('data:')) {
+      const parts = imageUrl.split(',');
+      const match = parts[0].match(/:(.*?);/);
+      if (match) contentType = match[1];
+      buffer = Buffer.from(parts[1], 'base64');
+    } else {
+      const p = path.resolve(process.cwd(), imageUrl);
+      if (fs.existsSync(p)) {
+        buffer = await fs.promises.readFile(p);
+      } else {
+        buffer = Buffer.from('mock-fairytale-illustration');
+      }
+    }
+
+    return await storageService.uploadBuffer(targetKey, buffer, contentType);
   }
 }
 

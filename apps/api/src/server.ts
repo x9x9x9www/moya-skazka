@@ -19,8 +19,10 @@ import { CreditsService } from './modules/credits/credits.service';
 import { JobsService } from './modules/jobs/jobs.service';
 import { OrdersService } from './modules/orders/orders.service';
 import { jobWorker } from './modules/jobs/worker';
+import fs from 'fs';
 import { WellflowAIProvider } from './services/ai/wellflow.ai.provider';
 import { CharacterVisionService } from './services/characterVision.service';
+import { storageService, LocalStorageService } from './services/storage';
 
 export const app = fastify({
   logger: config.NODE_ENV === 'development',
@@ -535,16 +537,29 @@ app.register(
         },
       });
 
-      return books.map((b) => ({
-        id: b.id,
-        child_id: b.child_id,
-        child_name: b.child.name,
-        title: b.title,
-        status: b.status,
-        format: b.format,
-        cover_url: b.cover_asset ? `https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800` : null,
-        created_at: b.created_at.toISOString(),
-      }));
+      const bookSummaries = await Promise.all(
+        books.map(async (b) => {
+          let coverUrl: string | null = null;
+          if (b.cover_asset?.storage_key) {
+            try {
+              coverUrl = await storageService.getSignedDownloadUrl(b.cover_asset.storage_key);
+            } catch {
+              coverUrl = null;
+            }
+          }
+          return {
+            id: b.id,
+            child_id: b.child_id,
+            child_name: b.child.name,
+            title: b.title,
+            status: b.status,
+            format: b.format,
+            cover_url: coverUrl,
+            created_at: b.created_at.toISOString(),
+          };
+        })
+      );
+      return bookSummaries;
     });
 
     api.get('/books/:id', { preHandler: [authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
@@ -572,17 +587,44 @@ app.register(
         });
       }
 
+      let coverUrl: string | null = null;
+      if (book.cover_asset_id) {
+        const coverAsset = await prisma.asset.findUnique({ where: { id: book.cover_asset_id } });
+        if (coverAsset?.storage_key) {
+          try {
+            coverUrl = await storageService.getSignedDownloadUrl(coverAsset.storage_key);
+          } catch {
+            coverUrl = null;
+          }
+        }
+      }
+
+      const scenesWithUrls = await Promise.all(
+        book.scenes.map(async (s) => {
+          let imgUrl: string | null = null;
+          if (s.image_asset?.storage_key) {
+            try {
+              imgUrl = await storageService.getSignedDownloadUrl(s.image_asset.storage_key);
+            } catch {
+              imgUrl = null;
+            }
+          }
+          return {
+            scene_index: s.scene_index,
+            text: s.text,
+            image_url: imgUrl,
+          };
+        })
+      );
+
       return {
         id: book.id,
         title: book.title,
         status: book.status,
         format: book.format,
+        cover_url: coverUrl,
         can_upgrade: book.format === 'TEXT' && book.status === 'TEXT_READY',
-        scenes: book.scenes.map((s) => ({
-          scene_index: s.scene_index,
-          text: s.text,
-          image_url: s.image_asset ? `https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800` : null,
-        })),
+        scenes: scenesWithUrls,
         questions: book.questions.map((q) => ({
           after_scene: q.after_scene,
           question: q.question,
@@ -590,6 +632,21 @@ app.register(
           skill_tag: q.skill_tag,
         })),
       };
+    });
+
+    api.get('/media/stream', async (req: FastifyRequest, reply: FastifyReply) => {
+      const { key } = req.query as { key: string };
+      if (!key) return reply.status(400).send({ error: 'Missing key parameter' });
+      const cleanKey = key.replace(/^\/+/, '');
+      if (storageService instanceof LocalStorageService) {
+        const filePath = storageService.getFilePath(cleanKey);
+        if (!fs.existsSync(filePath)) {
+          return reply.status(404).send({ error: 'Asset not found' });
+        }
+        reply.type('image/jpeg');
+        return reply.send(fs.createReadStream(filePath));
+      }
+      return reply.redirect(await storageService.getSignedDownloadUrl(cleanKey));
     });
 
     // ----------------------------------------------------
@@ -699,16 +756,25 @@ app.register(
     api.post('/privacy/delete', { preHandler: [authenticate] }, async (req: FastifyRequest) => {
       const authUser = (req as any).user;
 
-      // Каскадно очищаем все данные пользователя
+      // 1. Физическое удаление файлов из S3/хранилища (152-ФЗ)
+      const userAssets = await prisma.asset.findMany({
+        where: { owner_id: authUser.id },
+      });
+      await Promise.all(
+        userAssets.map((asset) => storageService.deleteObject(asset.storage_key).catch(() => {}))
+      );
+
+      // 2. Каскадно очищаем все данные пользователя из PostgreSQL
       await prisma.$transaction(async (tx) => {
         await tx.childProfile.deleteMany({ where: { user_id: authUser.id } });
         await tx.book.deleteMany({ where: { user_id: authUser.id } });
+        await tx.asset.deleteMany({ where: { owner_id: authUser.id } });
         await tx.order.deleteMany({ where: { user_id: authUser.id } });
         await tx.creditLedger.deleteMany({ where: { user_id: authUser.id } });
         await tx.user.delete({ where: { id: authUser.id } });
       });
 
-      return { ok: true, message: 'Все персональные данные успешно удалены' };
+      return { ok: true, message: 'Все персональные данные и файлы успешно удалены' };
     });
 
     // ----------------------------------------------------

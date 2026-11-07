@@ -8,6 +8,7 @@ interface Screen6FinalQuestionProps {
   settings: ReaderSettings;
   onRestart: () => void;
   onGoToLibrary: () => void;
+  onCreateNewStory?: () => void;
 }
 
 export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
@@ -15,6 +16,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
   settings,
   onRestart,
   onGoToLibrary,
+  onCreateNewStory,
 }) => {
   const finalScene = book.scenes.find((s) => s.scene_index === 4) || book.scenes[book.scenes.length - 1];
   // После 4-й сцены вопрос показываем здесь, а не в читалке — так он не дублируется.
@@ -89,6 +91,29 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             )}
           </div>
         )}
+
+        {/* Предложение создать новую сказку с 3D-иллюстрациями */}
+        {onCreateNewStory && (
+          <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-500/10 via-brand-500/15 to-purple-500/10 border-2 border-brand-500/40 shadow-sm space-y-3 text-center">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500 text-white text-xs font-bold shadow-xs">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Следующая сказка — с картинками!</span>
+            </div>
+            <h3 className="font-serif font-black text-lg text-stone-900 dark:text-stone-100">
+              Хотите оживить любимых героев?
+            </h3>
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+              Создайте новую сказку с персональными 3D-иллюстрациями в стиле Pixar!
+            </p>
+            <button
+              onClick={onCreateNewStory}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:opacity-95 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 fill-white" />
+              <span>Создать сказку с картинками</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Кнопки действий (Экран 6: горизонтальный ряд) */}
@@ -103,7 +128,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
 
         <button
           onClick={onGoToLibrary}
-          className="flex-1 py-3.5 px-4 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          className="flex-1 py-3.5 px-4 rounded-2xl bg-stone-700 hover:bg-stone-800 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>В библиотеку</span>

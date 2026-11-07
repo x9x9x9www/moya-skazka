@@ -832,8 +832,11 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
     const sceneImg = avatarUrl || coverImg;
 
+    const isTextOnly = params.format === 'TEXT';
     const mockStory = {
       title: `${child} и тайна: «${theme}»`,
+      status: isTextOnly ? 'TEXT_READY' : 'ILLUSTRATED',
+      format: isTextOnly ? 'TEXT' : 'ILLUSTRATED',
       cover_url: avatarUrl || coverImg,
       avatar_url: avatarUrl,
       avatar_id: avatarKey,
@@ -927,6 +930,60 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
   if (!story.scenes || !Array.isArray(story.scenes) || story.scenes.length !== 4) {
     throw new Error('Invalid story scenes structure');
+  }
+
+  // Если формат сказки только текстовый (бесплатная первая сказка), не тратим токены на генерацию 5 картинок
+  if (params.format === 'TEXT') {
+    console.log(`[StoryEngine] 📖 Формат 'TEXT' (первая бесплатная сказка): пропускаем генерацию 5 иллюстраций`);
+    const avatarReferenceUrl = resolveAvatarReferenceUrl(params);
+    story.avatar_url = avatarReferenceUrl;
+    story.cover_url = avatarReferenceUrl || getThemedFallbackIllustration(params.theme, 0, params);
+    for (const scene of story.scenes) {
+      scene.image_url = story.cover_url;
+      scene.id = scene.id || `scene_${scene.index}`;
+      scene.scene_index = scene.index;
+      scene.image_prompt = scene.visual;
+    }
+
+    story.id = jobId || ('story_' + Date.now());
+    story.status = 'TEXT_READY';
+    story.format = 'TEXT';
+    story.scenes = (story.scenes || []).map((s, idx) => ({
+      id: s.id || `scene_${s.scene_index || s.index || idx + 1}`,
+      scene_index: s.scene_index || s.index || idx + 1,
+      index: s.scene_index || s.index || idx + 1,
+      text: s.text || '',
+      image_url: s.image_url || null,
+      image_prompt: s.image_prompt || s.visual || null,
+    }));
+    story.questions = (story.questions || []).map((q, idx) => ({
+      id: q.id || `q_${idx + 1}`,
+      after_scene: q.after_scene || (idx === 0 ? 2 : 4),
+      question: q.question || '',
+      parent_hint: q.parent_hint || null,
+      skill_tag: q.skill_tag || q.skill || 'emotions',
+    }));
+
+    const userId = params.userId || 'user_default';
+    const childKey = (params.childName || '').trim().toLowerCase();
+    const userChildKey = childKey ? `${userId}_${childKey}` : '';
+    if (userChildKey) {
+      recentReadyStories.set(userChildKey, {
+        story,
+        jobId: story.id,
+        readyAt: Date.now(),
+        userId,
+      });
+    }
+
+    onProgress?.({
+      stage: 'finishing',
+      progress: 100,
+      message: 'Сказка готова!',
+      story,
+    });
+
+    return story;
   }
 
   onProgress?.({

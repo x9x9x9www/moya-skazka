@@ -38,7 +38,11 @@ const ConfigSchema = z.object({
 
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
+  S3_REGION: z.string().default('ru-central1'),
   S3_BUCKET_NAME: z.string().default('moya-skazka-assets'),
+  S3_ACCESS_KEY: z.string().default('minioadmin'),
+  S3_SECRET_KEY: z.string().default('minioadmin'),
+  S3_FORCE_PATH_STYLE: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
   S3_SIGNED_URL_EXPIRES_SECONDS: z.coerce.number().default(3600),
 
   JOB_WORKER_TYPE: z.enum(['db', 'bullmq']).default('db'),
