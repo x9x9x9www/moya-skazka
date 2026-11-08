@@ -937,9 +937,9 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     console.log(`[StoryEngine] 📖 Формат 'TEXT' (первая бесплатная сказка): пропускаем генерацию 5 иллюстраций`);
     const avatarReferenceUrl = resolveAvatarReferenceUrl(params);
     story.avatar_url = avatarReferenceUrl;
-    story.cover_url = avatarReferenceUrl || getThemedFallbackIllustration(params.theme, 0, params);
+    story.cover_url = avatarReferenceUrl || null;
     for (const scene of story.scenes) {
-      scene.image_url = story.cover_url;
+      scene.image_url = null;
       scene.id = scene.id || `scene_${scene.index}`;
       scene.scene_index = scene.index;
       scene.image_prompt = scene.visual;
@@ -953,7 +953,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       scene_index: s.scene_index || s.index || idx + 1,
       index: s.scene_index || s.index || idx + 1,
       text: s.text || '',
-      image_url: s.image_url || null,
+      image_url: null,
       image_prompt: s.image_prompt || s.visual || null,
     }));
     story.questions = (story.questions || []).map((q, idx) => ({
@@ -2151,13 +2151,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         },
       ];
 
-      const raw = await callWellflowChat(messages, '[AvatarVision]', { timeoutMs: 15000 });
-
-      // Шаг Б (Zero-Storage): Буфер imageBase64 немедленно обнуляется из памяти
-      dataUrl = null;
-      imageBase64 = null;
-      parsedBody.imageBase64 = null;
-      parsedBody.image = null;
+      const raw = await callWellflowChat(messages, '[AvatarVision]', { timeoutMs: 45000 });
 
       let parsed = {};
       try {
@@ -2261,12 +2255,18 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       let avatarUrl = '';
       try {
-        const remoteUrl = await generateWellflowImageAI(avatarPrompt);
+        const remoteUrl = await generateWellflowImageAI(avatarPrompt, 2, dataUrl);
         if (remoteUrl) {
           avatarUrl = await saveGeneratedImage(remoteUrl, 'avatars', 'avatar_' + Date.now());
         }
       } catch (genErr) {
         console.warn('[AvatarGen] ⚠️ Ошибка генерации Nano-Banana-2, fallback к локальному пресету:', genErr.message);
+      } finally {
+        // Шаг Б (Zero-Storage): Буфер imageBase64 и dataUrl немедленно очищается из памяти
+        dataUrl = null;
+        imageBase64 = null;
+        parsedBody.imageBase64 = null;
+        parsedBody.image = null;
       }
 
       if (!avatarUrl) {
@@ -2425,8 +2425,8 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         },
       ];
 
-      // Быстрый вызов Vision с лимитом токенов для скорости (до 2-4 секунд)
-      const raw = await callWellflowChat(messages, '[PhotoVision]', { max_tokens: 280, timeoutMs: 15000 });
+      // Vision анализ с достаточным временем для reasoning токенов
+      const raw = await callWellflowChat(messages, '[PhotoVision]', { max_tokens: 350, timeoutMs: 45000 });
       let parsed = {};
       try {
         parsed = JSON.parse(raw);

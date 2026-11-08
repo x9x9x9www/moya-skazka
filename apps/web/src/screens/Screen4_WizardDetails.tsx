@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Sparkles, MessageCircleQuestion, Check, Edit2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, MessageCircleQuestion, Check, Edit2, Camera, RefreshCw } from 'lucide-react';
 import { WizardHeroData } from './Screen3_WizardHero';
-import { resolveChildAvatar } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
+import { api } from '../api/client';
 
 export interface Screen4WizardDetailsProps {
   heroData: WizardHeroData;
@@ -10,6 +11,7 @@ export interface Screen4WizardDetailsProps {
   remainingSeconds?: number;
   creationMessage?: string;
   onEditHero?: () => void;
+  onUpdateHero?: (data: WizardHeroData) => void;
   onSubmit: (details: {
     personality: string;
     storyMood?: string;
@@ -124,8 +126,107 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   remainingSeconds,
   creationMessage,
   onEditHero,
+  onUpdateHero,
   onSubmit,
 }) => {
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type && !file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
+      setUploadError('Пожалуйста, выберите файл фотографии (JPG, PNG, WEBP).');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setUploadError(null);
+
+    try {
+      const reader = new FileReader();
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Не удалось прочитать файл фото'));
+        reader.readAsDataURL(file);
+      });
+
+      const img = new Image();
+      const optimizedBase64 = await new Promise<string>((resolve) => {
+        img.onload = () => {
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(rawBase64);
+        img.src = rawBase64;
+      });
+
+      const res = await api.generateCharacterAvatar(
+        optimizedBase64,
+        heroData.appearance?.clothingItem || '',
+        'image/jpeg',
+        {
+          knownGender: heroData.gender,
+          knownName: heroData.childName,
+          knownAge: heroData.age,
+        }
+      );
+
+      const traits = res.traits || {};
+      const targetGender = heroData.gender || (traits.gender as 'boy' | 'girl') || 'boy';
+      const targetHair = traits.hairColor || heroData.appearance?.hairColor || 'русые';
+      const targetSkin = traits.skinTone || heroData.appearance?.skinTone || 'светлая';
+      const targetFeatures = traits.distinctiveFeatures || heroData.appearance?.distinctiveFeatures || '';
+
+      const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
+        gender: targetGender,
+        hairColor: targetHair,
+        skinTone: targetSkin,
+        distinctiveFeatures: targetFeatures,
+      });
+
+      const updatedHero: WizardHeroData = {
+        ...heroData,
+        appearance: {
+          ...heroData.appearance,
+          avatar_url: res.avatarUrl,
+          avatar_id: targetAvatarId,
+          hairColor: targetHair,
+          hairType: traits.hairType || heroData.appearance?.hairType || 'кудрявые',
+          eyeColor: traits.eyeColor || heroData.appearance?.eyeColor || 'карие',
+          skinTone: targetSkin,
+          distinctiveFeatures: targetFeatures,
+        },
+      };
+
+      onUpdateHero?.(updatedHero);
+    } catch (err: any) {
+      console.warn('[Screen4_WizardDetails] Ошибка генерации аватара по фото:', err.message);
+      setUploadError('Не удалось создать аватар по фото. Попробуйте ещё раз.');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   // Определяем начальную опцию на основе переданной темы
   const getInitialThemeId = (): string => {
     const current = (heroData.theme || '').toLowerCase();
@@ -205,43 +306,86 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
         </p>
       </div>
 
-      {/* Карточка превью сгенерированного героя с кнопкой изменения */}
-      <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-cream-50">
-            <img
-              src={avatarUrl}
-              alt={heroData.childName}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-stone-900 truncate">
-              {heroData.childName}{heroData.age ? `, ${formatChildAgeRus(heroData.age)}` : ''}
-            </div>
-            <div className="text-xs text-stone-600 truncate mt-0.5">
-              {heroData.appearance?.hairColor ? `${heroData.appearance.hairColor} волосы • ` : ''}
-              {heroData.appearance?.toy ? `Спутник: ${heroData.appearance.toy}` : (heroData.appearance?.clothingItem || 'Маленький герой')}
-            </div>
-            {heroData.interests && heroData.interests.length > 0 && (
-              <div className="text-[11px] text-brand-800 font-medium truncate mt-0.5 flex items-center gap-1">
-                <span className="text-rose-500">❤️</span>
-                <span>Любит: {heroData.interests.join(', ')}</span>
+      {/* Карточка превью сгенерированного героя с кнопкой изменения и загрузкой фото */}
+      <div className="rounded-3xl bg-amber-50/90 border border-amber-200 p-3.5 sm:p-4 shadow-sm space-y-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div
+              onClick={() => photoInputRef.current?.click()}
+              className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-cream-50 cursor-pointer group"
+              title="Нажмите, чтобы загрузить фото"
+            >
+              <img
+                src={avatarUrl}
+                alt={heroData.childName}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Camera className="w-5 h-5 text-white" />
               </div>
-            )}
+              {isUploadingPhoto && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-white animate-spin" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-stone-900 truncate">
+                {heroData.childName}{heroData.age ? `, ${formatChildAgeRus(heroData.age)}` : ''}
+              </div>
+              <div className="text-xs text-stone-600 truncate mt-0.5">
+                {heroData.appearance?.hairColor ? `${heroData.appearance.hairColor} волосы • ` : ''}
+                {heroData.appearance?.toy ? `Спутник: ${heroData.appearance.toy}` : (heroData.appearance?.clothingItem || 'Маленький герой')}
+              </div>
+              {heroData.interests && heroData.interests.length > 0 && (
+                <div className="text-[11px] text-brand-800 font-medium truncate mt-0.5 flex items-center gap-1">
+                  <span className="text-rose-500">❤️</span>
+                  <span>Любит: {heroData.interests.join(', ')}</span>
+                </div>
+              )}
+            </div>
           </div>
+
+          {onEditHero && (
+            <button
+              type="button"
+              onClick={onEditHero}
+              className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 text-xs font-bold text-stone-700 border border-amber-200 shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+              title="Редактировать внешность героя"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-stone-500" />
+              <span>Изменить</span>
+            </button>
+          )}
         </div>
 
-        {onEditHero && (
+        {/* Быстрая загрузка фото прямо в настройке сказки */}
+        <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between">
+          <input
+            type="file"
+            ref={photoInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
           <button
             type="button"
-            onClick={onEditHero}
-            className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 text-xs font-bold text-stone-700 border border-amber-200 shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
-            title="Редактировать внешность героя"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={isUploadingPhoto}
+            className="text-xs font-bold text-amber-800 hover:text-amber-950 flex items-center gap-1.5 active:scale-95 transition-all py-0.5"
           >
-            <Edit2 className="w-3.5 h-3.5 text-stone-500" />
-            <span>Изменить</span>
+            <Camera className="w-4 h-4 text-amber-600" />
+            <span>{isUploadingPhoto ? 'Создаём 3D аватар по фото...' : 'Загрузить фото ребёнка'}</span>
           </button>
+          {heroData.appearance?.avatar_url && !heroData.appearance.avatar_url.includes('illustrations/avatars/') && (
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+              ✓ 3D аватар по фото
+            </span>
+          )}
+        </div>
+
+        {uploadError && (
+          <p className="text-xs text-rose-600 font-medium">{uploadError}</p>
         )}
       </div>
 

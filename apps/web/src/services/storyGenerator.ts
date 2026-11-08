@@ -155,8 +155,9 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
 
   const title = `${declined.nom} и тайна: «${theme}»`;
 
-  // Иллюстрации сцен привязаны к теме или аватару героя (без чужих демо-картинок)
-  const defaultSceneImg = params.avatarUrl || coverUrl;
+  const isTextOnly = params.format === 'TEXT';
+  // Иллюстрации сцен привязаны к теме или аватару героя (для формата TEXT - строго без картинок на сценах)
+  const defaultSceneImg = isTextOnly ? null : (params.avatarUrl || coverUrl);
   const scene1Img = defaultSceneImg;
   const scene2Img = defaultSceneImg;
   const scene3Img = defaultSceneImg;
@@ -239,10 +240,10 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   return {
     id: bookId,
     title,
-    status: 'ILLUSTRATED',
-    format: 'ILLUSTRATED',
+    status: isTextOnly ? 'TEXT_READY' : 'ILLUSTRATED',
+    format: isTextOnly ? 'TEXT' : 'ILLUSTRATED',
     can_upgrade: false,
-    cover_url: coverUrl,
+    cover_url: isTextOnly ? (params.avatarUrl || null) : coverUrl,
     scenes,
     questions,
   };
@@ -703,7 +704,7 @@ export async function callWellflowStory(
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
-    const initTimer = setTimeout(() => initCtrl.abort(), 4500);
+    const initTimer = setTimeout(() => initCtrl.abort(), 20000);
 
     try {
       const response = await fetch(candidate.url, {
@@ -867,18 +868,19 @@ export async function generateDynamicStory(
       } catch {}
     }
     if (!storyData) {
-      console.warn('[StoryGenerator] ⚠️ Серверный мост недоступен, бесшовно создаём сказку через локальный Story Engine...');
-      onProgress?.({
-        stage: 'finishing',
-        progress: 100,
-        message: 'Сказка готова!',
-      });
-      return createMockStory(params);
+      if (isMockMode()) {
+        console.warn('[StoryGenerator] ⚠️ Тестовый режим: возврат мок сказки');
+        return createMockStory(params);
+      }
+      throw new Error(lastError?.message || 'Сервер создания сказки временно недоступен. Пожалуйста, попробуйте снова.');
     }
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    return createMockStory(params);
+    if (isMockMode()) {
+      return createMockStory(params);
+    }
+    throw new Error('Получен некорректный ответ от генератора сказок. Пожалуйста, попробуйте снова.');
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));
@@ -971,7 +973,7 @@ export async function generateDynamicStory(
     );
   }
 
-  // Железная гарантия: ни одна сцена не останется с пустым image_url!
+  // Для иллюстрированных книг гарантируем наличие картинки на каждой сцене
   scenes.forEach((s: any, idx: number) => {
     if (!s.image_url) {
       s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);

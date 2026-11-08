@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FairyStarIcon, ArtPaletteIcon } from './FairytaleIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
-import { getFairytaleFallbackIllustration } from '../services/storyGenerator';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -36,7 +35,6 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   childName,
   imageUrl,
 }) => {
-  const fallbackSrc = getFairytaleFallbackIllustration(theme || interest, sceneIndex);
   const [currentSrc, setCurrentSrc] = useState<string>(imageUrl || '');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -64,14 +62,8 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   }, [imageLoaded]);
 
   const handleImageError = () => {
-    if (currentSrc && currentSrc !== fallbackSrc) {
-      console.warn(`[FairytaleIllustration] Primary image failed, switching to local fallback: ${fallbackSrc}`);
-      setCurrentSrc(fallbackSrc);
-      setImageLoaded(false);
-    } else {
-      console.warn(`[FairytaleIllustration] Image load failed: ${currentSrc}`);
-      setImageFailed(true);
-    }
+    console.warn(`[FairytaleIllustration] Ошибка загрузки иллюстрации: ${currentSrc}`);
+    setImageFailed(true);
   };
 
   // Проверяем, есть ли ссылка на картинку и не завершилась ли она ошибкой

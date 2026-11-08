@@ -532,7 +532,7 @@ export const App: React.FC = () => {
       mood: idea?.suggested_params?.mood || prev.mood,
       customWishes: idea?.suggested_params?.customWishes || idea?.blurb || prev.customWishes,
     }));
-    setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
+    setCurrentScreen('wizard_hero');
   };
 
   const loadReferrals = async () => {
@@ -848,7 +848,7 @@ export const App: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'home') setCurrentScreen('home');
     else if (tab === 'create') {
-      setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero');
+      setCurrentScreen('wizard_hero');
     } else if (tab === 'books') setCurrentScreen('library');
     else if (tab === 'shop') setCurrentScreen('shop');
     else if (tab === 'friends') setCurrentScreen('referrals');
@@ -870,7 +870,7 @@ export const App: React.FC = () => {
           activeChild={activeChild}
           balance={balance}
           onBack={() => {
-            if (currentScreen === 'wizard_details') setCurrentScreen(hasChildProfile ? 'home' : 'wizard_hero');
+            if (currentScreen === 'wizard_details') setCurrentScreen('wizard_hero');
             else setCurrentScreen('home');
           }}
           onOpenChildModal={() => setChildModalOpen(true)}
@@ -1053,7 +1053,7 @@ export const App: React.FC = () => {
             dailyIdea={dailyIdea}
             booksCount={books.length}
             isRefreshingIdea={isRefreshingIdea}
-            onStartCreateStory={() => setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero')}
+            onStartCreateStory={() => setCurrentScreen('wizard_hero')}
             onStartFromDailyIdea={handleStartFromDailyIdea}
             onNavigateTab={handleTabChange}
             onRefreshIdea={handleRefreshDailyIdea}
@@ -1078,6 +1078,7 @@ export const App: React.FC = () => {
             remainingSeconds={remainingSeconds}
             creationMessage={creationMessage}
             onEditHero={() => setCurrentScreen('wizard_hero')}
+            onUpdateHero={setWizardData}
             onSubmit={handleCreateStorySubmit}
           />
         )}
@@ -1148,12 +1149,21 @@ export const App: React.FC = () => {
                   } else {
                     if (parsed.scenes && Array.isArray(parsed.scenes)) {
                       let updated = false;
-                      parsed.scenes.forEach((sc: any, idx: number) => {
-                        if (!sc.image_url) {
-                          sc.image_url = getFairytaleFallbackIllustration(parsed.title || wizardData.theme, idx + 1);
-                          updated = true;
-                        }
-                      });
+                      if (parsed.format !== 'TEXT') {
+                        parsed.scenes.forEach((sc: any, idx: number) => {
+                          if (!sc.image_url) {
+                            sc.image_url = getFairytaleFallbackIllustration(parsed.title || wizardData.theme, idx + 1);
+                            updated = true;
+                          }
+                        });
+                      } else {
+                        parsed.scenes.forEach((sc: any) => {
+                          if (sc.image_url) {
+                            sc.image_url = null;
+                            updated = true;
+                          }
+                        });
+                      }
                       if (updated) {
                         try {
                           localStorage.setItem(`ms_story_${id}`, JSON.stringify(parsed));
@@ -1247,7 +1257,7 @@ export const App: React.FC = () => {
                 openReader(generated);
               }
             }}
-            onCreateNewStory={() => setCurrentScreen(hasChildProfile ? 'wizard_details' : 'wizard_hero')}
+            onCreateNewStory={() => setCurrentScreen('wizard_hero')}
             onUpgradeBook={(id) => {
               setSelectedBookForUpgrade(id);
               setUpgradeModalOpen(true);

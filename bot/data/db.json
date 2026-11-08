@@ -10,11 +10,11 @@
       "default_questions_enabled": true,
       "timezone": "UTC+3",
       "balance": {
-        "total": 4,
-        "paid": 4,
+        "total": 3,
+        "paid": 3,
         "gift": 0,
         "reserved": 0,
-        "available": 4
+        "available": 3
       },
       "createdAt": "2026-11-06T01:03:42.243Z"
     },
@@ -87,6 +87,38 @@
       },
       "is_active": true,
       "updatedAt": "2026-11-07T09:18:59.177Z"
+    },
+    "child_1794066772044_g6xl": {
+      "id": "child_1794066772044_g6xl",
+      "user_id": "1212593604",
+      "name": "Олег",
+      "age": 4,
+      "gender": "boy",
+      "interests": [
+        "Волшебство",
+        "Шутки"
+      ],
+      "appearance": {
+        "avatar_id": "boy_brown",
+        "gender": "boy",
+        "hair": "русые волосы",
+        "clothing": "уютный свитер",
+        "personality": "Мечтатель и фантазёр",
+        "hairColor": "русые",
+        "hairType": "короткие прямые",
+        "hairLength": "короткие",
+        "hairStructure": "прямые",
+        "clothingItem": "уютный свитер",
+        "clothingColor": "изумрудный",
+        "toy": "Смайлик",
+        "eyeColor": "карие",
+        "skinTone": "персиковая",
+        "distinctiveFeatures": "",
+        "storyPreference": "Смешные и озорные моменты",
+        "bedtimeRitual": "Чтение в тёплых объятиях"
+      },
+      "is_active": true,
+      "updatedAt": "2026-11-07T15:52:52.045Z"
     }
   },
   "books": {
@@ -399,6 +431,68 @@
       ],
       "can_upgrade": false,
       "created_at": "2026-11-07T09:21:38.153Z"
+    },
+    "story_1794066819122_4ec7ug": {
+      "id": "story_1794066819122_4ec7ug",
+      "user_id": "1212593604",
+      "child_id": "default",
+      "child_name": "Олег",
+      "title": "Олег и Смайлик в стране перепутанных хихиканий",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению. За ним распахнулась дверца в страну, где шляпы прыгали по ступенькам, воздушные шарики щекотали носы, а клоунские рожки пищали: «Пи-пи-пи!» Олег шагнул внутрь, и рядом с ним подпрыгнул Смайлик. Пуговичный глазок ласково подмигнул. Вокруг кружились разноцветные ленты, смешные носы и бумажные короны. Маленький барабан сам отбивал весёлый ритм, но вдруг надел корону и важно поклонился. — Кажется, здесь всё перепуталось, — улыбнулся Олег. — Тогда будем распутывать со смехом! — ответил Смайлик и согрел ладошку Олега.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+          "image_prompt": "Wide, low-angle view of a sunny whimsical comedy realm with jumping hats, balloons, clown noses, paper crowns, curling ribbons, and squeaky horns. The boy and toy companion step through a glowing doorway as warm light fills the scene."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "На площади стояла большая сцена. На ней лежали перепутанные шляпы, волшебные усики, смешные очки и целая корзина пищалок. Праздник должен был начаться, но ведущий потерял свою шутливую шляпу. Без неё все забывали, кому говорить, кому кланяться, а кому смешно чихать. Смайлик надел сразу три шляпы. Они сползли ему на глаза, и он пошёл боком, бормоча: «Я не ведущий, я шагающий пирог!» Все засмеялись, но Смайлик тихонько опустил пуговичный взгляд. Олег заметил его грусть, снял одну шляпу и протянул руку: — Не бойся. Мы придумаем такую шутку, чтобы тебе стало радостно. Давай сначала найдём правильную шляпу.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+          "image_prompt": "Medium shot of a colorful stage covered with mixed hats, funny glasses, fake moustaches, squeaky toys, and ribbons. The toy companion wears three oversized hats while the boy gently reaches toward him under bright playful sunlight."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Олег посмотрел на шляпы и вдруг придумал план. Он надел одну набекрень, вторую поставил на Смайлика, а третью усадил на барабан. Потом взял волшебную палочку и прошептал: «Пусть сегодня смеются все, но никто не остаётся один!» Смайлик подал ему красный клоунский нос. Олег нацепил его на палочку, и палочка чихнула: «Апчхи-пи!» Из корзины выскочили смешные усы, приклеились к воздушным шарикам и поплыли по площади. Даже сердитый барабан рассмеялся гулким: «Бум-ха-ха!» Смайлик придумал ещё одну шутку: поклонился зрителям, но его шляпы поклонились раньше него. Олег поддержал друга за плечо, и вместе они устроили самый смешной парад путаницы. Смайлик снова засиял.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+          "image_prompt": "Dynamic close three-quarter view of the boy and toy companion performing onstage with crooked hats, a red clown nose on a magic wand, floating balloons with fake moustaches, and a laughing drum. Golden beams and colorful confetti create joyful motion."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Площадь зазвенела смехом. Шляпы покатились цепочкой, очки запрыгали по ступенькам, а ленты завязали на воздушных шариках огромные смешные банты. Смайлик кланялся, но каждый раз садился мимо маленькой подушечки и мягко плюхался на неё боком. Олег рассмеялся вместе со всеми и помог ему подняться. Потом они стали главными распорядителями праздника: Олег показывал фокус с исчезающей шляпой, а Смайлик подавал пищалки и шептал самые нелепые реплики.",
+          "image_url": "https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/boy_brown.webp",
+          "image_prompt": "Warm wide shot of the joyful plaza finale: rolling hats, bouncing glasses, balloon bows, curling ribbons, squeaky horns, and colorful confetti surround the laughing duo. Soft afternoon sunlight leads toward a glowing home doorway."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Почему Смайлик перестал улыбаться?",
+          "parent_hint": "Попросите ребёнка показать лицом, как Смайлику стало грустно, а потом радостно.",
+          "skill_tag": "emotions"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Какую шутку Олег мог придумать дома?",
+          "parent_hint": "Предложите вместе разыграть безопасную маленькую шутку игрушками.",
+          "skill_tag": "imagination"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-07T15:56:05.596Z"
     }
   },
   "daily_ideas": {
@@ -426,12 +520,12 @@
       "created_at": "2026-11-07T10:33:25.790Z"
     },
     "child_test_2_2026-11-07": {
-      "id": "idea_415231131",
+      "id": "idea_618136068",
       "child_id": "child_test_2",
       "local_date": "2026-11-07",
-      "title": "Малыш и секретный пояс добрых дел",
-      "blurb": "Малыш получает особый пояс с кристаллами, которые сияют только тогда, когда совершаешь бескорыстный добрый поступок.",
-      "theme": "Смелость",
+      "title": "Малыш и кисточка утренней зари",
+      "blurb": "Сказка о волшебных красках: Малыш раскрашивает лесную поляну яркими цветами и дарит каждому цветку свой неповторимый узор.",
+      "theme": "Творчество",
       "cover_url": "/illustrations/cover_star.jpg",
       "status": "REFRESHED",
       "is_saved": false,
@@ -439,15 +533,15 @@
         "childName": "Малыш",
         "gender": "boy",
         "age": 4,
-        "theme": "Смелость",
-        "mood": "Приключение",
+        "theme": "Творчество",
+        "mood": "Творчество",
         "interests": [
           "Волшебство"
         ],
-        "customWishes": "Супергеройская смелость, помощь друзьям и благородство."
+        "customWishes": "Фантазия, свобода рисования и уверенность в своём творчестве."
       },
-      "created_at": "2026-11-07T15:38:11.558Z",
-      "_refreshCount": 4
+      "created_at": "2026-11-08T12:44:59.469Z",
+      "_refreshCount": 5
     },
     "child_test_3_2026-11-07": {
       "id": "idea_1981181318",
@@ -471,6 +565,53 @@
         "customWishes": "Умение делиться игрушками, командная работа и радость общего праздника."
       },
       "created_at": "2026-11-07T10:33:25.794Z"
+    },
+    "test_2026-11-08": {
+      "id": "idea_1882744741",
+      "child_id": "test",
+      "local_date": "2026-11-08",
+      "title": "Малыш и тихий маячок звёздной гавани",
+      "blurb": "Вдохновляющая сказка о том, как Малыш перестал бояться темноты, зажёг крошечный фонарик и указал дорогу заблудившейся звёздочке.",
+      "theme": "Смелость",
+      "cover_url": "/illustrations/cover_star.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Малыш",
+        "gender": "boy",
+        "age": 4,
+        "theme": "Смелость",
+        "mood": "Приключение",
+        "interests": [
+          "Волшебство"
+        ],
+        "customWishes": "Преодоление робости перед темнотой, внутренний огонёк уверенности."
+      },
+      "created_at": "2026-11-07T15:51:28.646Z"
+    },
+    "child_1794043139177_lrq4_2026-11-07": {
+      "id": "idea_1566612063",
+      "child_id": "child_1794043139177_lrq4",
+      "local_date": "2026-11-07",
+      "title": "Лев и секрет светящихся колец Сатурна",
+      "blurb": "Уютный космический корабль уносит [object Object] к далёким звёздам, где звёздные китята поют колыбельные планетам.",
+      "theme": "Любознательность",
+      "cover_url": "/illustrations/cover_star.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Лев",
+        "gender": "boy",
+        "age": 6,
+        "theme": "Любознательность",
+        "mood": "Приключение",
+        "interests": [
+          "Волшебство",
+          "Космос"
+        ],
+        "customWishes": "Космические просторы, доброта вселенной и спокойный полёт."
+      },
+      "created_at": "2026-11-07T15:51:56.723Z"
     }
   },
   "saved_ideas": {
@@ -480,7 +621,7 @@
       "user_id": "user_test_save",
       "title": "Малыш и мостик через звонкий ручей",
       "theme": "Дружба и взаимопомощь",
-      "saved_at": "2026-11-07T15:38:11.560Z"
+      "saved_at": "2026-11-08T12:44:59.470Z"
     }
   }
 }

@@ -226,33 +226,43 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         className="flex-1 p-5 space-y-6 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-contain"
         style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 24px))' }}
       >
-        {/* Крупная сказочная иллюстрация с мягким виньетированием и Ken Burns эффектом */}
-        <div className="relative rounded-3xl overflow-hidden shadow-card border border-amber-200/60 bg-cream-100">
-          <div
-            key={currentSceneIndex}
-            className="w-full transition-all duration-500 ease-out animate-ken-burns"
-          >
-            <FairytaleIllustration
-              sceneIndex={currentSceneIndex}
-              theme={theme || book.title}
-              interest={interest || 'Волшебство'}
-              childName={childName || 'Герой'}
-              appearance={appearance}
-              imageUrl={liveImageUrl || currentScene?.image_url}
+        {/* Для иллюстрированных историй - живая иллюстрация, для текстовых - аккуратный книжный заголовок главы */}
+        {book.format === 'TEXT' || !(liveImageUrl || currentScene?.image_url) ? (
+          <div className="pt-2 pb-1 text-center select-none">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold font-mono tracking-wide">
+              <FairyStarIcon className="w-3.5 h-3.5 text-amber-500" />
+              <span>Глава {currentSceneIndex} из 4</span>
+            </div>
+          </div>
+        ) : (
+          /* Крупная сказочная иллюстрация с мягким виньетированием и Ken Burns эффектом */
+          <div className="relative rounded-3xl overflow-hidden shadow-card border border-amber-200/60 bg-cream-100">
+            <div
+              key={currentSceneIndex}
+              className="w-full transition-all duration-500 ease-out animate-ken-burns"
+            >
+              <FairytaleIllustration
+                sceneIndex={currentSceneIndex}
+                theme={theme || book.title}
+                interest={interest || 'Волшебство'}
+                childName={childName || 'Герой'}
+                appearance={appearance}
+                imageUrl={liveImageUrl || currentScene?.image_url}
+              />
+            </div>
+
+            {/* Мягкое виньетирование снизу: картинка плавно перетекает в текст без грубой линии среза */}
+            <div
+              className={`absolute inset-x-0 bottom-0 h-20 pointer-events-none transition-colors duration-300 ${
+                settings.theme === 'light'
+                  ? 'bg-gradient-to-t from-white via-white/50 to-transparent'
+                  : settings.theme === 'dark'
+                  ? 'bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent'
+                  : 'bg-gradient-to-t from-[#FAF6F0] via-[#FAF6F0]/60 to-transparent'
+              }`}
             />
           </div>
-
-          {/* Мягкое виньетирование снизу: картинка плавно перетекает в текст без грубой линии среза */}
-          <div
-            className={`absolute inset-x-0 bottom-0 h-20 pointer-events-none transition-colors duration-300 ${
-              settings.theme === 'light'
-                ? 'bg-gradient-to-t from-white via-white/50 to-transparent'
-                : settings.theme === 'dark'
-                ? 'bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent'
-                : 'bg-gradient-to-t from-[#FAF6F0] via-[#FAF6F0]/60 to-transparent'
-            }`}
-          />
-        </div>
+        )}
 
         {/* Текст сцены: строго выравнивание text-left (убирает неестественные пробелы мобильных экранов) */}
         <div className="px-1 pt-1">

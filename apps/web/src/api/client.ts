@@ -298,7 +298,7 @@ class ApiClient {
     try {
       const res: any = await this.request('/ai/analyze-photo', {
         method: 'POST',
-        signal: createTimeoutSignal(15000),
+        signal: createTimeoutSignal(60000),
         body: JSON.stringify({
           imageBase64,
           knownGender: context?.knownGender,
@@ -455,7 +455,7 @@ class ApiClient {
     try {
       const res: any = await this.request('/character/generate-avatar', {
         method: 'POST',
-        signal: createTimeoutSignal(15000),
+        signal: createTimeoutSignal(90000),
         body: JSON.stringify({
           imageBase64,
           outfit,
