@@ -378,15 +378,20 @@ export function appearanceHints(appearance = {}) {
 
   let hairType = 'neat short playful';
   const rawType = String(appearance.hairType || '').toLowerCase();
-  const isCurly = rawType.includes('кудр');
-  const isStraight = rawType.includes('прям');
-  const isLong = rawType.includes('длинн');
-  const isShort = rawType.includes('коротк');
+  const rawLength = String(appearance.hairLength || '').toLowerCase();
+  const rawStructure = String(appearance.hairStructure || '').toLowerCase();
+  const combined = `${rawLength} ${rawType} ${rawStructure}`;
+  const isCurly = combined.includes('кудр') || combined.includes('curly') || combined.includes('волнист') || combined.includes('wavy');
+  const isStraight = combined.includes('прям') || combined.includes('straight');
+  const isLong = combined.includes('длинн') || combined.includes('long');
+  const isShort = combined.includes('коротк') || combined.includes('short');
+
+  const LONG_HAIR_DESCRIPTOR = 'long flowing hair reaching below shoulders, neat hairstyle, consistent length';
 
   if (isLong && isCurly) {
-    hairType = 'long bouncy curly wavy with a small ribbon';
+    hairType = `${LONG_HAIR_DESCRIPTOR}, bouncy curly wavy with a small ribbon`;
   } else if (isLong && isStraight) {
-    hairType = 'long smooth straight silky with a small ribbon';
+    hairType = `${LONG_HAIR_DESCRIPTOR}, smooth straight silky with a small ribbon`;
   } else if (isShort && isCurly) {
     hairType = 'short playful bouncy curly';
   } else if (isShort && isStraight) {
@@ -396,7 +401,7 @@ export function appearanceHints(appearance = {}) {
   } else if (isStraight) {
     hairType = 'neat smooth straight silky';
   } else if (isLong) {
-    hairType = 'long with a small ribbon';
+    hairType = `${LONG_HAIR_DESCRIPTOR}, with a small ribbon`;
   } else if (isShort) {
     hairType = 'neat short playful';
   } else if (HAIR_TYPE_EN[appearance.hairType]) {
@@ -1447,6 +1452,11 @@ function normalizeCharacters(rawCharacters, params) {
   const hints = appearanceHints(params.appearance);
   for (const c of characters) {
     if (c.role === 'hero' || c.id === 'hero') {
+      const rawCombined = `${params.appearance?.hairLength || ''} ${params.appearance?.hairType || ''}`.toLowerCase();
+      const isLong = rawCombined.includes('длинн') || rawCombined.includes('long');
+      if (isLong && !c.visual_description.toLowerCase().includes('below shoulders')) {
+        c.visual_description = `${c.visual_description}, with long flowing hair reaching below shoulders, neat hairstyle, consistent length`.trim();
+      }
       if (!c.visual_description.toLowerCase().includes('wearing') && hints.clothes) {
         c.visual_description = `${c.visual_description}, wearing ${hints.clothes}${hints.glasses}`.trim();
         issues.push(`character hero: добавлена одежда из профиля (${hints.clothes})`);
@@ -1666,16 +1676,43 @@ function characterBlock(characters) {
     .join(' ');
 }
 
+export function buildCharacterAnchor(params = {}) {
+  const child = params.childName || params.name || 'Hero';
+  const age = Number(params.age) || 4;
+  const isGirl = params.gender === 'girl' || (String(child).endsWith('а') || String(child).endsWith('я'));
+  const genderWord = isGirl ? 'girl' : 'boy';
+  const hints = appearanceHints(params.appearance || params);
+
+  const rawType = String(params.appearance?.hairType || params.hairType || '').toLowerCase();
+  const rawLength = String(params.appearance?.hairLength || params.hairLength || '').toLowerCase();
+  const combined = `${rawLength} ${rawType}`;
+  const isLong = combined.includes('длинн') || combined.includes('long');
+
+  const hairDescriptor = isLong
+    ? `long ${hints.hairColor} hair (${hints.hairType})`
+    : `${hints.hairType} ${hints.hairColor} hair`;
+
+  const companion = hints.toy || 'companion';
+  const clothes = hints.clothes || 'cozy outfit';
+  const skin = hints.skin || 'healthy peach complexion';
+
+  return `[CHARACTER CONSISTENCY MANDATORY: A cute ${age}-year-old ${genderWord} named ${child}, ${skin}, distinct ${hairDescriptor}, wearing ${clothes}${hints.glasses}, accompanied by ${companion}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
+}
+
 export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null } = {}) {
   const base = asString(visual);
   if (!base) throw new Error('buildImagePrompt: visual is empty');
   const hero = characters.find((c) => c.role === 'hero' || c.id === 'hero');
+  const companion = characters.find((c) => c.role === 'companion' || c.id === 'companion');
   const avatarRefNote = avatarUrl
     ? ` [Reference Avatar Image: ${avatarUrl} - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar].`
     : '';
-  const heroRef = hero
-    ? `[Character Reference: exact same face, ${hero.name}, consistent child proportions, strictly immutable hair color, hair length, hairstyle, eye color, facial features, wearing EXACTLY the same outfit throughout all scenes: ${hero.visual_description}].${avatarRefNote}`
-    : (avatarRefNote || '');
+  let characterAnchor = '';
+  if (hero) {
+    const companionPart = companion ? `, accompanied by ${companion.name} (${companion.visual_description})` : '';
+    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: A cute child named ${hero.name}, strictly immutable facial features, exact same face, consistent child proportions, ${hero.visual_description}${companionPart}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
+  }
+  const heroRef = characterAnchor ? `${characterAnchor}${avatarRefNote}` : (avatarRefNote || '');
   const composition =
     kind === 'cover'
       ? 'Warm iconic children’s book cover composition: hero and companion as the clear focal point, inviting eye contact, generous negative space at the top for a title, rich layered background. If any books, covers, spines, signs, or labels appear, they are completely blank with no lettering.'

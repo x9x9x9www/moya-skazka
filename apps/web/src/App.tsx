@@ -585,8 +585,44 @@ export const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [activeJobId]);
 
+  // Реактивное обновление открытой книги в читалке при асинхронной генерации/догрузке картинок
+  useEffect(() => {
+    const handleSceneUpdate = (e: any) => {
+      const { sceneIndex, url } = e.detail || {};
+      if (typeof sceneIndex === 'number' && url) {
+        setCurrentReadingBook((prev) => {
+          if (!prev) return prev;
+          const updatedScenes = (prev.scenes || []).map((sc, idx) => {
+            const scIdx = sc.scene_index ?? (sc as any).index ?? (idx + 1);
+            if (scIdx === sceneIndex) {
+              return { ...sc, image_url: url };
+            }
+            return sc;
+          });
+          return { ...prev, scenes: updatedScenes };
+        });
+      }
+    };
+    window.addEventListener('ms_scene_image_updated', handleSceneUpdate);
+    return () => window.removeEventListener('ms_scene_image_updated', handleSceneUpdate);
+  }, []);
+
   const openReader = (book: BookDetailsDTO) => {
-    setCurrentReadingBook(resolveBookMedia(book));
+    const resolved = resolveBookMedia(book);
+    if (resolved.format !== 'TEXT') {
+      if (!resolved.cover_url) {
+        resolved.cover_url =
+          resolved.scenes[0]?.image_url ||
+          getFairytaleFallbackIllustration(resolved.title || wizardData.theme, 1);
+      }
+      resolved.scenes = (resolved.scenes || []).map((scene, idx) => ({
+        ...scene,
+        image_url:
+          scene.image_url ||
+          getFairytaleFallbackIllustration(resolved.title || wizardData.theme, idx + 1),
+      }));
+    }
+    setCurrentReadingBook(resolved);
     let initialScene = 1;
     try {
       const saved = localStorage.getItem(`ms_last_scene_${book.id}`);

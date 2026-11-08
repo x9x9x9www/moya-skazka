@@ -225,13 +225,19 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     skinTone: 'светлая',
   };
 
-  const updateAppearance = (patch: Partial<typeof appearance>) => {
+  const updateAppearance = (patch: Partial<typeof appearance> & { hairLength?: string }) => {
+    const updated = {
+      ...appearance,
+      ...patch,
+    };
+    if (patch.hairType === 'длинные') {
+      (updated as any).hairLength = 'длинные';
+    } else if (patch.hairType === 'короткие') {
+      (updated as any).hairLength = 'короткие';
+    }
     onChange({
       ...data,
-      appearance: {
-        ...appearance,
-        ...patch,
-      },
+      appearance: updated,
     });
   };
 
@@ -552,10 +558,73 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </div>
             </div>
 
-            {/* Имя и возраст */}
-            <div className="mt-3.5 text-center">
-              <div className="font-serif font-bold text-lg text-stone-900">
-                {data.childName || 'Главный герой'} • {data.gender === 'girl' ? 'Девочка' : 'Мальчик'}, {data.age} {data.age === 1 ? 'год' : data.age < 5 ? 'года' : 'лет'}
+            {/* Имя, пол и возраст малыша (редактируемые в фото-режиме) */}
+            <div className="w-full mt-3.5 space-y-2.5">
+              <div>
+                <label className="text-[11px] font-bold text-stone-700 block mb-1 text-left">
+                  Имя героя
+                </label>
+                <input
+                  type="text"
+                  value={data.childName}
+                  onChange={(e) => onChange({ ...data, childName: e.target.value })}
+                  placeholder="Имя малыша"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-cream-300 text-xs font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-stone-700 block mb-1 text-left">
+                  Пол героя
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...data, gender: 'boy' })}
+                    className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      data.gender === 'boy'
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                        : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                    }`}
+                  >
+                    <span>👦</span>
+                    <span>Мальчик</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...data, gender: 'girl' })}
+                    className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      data.gender === 'girl'
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                        : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                    }`}
+                  >
+                    <span>👧</span>
+                    <span>Девочка</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-stone-700 block mb-1 text-left">
+                  Возраст
+                </label>
+                <div className="flex gap-1">
+                  {[2, 3, 4, 5, 6].map((ageNum) => (
+                    <button
+                      key={ageNum}
+                      type="button"
+                      onClick={() => onChange({ ...data, age: ageNum })}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        data.age === ageNum
+                          ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                          : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                      }`}
+                    >
+                      {ageNum}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -563,32 +632,191 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             <button
               type="button"
               onClick={handleRetakePhoto}
-              className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
+              className="mt-3.5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
             >
               <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
               <span>🔄 Сделать другое фото</span>
             </button>
           </div>
 
-          {/* 🔒 Блокировка анатомических переключателей */}
+          {/* Информативная подсказка вместо блокировки */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-200 shadow-xs flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5 text-amber-700">
-              <Lock className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             </div>
             <div className="flex-1 text-xs">
-              <div className="font-bold text-stone-900 flex items-center gap-2">
-                <span>Черты лица определены по фото</span>
-                <span className="text-[10px] font-semibold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-md">
-                  🔒 Заблокировано
-                </span>
+              <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                <span>✨ Черты лица подобраны по фото</span>
               </div>
-              <p className="text-stone-700 mt-0.5 leading-snug">
-                🔒 Черты лица определены по фото: <strong className="font-semibold text-stone-900">{traitsSummaryText}</strong>.
+              <p className="text-stone-700 mt-1 leading-snug">
+                ✨ Черты лица подобраны по фото. Вы можете легко изменить возраст, пол или подправить причёску вручную.
               </p>
-              <p className="text-[11px] text-stone-500 mt-1">
-                Ручные переключатели причёски и глаз скрыты, чтобы сохранить портретное сходство с фото малыша.
-              </p>
+              {traitsSummaryText && (
+                <p className="text-[11px] text-stone-500 mt-1">
+                  Определено: <strong className="font-semibold text-stone-800">{traitsSummaryText}</strong>
+                </p>
+              )}
             </div>
+          </div>
+
+          {/* Аккордеон точной настройки волос и глаз для фото-режима */}
+          <div className="p-4 rounded-3xl bg-white border border-amber-200/90 shadow-sm space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowManualAppearance(!showManualAppearance)}
+              className="w-full py-1.5 px-3 text-xs font-bold text-brand-700 hover:text-brand-800 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>{showManualAppearance ? 'Скрыть детальные настройки' : 'Точная настройка волос и глаз'}</span>
+              {showManualAppearance ? (
+                <ChevronUp className="w-3.5 h-3.5 text-brand-500" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-brand-500" />
+              )}
+            </button>
+
+            {showManualAppearance && (
+              <div className="space-y-4 pt-2 border-t border-cream-200 animate-in fade-in">
+                {/* Цвет волос */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Цвет волос
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {hairColorsList.map((item) => {
+                      const isSel = appearance.hairColor === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => updateAppearance({ hairColor: item.id })}
+                          className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border flex items-center gap-2 transition-all ${
+                            isSel
+                              ? 'bg-white border-brand-500 shadow-xs ring-1 ring-brand-500 font-bold'
+                              : 'bg-white/70 border-cream-300 hover:bg-white text-stone-700'
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Причёска */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Причёска
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {hairTypesList.map((item) => {
+                      const isSel = appearance.hairType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => updateAppearance({ hairType: item.id, hairLength: item.id === 'длинные' ? 'длинные' : item.id === 'короткие' ? 'короткие' : (appearance as any).hairLength })}
+                          className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border flex items-center gap-2 transition-all ${
+                            isSel
+                              ? 'bg-white border-brand-500 shadow-xs ring-1 ring-brand-500 font-bold'
+                              : 'bg-white/70 border-cream-300 hover:bg-white text-stone-700'
+                          }`}
+                        >
+                          <span className="text-sm shrink-0">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Цвет глаз и Тон кожи */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Цвет глаз
+                    </label>
+                    <div className="space-y-1">
+                      {eyeColorsList.map((item) => {
+                        const isSel = appearance.eyeColor === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => updateAppearance({ eyeColor: item.id })}
+                            className={`w-full py-1 px-2 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                              isSel
+                                ? 'bg-white border-brand-500 shadow-2xs font-bold text-brand-900'
+                                : 'bg-white/60 border-cream-300 text-stone-600'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      Тон кожи
+                    </label>
+                    <div className="space-y-1">
+                      {skinTonesList.map((item) => {
+                        const isSel = appearance.skinTone === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => updateAppearance({ skinTone: item.id })}
+                            className={`w-full py-1 px-2 rounded-lg text-[11px] font-medium border flex items-center gap-1.5 transition-all ${
+                              isSel
+                                ? 'bg-white border-brand-500 shadow-2xs font-bold text-brand-900'
+                                : 'bg-white/60 border-cream-300 text-stone-600'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Очки в сказке */}
+                <div className="flex items-center justify-between pt-2 border-t border-cream-200">
+                  <span className="text-[11px] font-bold text-stone-700">Герой носит очки?</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateAppearance({
+                        distinctiveFeatures: appearance.distinctiveFeatures?.includes('очк')
+                          ? ''
+                          : 'очки',
+                      })
+                    }
+                    className={`py-1 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      appearance.distinctiveFeatures?.includes('очк')
+                        ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
+                        : 'bg-white text-stone-700 border-cream-300 hover:bg-cream-100'
+                    }`}
+                  >
+                    {appearance.distinctiveFeatures?.includes('очк') ? 'Да, в очках 👓' : 'Нет'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -833,7 +1061,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => updateAppearance({ hairType: item.id })}
+                          onClick={() => updateAppearance({ hairType: item.id, hairLength: item.id === 'длинные' ? 'длинные' : item.id === 'короткие' ? 'короткие' : (appearance as any).hairLength })}
                           className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border flex items-center gap-2 transition-all ${
                             isSel
                               ? 'bg-white border-brand-500 shadow-xs ring-1 ring-brand-500 font-bold'

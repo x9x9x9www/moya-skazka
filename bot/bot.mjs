@@ -18,6 +18,7 @@ import {
   buildLengthRepairPrompt,
   buildCoverPrompt,
   buildScenePrompt,
+  buildCharacterAnchor,
   fallbackQuestions,
   declineRussianName,
   runEditorialAgent,
@@ -832,6 +833,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
     const sceneImg = avatarUrl || coverImg;
 
+    const characterAnchor = buildCharacterAnchor(params);
     const isTextOnly = params.format === 'TEXT';
     const mockStory = {
       title: `${child} и тайна: «${theme}»`,
@@ -847,25 +849,29 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
           index: 1,
           text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо.${costumeIntro ? ' ' + costumeIntro : ''}${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
           image_url: sceneImg,
-          visual: `3D Pixar style scene 1 of ${child} meeting ${companionName}`,
+          visual: `${characterAnchor} 3D Pixar style scene 1 of ${child} meeting ${companionName}`,
+          image_prompt: `${characterAnchor} 3D Pixar style scene 1 of ${child} meeting ${companionName}`,
         },
         {
           index: 2,
           text: `Сделав смелый шаг, ${child} и ${companionName} вместе ${vStepped} на мягкую тропинку, где повсюду оживали ${interest}. «Здравствуй, ${child}! — радостно прошептал спутник. — Только твое чуткое сердце и смелость помогут нам найти путь к волшебной полянке!»`,
           image_url: sceneImg,
-          visual: `3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
+          visual: `${characterAnchor} 3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
+          image_prompt: `${characterAnchor} 3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
         },
         {
           index: 3,
           text: `Впереди на дорожку опустился ${trialText}. ${child} ${vSmiled} друга за руку. ${companionName} засветился еще теплее и ярче, разгоняя сумерки, и вместе они легко нашли дорогу вперед, доказав, что дружба побеждает любые преграды!`,
           image_url: sceneImg,
-          visual: `3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
+          visual: `${characterAnchor} 3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
+          image_prompt: `${characterAnchor} 3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
         },
         {
           index: 4,
           text: `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось теплом, радостью и гордостью. Это удивительное приключение ${vProved}: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
           image_url: sceneImg,
-          visual: `3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
+          visual: `${characterAnchor} 3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
+          image_prompt: `${characterAnchor} 3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
         },
       ],
       questions: params.includeQuestions
@@ -1032,7 +1038,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
         scene.image_url = url;
         scene.id = scene.id || `scene_${scene.index}`;
         scene.scene_index = scene.index;
-        scene.image_prompt = scene.visual;
+        scene.image_prompt = job.prompt;
       }
     }
 
@@ -1060,11 +1066,14 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   if (!story.cover_url || story.cover_url.includes('/demo/')) {
     story.cover_url = avatarReferenceUrl || getThemedFallbackIllustration(params.theme, 0, params);
   }
+  story.cover_prompt = imageTasks[0]?.prompt || buildCoverPrompt(story, avatarReferenceUrl);
   for (const scene of story.scenes) {
     if (!scene.image_url || scene.image_url.includes('/demo/')) {
       scene.image_url = story.cover_url || avatarReferenceUrl || getThemedFallbackIllustration(params.interests?.[0] || params.theme, scene.index, params);
     }
-    if (!scene.image_prompt) scene.image_prompt = scene.visual;
+    if (!scene.image_prompt) {
+      scene.image_prompt = buildScenePrompt(story, scene, avatarReferenceUrl);
+    }
   }
 
   // Заполняем системные поля для читалки и нормализуем сцены и вопросы

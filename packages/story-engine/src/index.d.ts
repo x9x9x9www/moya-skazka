@@ -180,6 +180,8 @@ export function scoreStory(story: NormalizedStory): {
   target: [number, number];
 };
 
+export function buildCharacterAnchor(params?: Partial<StoryParams>): string;
+
 export function buildImagePrompt(input: {
   visual: string;
   characters?: StoryCharacter[];

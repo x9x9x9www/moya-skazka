@@ -48,19 +48,21 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
     book.scenes[currentSceneIndex - 1] ||
     book.scenes[0];
 
-  const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(currentScene?.image_url);
+  const activeSceneImageUrl = book.scenes[currentSceneIndex - 1]?.image_url || currentScene?.image_url;
+  const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(activeSceneImageUrl);
   const [skippedScenes, setSkippedScenes] = React.useState<number[]>([]);
 
   React.useEffect(() => {
-    setLiveImageUrl(currentScene?.image_url);
+    setLiveImageUrl(activeSceneImageUrl);
     const handler = (e: any) => {
-      if (e.detail?.sceneIndex === currentSceneIndex && e.detail?.url) {
+      const targetIdx = Number(e.detail?.sceneIndex);
+      if ((targetIdx === currentSceneIndex || targetIdx === currentSceneIndex - 1) && e.detail?.url) {
         setLiveImageUrl(e.detail.url);
       }
     };
     window.addEventListener('ms_scene_image_updated', handler);
     return () => window.removeEventListener('ms_scene_image_updated', handler);
-  }, [currentSceneIndex, currentScene?.image_url]);
+  }, [currentSceneIndex, activeSceneImageUrl, book.scenes]);
 
   // Вопросы после 2-й сцены показываем в читалке, а вопрос после 4-й — на финальном экране
   const isQuestionSkipped = skippedScenes.includes(currentSceneIndex);
@@ -227,7 +229,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 24px))' }}
       >
         {/* Для иллюстрированных историй - живая иллюстрация, для текстовых - аккуратный книжный заголовок главы */}
-        {book.format === 'TEXT' || !(liveImageUrl || currentScene?.image_url) ? (
+        {book.format === 'TEXT' ? (
           <div className="pt-2 pb-1 text-center select-none">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold font-mono tracking-wide">
               <FairyStarIcon className="w-3.5 h-3.5 text-amber-500" />
@@ -247,7 +249,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
                 interest={interest || 'Волшебство'}
                 childName={childName || 'Герой'}
                 appearance={appearance}
-                imageUrl={liveImageUrl || currentScene?.image_url}
+                imageUrl={liveImageUrl || activeSceneImageUrl}
               />
             </div>
 

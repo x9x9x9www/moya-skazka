@@ -890,14 +890,18 @@ export async function generateDynamicStory(
   const bookId = storyData.id || `book_${Date.now()}`;
   const scenes = storyData.scenes.slice(0, 4).map((s: any, idx: number) => {
     const sceneIndex = idx + 1;
-    const prompt = s.image_prompt || s.visual || buildFairytaleImagePrompt(params, `in scene ${sceneIndex}`);
+    let prompt = s.image_prompt || s.visual || buildFairytaleImagePrompt(params, `in scene ${sceneIndex}`);
+    if (!prompt.includes('CHARACTER CONSISTENCY MANDATORY')) {
+      const anchor = buildFairytaleCharacterAnchor(params);
+      prompt = `${anchor} ${prompt}`.replace(/\s+/g, ' ').trim();
+    }
     const cleanedText = fixGenderAgreements(removeAgeFromText(s.text || ''), gender, child);
     return {
       id: s.id || `scene_${sceneIndex}`,
       scene_index: sceneIndex,
       index: sceneIndex,
       text: cleanedText,
-      image_url: s.image_url || null, // Сохраняем готовую иллюстрацию с моста!
+      image_url: s.image_url || s.imageUrl || null, // Сохраняем готовую иллюстрацию с моста!
       image_prompt: prompt,
     };
   });
@@ -908,7 +912,7 @@ export async function generateDynamicStory(
     status: 'ILLUSTRATED',
     format: 'ILLUSTRATED',
     can_upgrade: false,
-    cover_url: storyData.cover_url || storyData.scenes?.[0]?.image_url || null,
+    cover_url: storyData.cover_url || storyData.coverUrl || storyData.scenes?.[0]?.image_url || storyData.scenes?.[0]?.imageUrl || null,
     scenes,
     questions:
       params.includeQuestions && Array.isArray(storyData.questions)
@@ -955,12 +959,26 @@ export async function generateDynamicStory(
           if (url) {
             scene.image_url = url;
             console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('ms_scene_image_updated', {
+                  detail: { sceneIndex: scene.scene_index, url },
+                })
+              );
+            }
           }
         } catch (e) {
           console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${scene.scene_index} задержана:`, e);
         }
         if (!scene.image_url) {
           scene.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], scene.scene_index);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('ms_scene_image_updated', {
+                detail: { sceneIndex: scene.scene_index, url: scene.image_url },
+              })
+            );
+          }
         }
         completedCount++;
         const progressVal = 40 + Math.round((completedCount / scenes.length) * 35);
@@ -973,12 +991,16 @@ export async function generateDynamicStory(
     );
   }
 
-  // Для иллюстрированных книг гарантируем наличие картинки на каждой сцене
+  // Для иллюстрированных книг гарантируем наличие картинки на каждой сцене и обложке
   scenes.forEach((s: any, idx: number) => {
     if (!s.image_url) {
       s.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], idx + 1);
     }
   });
+
+  if (!book.cover_url) {
+    book.cover_url = scenes[0]?.image_url || getFairytaleFallbackIllustration(params.theme || params.interests?.[0], 1);
+  }
 
   // ПРЕДЗАГРУЗКА ИЗОБРАЖЕНИЙ: держим кнопку/оверлей до тех пор, пока картинки не окажутся в памяти браузера
   onProgress?.({
@@ -1020,6 +1042,46 @@ export async function generateDynamicStory(
 }
 
 
+export function buildFairytaleCharacterAnchor(params: GenerateStoryParams): string {
+  const genderWord = params.gender === 'girl' ? 'girl' : 'boy';
+  const hairColorMap: Record<string, string> = {
+    светлые: 'golden blond',
+    русые: 'soft light-brown',
+    тёмные: 'warm chestnut dark brown',
+    рыжие: 'vibrant ginger reddish-brown',
+  };
+  const LONG_HAIR_DESCRIPTOR = 'long flowing hair reaching below shoulders, neat hairstyle, consistent length';
+  const rawHairCombined = `${params.appearance?.hairLength || ''} ${params.appearance?.hairType || ''} ${params.appearance?.hairStructure || ''}`.toLowerCase();
+  const isCurly = rawHairCombined.includes('кудр') || rawHairCombined.includes('curly') || rawHairCombined.includes('волнист') || rawHairCombined.includes('wavy');
+  const isStraight = rawHairCombined.includes('прям') || rawHairCombined.includes('straight');
+  const isLong = rawHairCombined.includes('длинн') || rawHairCombined.includes('long');
+
+  let exactHairPrompt = 'neat short playful';
+  if (isLong && isCurly) {
+    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, bouncy curly wavy with a cute ribbon`;
+  } else if (isLong && isStraight) {
+    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, smooth straight silky with a cute ribbon`;
+  } else if (isLong) {
+    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, with a cute ribbon`;
+  } else if (isCurly) {
+    exactHairPrompt = 'soft bouncy curly wavy';
+  } else if (isStraight) {
+    exactHairPrompt = 'neat smooth straight silky';
+  }
+
+  const skinToneMap: Record<string, string> = {
+    светлая: 'fair rosy-cheeked skin',
+    персиковая: 'warm healthy peach complexion',
+    смуглая: 'warm golden sun-kissed skin tone',
+  };
+  const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
+  const hairColor = hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown';
+  const clothing = params.appearance?.clothingItem || 'cozy outfit';
+  const companion = params.appearance?.toy || 'beloved toy companion';
+
+  return `[CHARACTER CONSISTENCY MANDATORY: A cute ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin}, distinct ${params.appearance?.hairLength || (isLong ? 'длинные' : 'короткие')} ${params.appearance?.hairType || ''} ${hairColor} hair (${exactHairPrompt}), wearing ${clothing}, accompanied by ${companion}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
+}
+
 /**
  * Эталонный генератор промпта для детской книжной иллюстрации
  * (стиль: 3D Disney Pixar animation movie still согласно ТЗ)
@@ -1034,20 +1096,29 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     тёмные: 'warm chestnut dark brown',
     рыжие: 'vibrant ginger reddish-brown',
   };
-  const resolveHairPrompt = (typeRaw?: string): string => {
-    const t = String(typeRaw || 'короткие').toLowerCase();
-    const isCurly = t.includes('кудр');
-    const isStraight = t.includes('прям');
-    const isLong = t.includes('длинн');
-    const isShort = t.includes('коротк');
 
-    if (isLong && isCurly) return 'long bouncy curly wavy with a cute ribbon';
-    if (isLong && isStraight) return 'long smooth straight silky with a cute ribbon';
-    if (isShort && isCurly) return 'short playful bouncy curly';
-    if (isShort && isStraight) return 'neat short straight';
-    if (isCurly) return 'soft bouncy curly wavy';
-    if (isStraight) return 'neat smooth straight silky';
-    if (isLong) return 'long braided with a cute ribbon';
+  const LONG_HAIR_DESCRIPTOR = 'long flowing hair reaching below shoulders, neat hairstyle, consistent length';
+  const rawHairCombined = `${params.appearance?.hairLength || ''} ${params.appearance?.hairType || ''} ${params.appearance?.hairStructure || ''}`.toLowerCase();
+  const isCurly = rawHairCombined.includes('кудр') || rawHairCombined.includes('curly') || rawHairCombined.includes('волнист') || rawHairCombined.includes('wavy');
+  const isStraight = rawHairCombined.includes('прям') || rawHairCombined.includes('straight');
+  const isLong = rawHairCombined.includes('длинн') || rawHairCombined.includes('long');
+  const isShort = rawHairCombined.includes('коротк') || rawHairCombined.includes('short');
+
+  const resolveHairPrompt = (typeRaw?: string): string => {
+    const t = String(typeRaw || '').toLowerCase();
+    const curCurly = isCurly || t.includes('кудр');
+    const curStraight = isStraight || t.includes('прям');
+    const curLong = isLong || t.includes('длинн');
+    const curShort = isShort || t.includes('коротк');
+
+    if (curLong && curCurly) return `${LONG_HAIR_DESCRIPTOR}, bouncy curly wavy with a cute ribbon`;
+    if (curLong && curStraight) return `${LONG_HAIR_DESCRIPTOR}, smooth straight silky with a cute ribbon`;
+    if (curLong) return `${LONG_HAIR_DESCRIPTOR}, with a cute ribbon`;
+    if (curShort && curCurly) return 'short playful bouncy curly';
+    if (curShort && curStraight) return 'neat short straight';
+    if (curCurly) return 'soft bouncy curly wavy';
+    if (curStraight) return 'neat smooth straight silky';
+    if (curShort) return 'neat short playful';
     return 'neat short playful';
   };
   const clothingColorMap: Record<string, string> = {
@@ -1143,14 +1214,15 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
     return `a beloved charming toy companion (${clean}) with hand-crafted details and friendly button eyes`;
   };
 
-  const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${resolveHairPrompt(
-    params.appearance?.hairType
-  )} hair`;
+  const exactHairPrompt = resolveHairPrompt(params.appearance?.hairType);
+  const hair = `${hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown'} ${exactHairPrompt} hair`;
   const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling eyes';
   const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
   const rawItem = params.appearance?.clothingItem || 'уютный свитер';
   const clothes = `${resolveClothingColorPrompt(params.appearance?.clothingColor, rawItem)} ${resolveClothingItemPrompt(rawItem)}`;
   const companion = resolveToyPrompt(params.appearance?.toy);
 
-  return `A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
+  const characterAnchor = buildFairytaleCharacterAnchor(params);
+
+  return `${characterAnchor} A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
 }
