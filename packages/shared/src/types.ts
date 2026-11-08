@@ -142,6 +142,7 @@ export interface ChildProfileDTO {
   interests: string[];
   appearance: {
     avatar_id: string;
+    avatar_url?: string;
     gender?: string;
     hair?: string;
     clothing?: string;

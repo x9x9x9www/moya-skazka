@@ -49,6 +49,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [customInterest, setCustomInterest] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoTip, setPhotoTip] = useState<string | null>(null);
 
@@ -87,37 +89,46 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
           setPhotoPreview(compressedDataUrl);
 
           setIsAnalyzingPhoto(true);
+          setIsGeneratingAvatar(true);
+          setPhotoTip('🪄 Волшебное зеркало считывает черты и создаёт 3D-аватар...');
+
           try {
-            const res = await api.analyzeChildPhoto(compressedDataUrl, {
+            const res = await api.generateCharacterAvatar(compressedDataUrl, undefined, 'image/jpeg', {
               knownGender: gender,
               knownName: name,
               knownAge: age,
             });
-            if (res && res.analysis) {
-              const a = res.analysis;
-              if (a.gender && !gender) setGender(a.gender);
-              if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
-                setAge(Number(a.estimatedAge));
-              }
-              if (a.hairColor) setHairColor(a.hairColor);
-              if (a.skinTone) setSkinTone(a.skinTone);
-              if (a.distinctiveFeatures) {
-                setDistinctiveFeatures(a.distinctiveFeatures);
-              } else if (a.hasGlasses) {
-                setDistinctiveFeatures('милые круглые очки');
-              }
-              if (a.hairLength || a.hairStructure) {
-                if (a.hairStructure === 'кудрявые') setHairType('кудрявые');
-                else if (a.hairLength === 'длинные') setHairType('длинные');
-                else if (a.hairLength === 'короткие') setHairType('короткие');
-              }
-              if (a.clothingColor) setClothingColor(a.clothingColor);
-              setPhotoTip(a.confidenceTip || 'Внешность определена по фото!');
+
+            if (res && res.avatarUrl) {
+              setAvatarUrl(res.avatarUrl);
             }
+
+            const a = res?.traits || {};
+            if (a.gender && !gender) setGender(a.gender);
+            if (a.approxAge && Number(a.approxAge) >= 2 && Number(a.approxAge) <= 6) {
+              setAge(Number(a.approxAge));
+            }
+            if (a.hairColor) setHairColor(a.hairColor);
+            if (a.skinTone) setSkinTone(a.skinTone);
+            if (a.distinctiveFeatures) {
+              setDistinctiveFeatures(a.distinctiveFeatures);
+            } else if (a.hasGlasses) {
+              setDistinctiveFeatures('милые круглые очки');
+            }
+            if (a.hairType) {
+              const rawT = String(a.hairType).toLowerCase();
+              if (rawT.includes('кудр')) setHairType('кудрявые');
+              else if (rawT.includes('длин')) setHairType('длинные');
+              else setHairType('короткие');
+            }
+            if (a.clothingColor) setClothingColor(a.clothingColor);
+            setPhotoTip(res?.avatarUrl ? '✨ Персональный 3D-аватар малыша создан!' : 'Внешность определена по фото!');
           } catch (err) {
             console.warn('ChildProfileModal photo analysis failed:', err);
+            setPhotoTip('Параметры определены. Вы можете скорректировать их вручную.');
           } finally {
             setIsAnalyzingPhoto(false);
+            setIsGeneratingAvatar(false);
           }
         }
       };
@@ -129,6 +140,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
   const handleClearPhoto = () => {
     setPhotoPreview(null);
+    setAvatarUrl(null);
     setPhotoTip(null);
   };
 
@@ -165,6 +177,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
         interests: finalInterests,
         appearance: {
           avatar_id: avatarFileName,
+          avatar_url: avatarUrl || undefined,
           gender,
           hairColor,
           hairType,
@@ -381,15 +394,26 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             {/* Живое превью аватара при создании */}
             <div className="flex items-center gap-3 p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
               <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-cream-50">
-                <img
-                  src={resolveChildAvatar({ gender, hairColor })}
-                  alt={name || 'Герой'}
-                  className="w-full h-full object-cover"
-                />
+                {isGeneratingAvatar ? (
+                  <div className="w-full h-full flex items-center justify-center bg-amber-100 animate-pulse text-amber-600">
+                    <Sparkles className="w-5 h-5 animate-spin" />
+                  </div>
+                ) : (
+                  <img
+                    src={avatarUrl || resolveChildAvatar({ gender, hairColor, skinTone, distinctiveFeatures })}
+                    alt={name || 'Герой'}
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-stone-800 truncate">
-                  {name.trim() || (gender === 'girl' ? 'Новая героиня' : 'Новый герой')}
+                <div className="text-xs font-bold text-stone-800 truncate flex items-center gap-1.5">
+                  <span>{name.trim() || (gender === 'girl' ? 'Новая героиня' : 'Новый герой')}</span>
+                  {avatarUrl && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold">
+                      ✨ 3D Pixar
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-stone-500 truncate">
                   {gender === 'girl' ? 'Девочка' : 'Мальчик'}, {age} {age < 5 ? 'года' : 'лет'} • {hairColor}

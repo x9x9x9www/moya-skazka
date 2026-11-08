@@ -320,6 +320,7 @@ export const App: React.FC = () => {
       interests: data.interests.length > 0 ? data.interests : ['Динозавры', 'Волшебство'],
       appearance: {
         avatar_id: data.avatar_id || (data.gender === 'girl' ? 'girl_custom' : 'boy_custom'),
+        avatar_url: data.avatar_url,
         gender: data.gender,
         hair: `${data.hairColor} волосы`,
         clothing: data.gender === 'girl' ? 'платьице' : 'уютный свитер',
@@ -368,6 +369,7 @@ export const App: React.FC = () => {
       theme: data.storyPreference.includes('Уютные') ? 'Спокойный сон' : 'Дружба',
       appearance: {
         avatar_id: newChild.appearance.avatar_id,
+        avatar_url: data.avatar_url,
         hairColor: data.hairColor,
         hairType: data.hairType || 'короткие',
         hairLength: data.hairLength,
@@ -519,6 +521,26 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleStartCreateStory = () => {
+    haptic.medium();
+    const child = activeChild || (children.length > 0 ? children[0] : null);
+    if (child) {
+      setWizardData((prev) => ({
+        ...prev,
+        childName: child.name || prev.childName,
+        age: child.age || prev.age,
+        gender: (child as any).gender || child.appearance?.gender || prev.gender,
+        interests: (child.interests && child.interests.length > 0) ? child.interests : prev.interests,
+        appearance: {
+          ...prev.appearance,
+          ...(child.appearance || {}),
+          avatar_url: child.appearance?.avatar_url || (child as any)?.avatar_url || prev.appearance?.avatar_url,
+        },
+      }));
+    }
+    setCurrentScreen('wizard_hero');
+  };
+
   const handleStartFromDailyIdea = (idea: any) => {
     haptic.medium();
     const child = activeChild || (children.length > 0 ? children[0] : null);
@@ -531,6 +553,11 @@ export const App: React.FC = () => {
       theme: idea?.suggested_params?.theme || idea?.theme || prev.theme,
       mood: idea?.suggested_params?.mood || prev.mood,
       customWishes: idea?.suggested_params?.customWishes || idea?.blurb || prev.customWishes,
+      appearance: {
+        ...prev.appearance,
+        ...(child?.appearance || {}),
+        avatar_url: child?.appearance?.avatar_url || (child as any)?.avatar_url || prev.appearance?.avatar_url,
+      },
     }));
     setCurrentScreen('wizard_hero');
   };
@@ -884,7 +911,7 @@ export const App: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'home') setCurrentScreen('home');
     else if (tab === 'create') {
-      setCurrentScreen('wizard_hero');
+      handleStartCreateStory();
     } else if (tab === 'books') setCurrentScreen('library');
     else if (tab === 'shop') setCurrentScreen('shop');
     else if (tab === 'friends') setCurrentScreen('referrals');
@@ -1089,7 +1116,7 @@ export const App: React.FC = () => {
             dailyIdea={dailyIdea}
             booksCount={books.length}
             isRefreshingIdea={isRefreshingIdea}
-            onStartCreateStory={() => setCurrentScreen('wizard_hero')}
+            onStartCreateStory={handleStartCreateStory}
             onStartFromDailyIdea={handleStartFromDailyIdea}
             onNavigateTab={handleTabChange}
             onRefreshIdea={handleRefreshDailyIdea}
@@ -1293,7 +1320,7 @@ export const App: React.FC = () => {
                 openReader(generated);
               }
             }}
-            onCreateNewStory={() => setCurrentScreen('wizard_hero')}
+            onCreateNewStory={handleStartCreateStory}
             onUpgradeBook={(id) => {
               setSelectedBookForUpgrade(id);
               setUpgradeModalOpen(true);

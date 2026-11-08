@@ -2217,12 +2217,14 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         'рыжие': 'ginger red',
       }[hairColor] || 'light brown';
 
-      const hairTypeEn = {
-        'кудрявые': 'curly',
-        'короткие': 'short neat',
-        'длинные': 'long wavy',
-        'прямые': 'straight',
-      }[hairType] || 'curly';
+      const isLong = String(hairType || '').includes('длин') || String(hairType || '').includes('long');
+      const hairTypeEn = isLong
+        ? 'long flowing hair reaching below shoulders, neat hairstyle, consistent length'
+        : ({
+            'кудрявые': 'curly',
+            'короткие': 'short neat',
+            'прямые': 'straight',
+          }[hairType] || 'curly');
 
       const eyeColorEn = {
         'карие': 'warm hazel brown',
@@ -2264,7 +2266,13 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       let avatarUrl = '';
       try {
-        const remoteUrl = await generateWellflowImageAI(avatarPrompt, 2, dataUrl);
+        let remoteUrl = null;
+        try {
+          remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, dataUrl);
+        } catch (photoErr) {
+          console.warn('[AvatarGen] Попытка генерации с photo reference не удалась, пробуем чистый промпт:', photoErr.message);
+          remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, null);
+        }
         if (remoteUrl) {
           avatarUrl = await saveGeneratedImage(remoteUrl, 'avatars', 'avatar_' + Date.now());
         }
@@ -2515,6 +2523,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         distinctiveFeatures,
         hasGlasses,
         avatar_id: avatarId,
+        avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`,
         clothingItem,
         clothingDescription: clothingItem,
         clothingColor,

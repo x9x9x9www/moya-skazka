@@ -57,6 +57,7 @@ export interface ChildRegistrationData {
   toy: string;
   distinctiveFeatures?: string;
   avatar_id?: string;
+  avatar_url?: string;
 }
 
 interface Screen1OnboardingProps {
@@ -86,14 +87,20 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   const [skinTone, setSkinTone] = useState('персиковая');
   const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
 
-  const currentAvatarSrc = resolveChildAvatar({
-    gender,
-    hairColor,
-    hairType: `${hairLength} ${hairStructure}`,
-    hairStructure,
-    skinTone,
-    distinctiveFeatures,
-  });
+  // 3D Pixar аватар, сгенерированный нейросетью (Nano-Banana-2)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+
+  const currentAvatarSrc =
+    avatarUrl ||
+    resolveChildAvatar({
+      gender,
+      hairColor,
+      hairType: `${hairLength} ${hairStructure}`,
+      hairStructure,
+      skinTone,
+      distinctiveFeatures,
+    });
 
   // Опциональная автонастройка по фото
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -255,7 +262,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
     try {
       setIsAnalyzingPhoto(true);
-      setPhotoAnalysisTip(null);
+      setIsGeneratingAvatar(true);
+      setPhotoAnalysisTip('🪄 Волшебное зеркало считывает черты и создаёт 3D-аватар...');
 
       // Читаем файл в DataURL
       const reader = new FileReader();
@@ -294,42 +302,61 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
       setPhotoPreview(optimizedBase64);
 
-      // Отправляем в быстрый AI Vision API с передачей известного контекста
-      const res = await api.analyzeChildPhoto(optimizedBase64, {
-        knownGender: gender,
-        knownName: name.trim(),
-        knownAge: age,
-      });
-      if (res && res.analysis) {
-        const a: any = res.analysis;
-        if (a.hairColor) setHairColor(a.hairColor);
-        if (a.hairLength) setHairLength(a.hairLength);
-        if (a.hairStructure) setHairStructure(a.hairStructure);
-        if (a.eyeColor) setEyeColor(a.eyeColor);
-        if (a.skinTone) setSkinTone(a.skinTone);
-        // Не перезаписываем пол, если родитель уже явно выбрал девочку/мальчика
-        if (a.gender && !gender) setGender(a.gender);
-        if (a.distinctiveFeatures) {
-          setDistinctiveFeatures(a.distinctiveFeatures);
-        } else if (a.hasGlasses) {
-          setDistinctiveFeatures('милые круглые очки');
-        }
-        if (a.estimatedAge && Number(a.estimatedAge) >= 2 && Number(a.estimatedAge) <= 6) {
-          setAge(Number(a.estimatedAge));
-        }
-        setPhotoAnalysisTip(a.confidenceTip || 'Внешность малыша определена!');
+      // Запуск серверного конвейера: Vision-анализ + генерация 3D Pixar аватара (Nano-Banana-2)
+      let avatarRes: any = null;
+      try {
+        avatarRes = await api.generateCharacterAvatar(optimizedBase64, undefined, 'image/jpeg', {
+          knownGender: gender,
+          knownName: name.trim(),
+          knownAge: age,
+        });
+      } catch (genErr) {
+        console.warn('[Screen1] generateCharacterAvatar failed, fallback to analyzeChildPhoto:', genErr);
+      }
+
+      if (avatarRes && avatarRes.avatarUrl) {
+        setAvatarUrl(avatarRes.avatarUrl);
+      }
+
+      const traits = avatarRes?.traits || {};
+      if (traits.hairColor) setHairColor(traits.hairColor);
+      if (traits.hairType) {
+        const rawT = String(traits.hairType).toLowerCase();
+        if (rawT.includes('длин')) setHairLength('длинные');
+        else if (rawT.includes('коротк')) setHairLength('короткие');
+        if (rawT.includes('кудр') || rawT.includes('волн')) setHairStructure('кудрявые');
+        else if (rawT.includes('прям')) setHairStructure('прямые');
+      }
+      if (traits.eyeColor) setEyeColor(traits.eyeColor);
+      if (traits.skinTone) setSkinTone(traits.skinTone);
+      if (traits.gender && !gender) setGender(traits.gender);
+      if (traits.distinctiveFeatures) {
+        setDistinctiveFeatures(traits.distinctiveFeatures);
+      } else if (traits.hasGlasses) {
+        setDistinctiveFeatures('милые круглые очки');
+      }
+      if (traits.approxAge && Number(traits.approxAge) >= 2 && Number(traits.approxAge) <= 6) {
+        setAge(Number(traits.approxAge));
+      }
+
+      if (avatarRes?.avatarUrl) {
+        setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан и сохранён!');
+      } else {
+        setPhotoAnalysisTip('Внешность малыша определена!');
       }
     } catch (err: any) {
       console.warn('[Screen1] Ошибка анализа фото:', err);
       setPhotoAnalysisTip('Не удалось распознать фото. Вы можете легко настроить параметры вручную ниже.');
     } finally {
       setIsAnalyzingPhoto(false);
+      setIsGeneratingAvatar(false);
       e.target.value = '';
     }
   };
 
   const handleClearPhoto = () => {
     setPhotoPreview(null);
+    setAvatarUrl(null);
     setPhotoAnalysisTip(null);
   };
 
@@ -365,6 +392,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       skinTone,
       distinctiveFeatures,
       avatar_id: currentAvatarSrc.split('/').pop()?.replace('.webp', '') || `${gender}_brown`,
+      avatar_url: avatarUrl || undefined,
       personality,
       storyPreference,
       bedtimeRitual,
@@ -519,15 +547,26 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
           {/* Интерактивная живая карточка героя с визуализацией выбора */}
           <div className="bg-white rounded-3xl p-4 border border-cream-300 shadow-sm flex items-center gap-4">
             <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-inner border-2 border-amber-300/80 shrink-0 bg-cream-50 ring-2 ring-amber-400/20">
-              <img
-                src={currentAvatarSrc}
-                alt={name.trim() || 'Ваш малыш'}
-                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-              />
+              {isGeneratingAvatar ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200 animate-pulse text-amber-600">
+                  <Sparkles className="w-6 h-6 animate-spin text-amber-600" />
+                </div>
+              ) : (
+                <img
+                  src={currentAvatarSrc}
+                  alt={name.trim() || 'Ваш малыш'}
+                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                Будущий герой сказки
+              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>Будущий герой сказки</span>
+                {avatarUrl && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center gap-1">
+                    ✨ 3D Pixar
+                  </span>
+                )}
               </div>
               <div className="font-serif font-bold text-lg text-stone-900 leading-tight truncate">
                 {name.trim() || 'Ваш малыш'}
