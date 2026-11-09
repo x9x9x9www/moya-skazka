@@ -1001,6 +1001,13 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
   const avatarReferenceUrl = resolveAvatarReferenceUrl(params);
   story.avatar_url = avatarReferenceUrl;
+  story.childName = params.childName || story.childName || 'Малыш';
+  story.child_name = story.childName;
+  story.gender = params.gender || story.gender || (story.childName.endsWith('а') || story.childName.endsWith('я') ? 'girl' : 'boy');
+  story.child_gender = story.gender;
+  story.age = params.age || story.age || 4;
+  story.child_age = story.age;
+  story.appearance = { ...(params.appearance || {}), ...(story.appearance || {}) };
   console.log(`[StoryEngine] 👤 Опорный референс персонажа (Image-to-Image): ${avatarReferenceUrl}`);
 
   const imageTasks = [
@@ -1018,7 +1025,19 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
   let completedImages = 0;
   const executeImageJob = async (job) => {
-    // Image QA Gate: гарантия префикса консистентности персонажа
+    // Image QA Gate: гарантия префикса консистентности персонажа и очистка устаревших дефолтных заглушек
+    const isGirl = story.gender === 'girl' || (story.childName && (story.childName.endsWith('а') || story.childName.endsWith('я')));
+    const rawHair = `${story.appearance?.hairLength || ''} ${story.appearance?.hairType || ''} ${story.appearance?.hairStructure || ''}`.toLowerCase();
+    const isLongHair = rawHair.includes('длинн') || rawHair.includes('long');
+
+    const hasCorruptedFallbackAnchor = job.prompt.includes('boy named Hero') ||
+      (isGirl && job.prompt.includes('4-year-old boy')) ||
+      (isLongHair && job.prompt.includes('neat short playful hair'));
+
+    if (hasCorruptedFallbackAnchor) {
+      job.prompt = job.prompt.replace(/\[CHARACTER CONSISTENCY MANDATORY:[^\]]+\]/g, '').trim();
+    }
+
     if (!job.prompt.includes('[CHARACTER CONSISTENCY MANDATORY:')) {
       const anchor = buildCharacterAnchor(story);
       job.prompt = `${anchor} ${job.prompt}`.trim();

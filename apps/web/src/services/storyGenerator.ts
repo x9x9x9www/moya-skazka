@@ -886,11 +886,19 @@ export async function generateDynamicStory(
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));
   const gender = isGirl ? 'girl' : 'boy';
   const child = params.childName?.trim() || 'Малыш';
+  const rawHairCombined = `${params.appearance?.hairLength || ''} ${params.appearance?.hairType || ''} ${params.appearance?.hairStructure || ''}`.toLowerCase();
+  const isChildLongHair = rawHairCombined.includes('длинн') || rawHairCombined.includes('long');
 
   const bookId = storyData.id || `book_${Date.now()}`;
   const scenes = storyData.scenes.slice(0, 4).map((s: any, idx: number) => {
     const sceneIndex = idx + 1;
     let prompt = s.image_prompt || s.visual || buildFairytaleImagePrompt(params, `in scene ${sceneIndex}`);
+    const hasCorruptedFallbackAnchor = prompt.includes('boy named Hero') ||
+      (isGirl && prompt.includes('4-year-old boy')) ||
+      (isChildLongHair && prompt.includes('neat short playful hair'));
+    if (hasCorruptedFallbackAnchor) {
+      prompt = prompt.replace(/\[CHARACTER CONSISTENCY MANDATORY:[^\]]+\]/g, '').trim();
+    }
     if (!prompt.includes('CHARACTER CONSISTENCY MANDATORY')) {
       const anchor = buildFairytaleCharacterAnchor(params);
       prompt = `${anchor} ${prompt}`.replace(/\s+/g, ' ').trim();
@@ -1093,8 +1101,11 @@ export function buildFairytaleCharacterAnchor(params: GenerateStoryParams): stri
   const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'healthy peach';
   const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling hazel-brown';
   const clothing = params.appearance?.clothingItem || 'cozy outfit';
+  const continuityNote = isLong
+    ? 'IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.'
+    : 'IDENTICAL facial features and hairstyle across all images.';
 
-  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin} skin, ${eyes} eyes, ${exactHairPrompt}, wearing ${clothing}. IDENTICAL facial features and hairstyle across all images.]`;
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin} skin, ${eyes} eyes, ${exactHairPrompt}, wearing ${clothing}. ${continuityNote}]`;
 }
 
 /**

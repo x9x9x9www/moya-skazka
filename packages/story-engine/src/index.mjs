@@ -1774,6 +1774,11 @@ export function normalizeStory(raw, params = {}, dna = null) {
   const baseStory = {
     title,
     age,
+    childName: params.childName || 'Малыш',
+    child_name: params.childName || 'Малыш',
+    gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    child_gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    appearance: params.appearance || {},
     theme: params.theme || 'Дружба',
     story_dna: storyDna,
     story_outline: outline,
@@ -1793,6 +1798,11 @@ export function normalizeStory(raw, params = {}, dna = null) {
 
   return {
     ...editorial.story,
+    childName: params.childName || 'Малыш',
+    child_name: params.childName || 'Малыш',
+    gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    child_gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    appearance: params.appearance || editorial.story.appearance || {},
     warnings: finalWarnings,
     metrics: {
       ...editorial.story.metrics,
@@ -1829,18 +1839,51 @@ function characterBlock(characters) {
 }
 
 export function buildCharacterAnchor(params = {}) {
-  const child = params.child_name || params.childName || params.name || 'Hero';
+  const hero = params.characters?.find((c) => c.role === 'hero' || c.id === 'hero');
+  const child = params.child_name || params.childName || params.name || hero?.name || 'Малыш';
   const age = Number(params.child_age || params.age) || 4;
-  const isGirl = (params.child_gender || params.gender) === 'girl' || (String(child).endsWith('а') || String(child).endsWith('я'));
-  const genderWord = isGirl ? 'girl' : 'boy';
-  const hints = appearanceHints(params.appearance || params);
 
+  let isGirl = (params.child_gender || params.gender) === 'girl';
+  if (!isGirl && (params.child_gender || params.gender) !== 'boy') {
+    isGirl = String(child).endsWith('а') || String(child).endsWith('я') || hero?.gender === 'girl' || (hero?.visual_description || '').toLowerCase().includes('girl');
+  }
+  const genderWord = isGirl ? 'girl' : 'boy';
+
+  let appearance = params.appearance || {};
+  if (typeof appearance !== 'object' || Object.keys(appearance).length === 0) {
+    if (params.hairColor || params.hairLength || params.hairType) {
+      appearance = params;
+    }
+  }
+
+  // Извлечение длины волос: если в appearance или в описании героя указано long/длинные:
+  const heroVd = (hero?.visual_description || '').toLowerCase();
+  const isHeroLong = heroVd.includes('long flowing') || heroVd.includes('below shoulders') || heroVd.includes('длинн');
+  const rawHair = `${appearance.hairLength || ''} ${appearance.hairType || ''} ${appearance.hairStructure || ''}`.toLowerCase();
+  const isLong = rawHair.includes('длинн') || rawHair.includes('long') || isHeroLong;
+
+  let exactHairPrompt = resolveExactHairPrompt(appearance);
+  if (isLong && (!exactHairPrompt.includes('long') && !exactHairPrompt.includes('below shoulders'))) {
+    const rawColor = String(appearance.hairColor || '').toLowerCase();
+    const isBlond = rawColor.includes('светл') || rawColor.includes('blond') || heroVd.includes('blond') || heroVd.includes('golden');
+    const isDark = rawColor.includes('темн') || rawColor.includes('тёмн') || rawColor.includes('брюнет') || heroVd.includes('chestnut') || heroVd.includes('dark');
+    const isRed = rawColor.includes('рыж') || rawColor.includes('red') || heroVd.includes('ginger');
+    const colorPrefix = isBlond ? 'golden-blond' : isDark ? 'warm chestnut dark brown' : isRed ? 'vibrant ginger reddish-brown' : 'soft light-brown';
+    const isCurly = rawHair.includes('кудр') || heroVd.includes('curly') || heroVd.includes('wavy');
+    const texture = isCurly ? 'bouncy curly wavy' : 'silky straight';
+    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images`;
+  }
+
+  const hints = appearanceHints(appearance);
   const skinTone = hints.skin || 'healthy peach';
   const eyeColor = hints.eyes || 'warm sparkling hazel-brown';
-  const exactHairPrompt = resolveExactHairPrompt(params.appearance || params);
   const clothingItem = hints.clothes || 'cozy outfit';
 
-  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${age}-year-old ${genderWord} named ${child}, ${skinTone} skin, ${eyeColor} eyes, ${exactHairPrompt}, wearing ${clothingItem}. IDENTICAL facial features and hairstyle across all images.]`;
+  const continuityNote = isLong
+    ? 'IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.'
+    : 'IDENTICAL facial features and hairstyle across all images.';
+
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${age}-year-old ${genderWord} named ${child}, ${skinTone} skin, ${eyeColor} eyes, ${exactHairPrompt}, wearing ${clothingItem}. ${continuityNote}]`;
 }
 
 export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null, story = null } = {}) {
@@ -1851,13 +1894,19 @@ export function buildImagePrompt({ visual, characters = [], kind = 'scene', avat
 
   let characterAnchor = '';
   if (story) {
-    characterAnchor = buildCharacterAnchor(story);
+    characterAnchor = buildCharacterAnchor({
+      ...story,
+      characters: story.characters || characters,
+      appearance: story.appearance || hero?.appearance,
+    });
   } else if (hero) {
-    const childName = hero.name || 'Hero';
-    const isGirl = hero.gender === 'girl' || (childName.endsWith('а') || childName.endsWith('я'));
-    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old ${isGirl ? 'girl' : 'boy'} named ${childName}, healthy peach skin, warm sparkling hazel-brown eyes, ${hero.visual_description || 'neat short playful hair'}, wearing cozy outfit. IDENTICAL facial features and hairstyle across all images.]`;
+    characterAnchor = buildCharacterAnchor({
+      childName: hero.name,
+      characters: characters,
+      appearance: hero.appearance,
+    });
   } else {
-    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute child, healthy peach skin, warm sparkling hazel-brown eyes, neat short playful hair, wearing cozy outfit. IDENTICAL facial features and hairstyle across all images.]`;
+    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute child, healthy peach skin, warm sparkling hazel-brown eyes, wearing cozy outfit. IDENTICAL facial features across all images.]`;
   }
 
   const companionPart = companion ? ` Accompanied by ${companion.name} (${companion.visual_description || 'beloved toy companion'}).` : '';

@@ -10,13 +10,31 @@
       "default_questions_enabled": true,
       "timezone": "UTC+3",
       "balance": {
-        "total": 2,
-        "paid": 2,
+        "total": 1,
+        "paid": 1,
         "gift": 0,
         "reserved": 0,
-        "available": 2
+        "available": 1
       },
       "createdAt": "2026-11-06T01:03:42.243Z"
+    },
+    "2013307507": {
+      "id": "2013307507",
+      "telegram_user_id": "2013307507",
+      "first_name": "Dinar",
+      "username": "dinar_fazlyev",
+      "role": "ADMIN",
+      "free_text_claimed_at": null,
+      "default_questions_enabled": true,
+      "timezone": "UTC+3",
+      "balance": {
+        "total": 999,
+        "paid": 999,
+        "gift": 0,
+        "reserved": 0,
+        "available": 999
+      },
+      "createdAt": "2026-11-09T14:17:35.601Z"
     },
     "test_user": {
       "id": "test_user",
@@ -153,6 +171,40 @@
       },
       "is_active": true,
       "updatedAt": "2026-11-09T12:47:12.180Z"
+    },
+    "child_1794237185665_gg4c": {
+      "id": "child_1794237185665_gg4c",
+      "user_id": "1212593604",
+      "name": "Лера",
+      "age": 6,
+      "gender": "girl",
+      "interests": [
+        "Животные",
+        "Волшебство",
+        "Природа и лес"
+      ],
+      "appearance": {
+        "avatar_id": "0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5",
+        "avatar_url": "https://api.wellflow.dev/v1/media/b25fb813-bc03-4d9c-ae82-030dff3ae101/0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5",
+        "gender": "girl",
+        "hair": "светлые волосы",
+        "clothing": "платьице",
+        "personality": "Мечтатель и фантазёр",
+        "hairColor": "светлые",
+        "hairType": "длинные прямые",
+        "hairLength": "длинные",
+        "hairStructure": "прямые",
+        "clothingItem": "платьице",
+        "clothingColor": "изумрудный",
+        "toy": "Белая чихуахуа",
+        "eyeColor": "голубые",
+        "skinTone": "светлая",
+        "distinctiveFeatures": "длинные волосы с пробором посередине",
+        "storyPreference": "Захватывающие приключения",
+        "bedtimeRitual": "Разговор по душам"
+      },
+      "is_active": true,
+      "updatedAt": "2026-11-09T15:13:05.665Z"
     }
   },
   "books": {
@@ -589,6 +641,192 @@
       ],
       "can_upgrade": false,
       "created_at": "2026-11-09T12:50:38.311Z"
+    },
+    "story_1794234011890_fy88mm": {
+      "id": "story_1794234011890_fy88mm",
+      "user_id": "2013307507",
+      "child_id": "child_1792896532648",
+      "child_name": "Аэлита",
+      "title": "Аэлита и созвездие дружбы",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "За панорамным прозрачным куполом мягко мерцали далёкие созвездия, рассыпая в тишине золотистую звёздную пыльцу. Аэлита стояла у круглого окошка космической обсерватории, а рядом на скамейке сидела её любимая единорожка Искорка. Вокруг лежали звёздные карты, мягкие подушки и корзинка с зелёными листиками для маленьких гостей. «Смотри, Искорка! Сегодня мы соберём всех друзей и устроим им звёздный сюрприз», — сказала Аэлита. Единорожка ожила, шевельнула радужной гривой и ласково прижалась к её ладони. Из-за карты выглянули динозаврик Топ и крольчонок Пуговка. Они принесли блестящие камешки, но не знали, как украсить ими общий фонарик.",
+          "image_url": "https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Единорожка Искорка (A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.). Wide view inside a cozy space observatory beneath a transparent panoramic dome, with star maps, cushions, a basket of green leaves, and friends gathering around a blank lantern. Golden starlight softly fills the room.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes; warm healthy peach complexion. She wears the same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Единорожка Искорка (companion): A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Топ осторожно положил камешки рядом с фонариком. Но тот всё равно не светился: его маленькие окошки шатались, а нужная скрепка куда-то закатилась. Топ опустил хвост, Пуговка перестала улыбаться. «Я хотел, чтобы у каждого друга в фонарике загорелась своя звёздочка», — прошептал динозаврик. Аэлита заметила, как он нахмурился, и села рядом. «Мы поможем. Искорка, подержи фонарик, пожалуйста». Единорожка бережно прижала его мягким боком и поделилась с Топом хрустящим зелёным листиком. Аэлита потянулась за круглой картой: может, на ней найдётся подсказка?",
+          "image_url": "https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Единорожка Искорка (A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.). Medium shot around the unlit lantern as the friends search beside a round star map; one loose window wobbles gently. Soft blue dome light meets warm golden reflections.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes; warm healthy peach complexion. She wears the same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Единорожка Искорка (companion): A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "На карте Аэлита увидела маленькие кружки по краям фонарика. «Смотрите, здесь должны быть наши камешки — по одному от каждого!» Она не стала торопить Топа, а подала ему ладонь. Вместе они посадили Пуговку рядом, и каждый выбрал камешек своего любимого цвета. Аэлита придерживала окошки, Топ вставлял камешки, а Искорка крепко удерживала фонарик и угощала друзей листиками. Пуговка нашла закатившуюся скрепку под подушкой. Щёлк! Окошки встали на место, и внутри вспыхнули разноцветные звёздочки. Топ радостно захлопал лапками: они справились вместе!",
+          "image_url": "https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Единорожка Искорка (A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.). Close view of the friends fitting colorful stones into the lantern while the unicorn steadies it; a tiny light blooms into rainbow star shapes. Bright, gentle golden lighting.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes; warm healthy peach complexion. She wears the same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Единорожка Искорка (companion): A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Фонарик засветился так ясно, что на потолке заиграло целое созвездие. Друзья разложили под куполом подушки, поставили корзинки с зелёными листьями и принесли мягкие игрушки-динозавров. Камешки сияли в фонарике, а солнечный свет, пробиваясь сквозь купол, раскрасил всё вокруг золотом. — Это сюрприз для всех нас! — обрадовалась Аэлита. Топ обнял её, Пуговка прижалась к Искорке, а единорожка обняла всех мягкими плюшевыми лапками. Аэлита улыбнулась друзьям: каждый добавил в общий свет что-то своё. Под куполом зазвенели весёлые голоса. Какой подарок согреет дружную компанию?",
+          "image_url": "https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/2907e2cf-1f05-48e3-91eb-07962101924d/0?exp=1794322800&sig=cf1ceece4666105418be8f2dc85e5f6445348f828a7c89c85ab56e7caab4bd7e - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Единорожка Искорка (A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.). Wide cheerful view beneath the dome, with the glowing lantern, cushions, leaf baskets, toy dinosaurs, and friends sharing a group hug. Sunny gold and playful rainbow light brighten the celebration.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes; warm healthy peach complexion. She wears the same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Единорожка Искорка (companion): A small, soft plush unicorn come to life, with a rounded white body, a short pearly horn, a pastel rainbow mane and tail, kind embroidered button eyes, visible seams, and a gentle friendly expression. The unicorn remains unmistakably a plush toy.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "что чувствовал Топ, когда фонарик не зажёгся?",
+          "parent_hint": "Помогите назвать чувство Топа и заметить, как Аэлита поддержала его.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Что помогло друзьям вместе зажечь фонарик?",
+          "parent_hint": "Предложите вспомнить, чем помог каждый друг.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-09T14:22:29.100Z"
+    },
+    "story_1794237238846_7grcah": {
+      "id": "story_1794237238846_7grcah",
+      "user_id": "1212593604",
+      "child_id": "child_1794237184869",
+      "child_name": "Лера",
+      "title": "Лера и собака с улыбкой набекрень",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/e6effc43-1a8c-414d-a0a9-9a5277d095af/0?exp=1794326400&sig=146fec527f5d4be1549fe3fd96d89716ccf40de96f5fef54a4baaf23f1e2eb21",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Звонкий горный ручеёк весело перекатывал гладкие камушки, а в воздухе пахло свежей хвоей и тёплым дождиком. Лера шлёпнула сапожком по мелкой луже: плюх! Вода прыснула на круглую шляпу, лежавшую у тропинки. Шляпа вдруг чихнула — и из-под широких полей выглянула белая игрушечная чихуахуа. Её пуговичный глазок ласково подмигнул Лере. — Я Чихуашка, — пропищала собачка. — Кажется, шляпа перепутала меня с грибом! На поляне как раз начинался праздник смешных шляп: на пеньках теснились колпаки, у ручья покачивались флажки, а на ветке висел бубенец. Лера поправила капюшон дождевика и осторожно помогла Чихуашке выбраться. Та согрела её ладошку мягкой лапкой, и обе отправились на поляну — узнать, кто ещё там перепутался.",
+          "image_url": "https://api.wellflow.dev/v1/media/d3ac9441-d11e-46ec-a755-1839c7c8c0a8/0?exp=1794326400&sig=88d78e3c80fb5bb879b8794fd82f99f0219537747b95793a38498c7bde94efe5",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 6-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/b25fb813-bc03-4d9c-ae82-030dff3ae101/0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Чихуашка (A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.). Wide view of a mountain stream and forest path; a girl splashes a small puddle as a plush Chihuahua peeks from beneath an oversized hat. Bright, gentle daylight.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Лера (hero): A six-year-old girl with long, straight golden-blond hair flowing below her shoulders, neatly styled with a small ribbon, bright clear sky-blue eyes, and fair rosy-cheeked skin. She wears the same cozy emerald green bright raincoat with a hood and waterproof little boots in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green bright raincoat with a hood and waterproof little boots Чихуашка (companion): A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "На поляне шляпы разгулялись вовсю. Белый колпак оказался на ушах у зайца, цветочный венок — на голове у важного жука, а бубенец почему-то звенел в корзинке с шишками. Все хихикали, но у маленькой собаки-проводницы колпак съехал на глаза. Она замерла возле зеркального пруда и тихонько вздохнула: её широкая улыбка казалась ей слишком смешной. — Я хотела показать танец, — прошептала она, — а теперь все будут смотреть только на мою мордочку. Чихуашка прижалась к Лериной ладони. Лера заметила, как собачка смутилась, и не ст��ла торопить её. Она протянула подруге лапку, а сама подняла с травы яркий колпак. «Давай сначала вместе разберёмся, кому что подходит», — предложила она. Что могло помочь собаке почувствовать себя увереннее?",
+          "image_url": "https://api.wellflow.dev/v1/media/de82d77f-f521-4141-b7d6-eeb5c562ced0/0?exp=1794326400&sig=55b30fb6fc760affb81df93e8b801c956a801e87b18bba270f1db344bb1235be",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 6-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/b25fb813-bc03-4d9c-ae82-030dff3ae101/0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Чихуашка (A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.). Medium-wide view of a sunny forest clearing beside a mirror-like pond, with animals wearing mismatched hats and a shy dog holding a bright cap. Playful daylight.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Лера (hero): A six-year-old girl with long, straight golden-blond hair flowing below her shoulders, neatly styled with a small ribbon, bright clear sky-blue eyes, and fair rosy-cheeked skin. She wears the same cozy emerald green bright raincoat with a hood and waterproof little boots in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green bright raincoat with a hood and waterproof little boots Чихуашка (companion): A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Лера внимательно посмотрела на подругу. «Твоя улыбка не мешает танцевать. Она может стать самым весёлым знаком!» Чихуашка кивнула, и Лера придумала для неё собачью улыбку: к колпаку прикрепили две мягкие листовые «щёчки», а сбоку завязали ленточку. Ничего не закрывало собачью мордочку, зато улыбка стала ещё заметнее и забавнее. Чихуашка вышла на поляну, перевернула колпак задом наперёд и весело гавкнула: «У-лы-ба-ка!» От неожиданности бубенец запрыгал в корзине, а заяц принялся кружить��я в цветочном венке. Собака засмеялась так заразительно, что Лера захохотала вместе с ней. Потом Лера помогла ей начать танец: подставила плечо, отбила сапожками ритм по мягкой земле и закружилась рядом. Теперь смешная собака улыбака сама вела всех в хоровод.",
+          "image_url": "https://api.wellflow.dev/v1/media/e7f0acef-3719-40bf-801c-e0078535cab9/0?exp=1794326400&sig=62edbbb36481eeef1c5a4a9743fd6f42283009ee3ace7c96ac7bf2095736eee8",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 6-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/b25fb813-bc03-4d9c-ae82-030dff3ae101/0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Чихуашка (A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.). A close, lively view of the clearing as the girl helps the smiling dog decorate a silly hat with leaves, then they lead a joyful animal dance. Golden sunlight.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Лера (hero): A six-year-old girl with long, straight golden-blond hair flowing below her shoulders, neatly styled with a small ribbon, bright clear sky-blue eyes, and fair rosy-cheeked skin. She wears the same cozy emerald green bright raincoat with a hood and waterproof little boots in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green bright raincoat with a hood and waterproof little boots Чихуашка (companion): A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Хоровод покатился вокруг ручья, и путаница стала частью праздника. Заяц обменялся колпаком с жуком, шишки звенели вместо бубенца, а цветочный венок украсил корзинку. Никто уже не старался выглядеть самым ловким или самым важным. Все придумывали смешные шаги, и каждый находил себе место в кругу. Когда над деревьями показалось солнце, Лера и Чихуашка присели у воды. На траве лежали колпаки, ленточки и несколько шишек, а на ладони Леры ую��но устроилась мягкая игрушечная собачка. «Ты помогла мне не прятать улыбку», — сказала она. Лера улыбнулась в ответ и вместе с подругой ещё раз прокрутилась на месте. Вода весело булькнула, будто тоже засмеялась. Как бы ты поддержал подругу, если бы она стеснялась своей улыбки?",
+          "image_url": "https://api.wellflow.dev/v1/media/7250814c-a308-4425-8585-d9683398cb7f/0?exp=1794326400&sig=0b1663c4ca91eeaabbb3c1e9097dda739d253429d98b260884e00a8fbab0fc55",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 6-year-old boy named Hero, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/b25fb813-bc03-4d9c-ae82-030dff3ae101/0?exp=1794326400&sig=7da5056a14790dd4e1f204f86f9ab8ac61cdabd866c6512160e110a102ab6fb5 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Чихуашка (A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.). The animal parade winds beside the sparkling stream; hats, ribbons, and pinecones make a cheerful jumble as the girl rests with her plush dog. Soft sunny glow.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Лера (hero): A six-year-old girl with long, straight golden-blond hair flowing below her shoulders, neatly styled with a small ribbon, bright clear sky-blue eyes, and fair rosy-cheeked skin. She wears the same cozy emerald green bright raincoat with a hood and waterproof little boots in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green bright raincoat with a hood and waterproof little boots Чихуашка (companion): A small white Chihuahua plush toy come to life, with soft handmade plush fur, tiny stitched paws, a little black nose, and friendly button eyes. Faithful and kind, it gives a gentle wink, warms a child's palm, and stays close to the girl.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Что смутило собаку у зеркального пруда?",
+          "parent_hint": "Помогите ребёнку назвать чувство собаки и заметить, как Лера её поддержала.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Как бы ты поддержал подругу, если бы она стеснялась улыбки?",
+          "parent_hint": "Предложите ребёнку придумать доброе слово или маленький поддерживающий поступок.",
+          "skill_tag": "empathy"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-09T15:15:18.587Z"
+    },
+    "story_1794238319391_032yk1": {
+      "id": "story_1794238319391_032yk1",
+      "user_id": "2013307507",
+      "child_id": "child_1792896532648",
+      "child_name": "Аэлита",
+      "title": "Аэлита и сонный огонёк гавани",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/6e59fb11-2982-472e-a8b3-fb176c8d3a30/0?exp=1794326400&sig=55d5d1b63856a7477304364105b73c6e2fad08b4826dd96aa70cd6504f96b970",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Маленькая серебристая комета тихо прочертила бархатное небо, оставив за собой мерцающий искристый след. Аэлита стояла на мягкой лунной пристани, где облака покачивались, словно лодочки. Рядом тихонько светились тёплые иллюминаторы сонного звездолёта. У ног Аэлиты лежал её плюшевый единорог. Он ожил, спрятал носик в мягкие лапки и негромко заурчал. «Слышишь? Гавань уже зевает», — прошептала Аэлита. Далеко над облаками дрогнула звёздочка, а рядом тихо посапывал игрушечный динозаврик, устроившийся на мягкой подушке.",
+          "image_url": "https://api.wellflow.dev/v1/media/d5159d0a-949b-4b46-a610-85473fb24d9e/0?exp=1794330000&sig=7a7315181c48c05127268d4d76cb0be965c08f0cb7acaabada14f12f44fe261e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Аэлита, healthy peach skin, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images, wearing cozy emerald green charming custom storybook outfit. IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/0198ecde-e0fa-4d44-9995-258430da6401/0?exp=1794326400&sig=d954e8d892aa936ab5b37f80a7f1d3f05f0e1932ded3b6d95a2d8c7a04f01ae7 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Плюшевый единорог (A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.). Wide view of a quiet lunar harbor beneath velvet space, a small silver comet tracing a sparkling trail above the cloud pier and a sleepy starship with warm glowing portholes. The girl and plush companion stand beside a soft pillow under gentle starlight.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A little girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes and a healthy peach complexion. She wears the exact same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Плюшевый единорог (companion): A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Звёздочка спустилась к причалу и призналась: «Я сонная, а мой маячок не светится. Без него я не найду свою подушечку среди облаков». Она мигала едва, будто боялась разбудить ночное небо. Аэлита присела рядом. Единорог прижал лапки к носику и заурчал ровно. Аэлита заметила крошечный космический динозавр, который уже устроился на лунном покрывале. «Давай сначала сделаем всё потише», — сказала она и поднял с пристани маленький серебряный фонарик.",
+          "image_url": "https://api.wellflow.dev/v1/media/6d9ba6ac-d4ad-4af8-8e1b-9dea1eac9131/0?exp=1794326400&sig=1caba5536a23ea961ea0cce5ef659798759286125913e7f31a03885b6660621e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Аэлита, healthy peach skin, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images, wearing cozy emerald green charming custom storybook outfit. IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/0198ecde-e0fa-4d44-9995-258430da6401/0?exp=1794326400&sig=d954e8d892aa936ab5b37f80a7f1d3f05f0e1932ded3b6d95a2d8c7a04f01ae7 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Плюшевый единорог (A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.). Medium view on the moonlit cloud pier as a drowsy star hovers beside an unlit tiny beacon, with a silver lantern on the soft ground and the starship glowing behind them. Calm blue and gold light, intimate framing.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A little girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes and a healthy peach complexion. She wears the exact same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Плюшевый единорог (companion): A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Аэлита не стала ярко вспыхивать фонариком. Она укрыла звёздочку мягким облачным краешком, обняла её бережно и запела тихую песенку: «Спи, огонёк, качайся, не спеши…» Единорог придвинулся поближе и тихонько заурчал в такт. От песни звёздочка перестала тревожно мигать. Она сама коснулась маячка, и тот загорелся нежным светом — ровно таким, чтобы найти подушку и никого не разбудить. Аэлита улыбнулась: её тихий голос помогла другу почувствовать себя в безопасности.",
+          "image_url": "https://api.wellflow.dev/v1/media/01053201-6b55-4dd3-bd28-15f62a9fb234/0?exp=1794326400&sig=afdf7451145c1382892d6a96bed3745f824f6c9d52ab1a7501670a285827b2e4",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Аэлита, healthy peach skin, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images, wearing cozy emerald green charming custom storybook outfit. IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/0198ecde-e0fa-4d44-9995-258430da6401/0?exp=1794326400&sig=d954e8d892aa936ab5b37f80a7f1d3f05f0e1932ded3b6d95a2d8c7a04f01ae7 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Плюшевый единорог (A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.). Close, tender view as the girl gently wraps the sleepy star in a soft cloud edge and sings beside the glowing beacon. The plush companion rests close by; warm golden light blends with quiet moonlight.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A little girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes and a healthy peach complexion. She wears the exact same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Плюшевый единорог (companion): A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "По тихому огоньку звёздочка добралась до своей облачной постельки. Она улеглась на шелковистую подушку, зевнула и закрыла глаза. В иллюминаторах звездолёта свет стал мягче, а далёкие созвездия мерцали медленно, словно дышали во сне. Аэлита прижала к себе плюшевого единорога. Он снова спрятал носик в лапки и довольно заурчал. Лунные облака чуть покачивали прис��ань, комета уже скрылась за краем неба. Вокруг было тепло, тихо и спокойно. Аэлита слушала ровное урчание и улыбалась. Какое чувство согрело звёздочку перед сном?",
+          "image_url": "https://api.wellflow.dev/v1/media/e7050952-90b7-4ce8-a7bb-6036b8920c15/0?exp=1794326400&sig=5ee39d5bf34d2f810b5497feeb1a3fb07c6ce4edf206f08ec54096025446d6e8",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Аэлита, healthy peach skin, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images, wearing cozy emerald green charming custom storybook outfit. IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/0198ecde-e0fa-4d44-9995-258430da6401/0?exp=1794326400&sig=d954e8d892aa936ab5b37f80a7f1d3f05f0e1932ded3b6d95a2d8c7a04f01ae7 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Плюшевый единорог (A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.). The star sleeps on a silky cloud pillow beside the softly lit beacon, while the girl cuddles her plush companion on the quiet harbor pier. Distant constellations shimmer gently and the starship portholes glow like bedtime lights.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A little girl with soft light-brown, smooth straight silky hair flowing below her shoulders, neatly styled with a small ribbon; warm sparkling hazel-brown eyes and a healthy peach complexion. She wears the exact same cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear in every image., with long flowing hair reaching below shoulders, neat hairstyle, consistent length, wearing cozy emerald green charming custom storybook outfit with detailed clothing and comfortable footwear Плюшевый единорог (companion): A small, chubby plush unicorn with a soft stuffed fabric texture, tiny stitched details, a short pearly horn, kind button eyes, and little padded hooves. A sensitive, sleepy toy companion who tucks his nose into his soft forehooves and makes a quiet comforting purr; preserve his unicorn shape.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Как чувствовала себя сонная звёздочка?",
+          "parent_hint": "Предложите назвать чувство звёздочки и заметить её тихое мигание.",
+          "skill_tag": "emotions"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Что помогло звёздочке почувствовать себя спокойно?",
+          "parent_hint": "Вспомните вместе песенку, укутывание и заботливое урчание.",
+          "skill_tag": "empathy"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-09T15:33:14.883Z"
     }
   },
   "daily_ideas": {
@@ -616,28 +854,28 @@
       "created_at": "2026-11-07T10:33:25.790Z"
     },
     "child_test_2_2026-11-07": {
-      "id": "idea_1498181145",
+      "id": "idea_415231131",
       "child_id": "child_test_2",
       "local_date": "2026-11-07",
-      "title": "Малыш и компас солнечного зайчика",
-      "blurb": "Озорной солнечный луч оставил волшебную карту в детской. Малыш отправляется в весёлое путешествие, чтобы узнать, куда прячется солнце на закате.",
-      "theme": "Любознательность",
-      "cover_url": "/illustrations/cover_forest.jpg",
+      "title": "Малыш и секретный пояс добрых дел",
+      "blurb": "Малыш получает особый пояс с кристаллами, которые сияют только тогда, когда совершаешь бескорыстный добрый поступок.",
+      "theme": "Смелость",
+      "cover_url": "/illustrations/cover_star.jpg",
       "status": "REFRESHED",
       "is_saved": false,
       "suggested_params": {
         "childName": "Малыш",
         "gender": "boy",
         "age": 4,
-        "theme": "Любознательность",
+        "theme": "Смелость",
         "mood": "Приключение",
         "interests": [
           "Волшебство"
         ],
-        "customWishes": "Исследование окружающего мира, живой интерес к природе."
+        "customWishes": "Супергеройская смелость, помощь друзьям и благородство."
       },
-      "created_at": "2026-11-09T13:44:56.723Z",
-      "_refreshCount": 13
+      "created_at": "2026-11-09T16:12:12.380Z",
+      "_refreshCount": 15
     },
     "child_test_3_2026-11-07": {
       "id": "idea_1981181318",
@@ -756,6 +994,54 @@
         "customWishes": "Единение с природой, спокойствие, глубокая наблюдательность."
       },
       "created_at": "2026-11-09T12:30:33.678Z"
+    },
+    "child_1792896532648_2026-11-09": {
+      "id": "idea_146819463",
+      "child_id": "child_1792896532648",
+      "local_date": "2026-11-09",
+      "title": "Малыш и тихий маячок звёздной гавани",
+      "blurb": "Вдохновляющая сказка о том, как Малыш перестал бояться темноты, зажёг крошечный фонарик и указал дорогу заблудившейся звёздочке.",
+      "theme": "Смелость",
+      "cover_url": "/illustrations/cover_star.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Малыш",
+        "gender": "boy",
+        "age": 4,
+        "theme": "Смелость",
+        "mood": "Приключение",
+        "interests": [
+          "Волшебство"
+        ],
+        "customWishes": "Преодоление робости перед темнотой, внутренний огонёк уверенности."
+      },
+      "created_at": "2026-11-09T14:17:38.895Z"
+    },
+    "child_1794228432180_4x4x_2026-11-09": {
+      "id": "idea_1435012486",
+      "child_id": "child_1794228432180_4x4x",
+      "local_date": "2026-11-09",
+      "title": "Аэлита и компас солнечного зайчика",
+      "blurb": "Озорной солнечный луч оставил волшебную карту в детской. Аэлита отправляется в весёлое путешествие, чтобы узнать, куда прячется солнце на закате.",
+      "theme": "Любознательность",
+      "cover_url": "/illustrations/cover_forest.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Аэлита",
+        "gender": "girl",
+        "age": 4,
+        "theme": "Любознательность",
+        "mood": "Приключение",
+        "interests": [
+          "Животные",
+          "Волшебство",
+          "Принцессы и замки"
+        ],
+        "customWishes": "Исследование окружающего мира, живой интерес к природе."
+      },
+      "created_at": "2026-11-09T15:11:40.702Z"
     }
   },
   "saved_ideas": {
@@ -765,7 +1051,7 @@
       "user_id": "user_test_save",
       "title": "Малыш и мостик через звонкий ручей",
       "theme": "Дружба и взаимопомощь",
-      "saved_at": "2026-11-09T13:44:56.724Z"
+      "saved_at": "2026-11-09T16:12:12.382Z"
     }
   }
 }
