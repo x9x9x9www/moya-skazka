@@ -3255,18 +3255,22 @@ async function callTelegram(method, params = {}) {
     const res = await undiciFetch(`${TELEGRAM_API}/${method}`, fetchOptions);
     return await res.json();
   } catch (err) {
+    const causeMsg = err.cause?.message || err.cause?.code || '';
+    const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
+
     const isNetworkIdle =
       err.name === 'TimeoutError' ||
-      err.message?.includes('timeout') ||
-      err.message?.includes('Timeout') ||
-      err.message?.includes('other side closed') ||
-      err.message?.includes('ECONNRESET');
+      err.name === 'AbortError' ||
+      details.includes('timeout') ||
+      details.includes('Timeout') ||
+      details.includes('other side closed') ||
+      details.includes('ECONNRESET') ||
+      details.includes('UND_ERR_SOCKET') ||
+      details.includes('terminated');
 
     if (method === 'getUpdates' && isNetworkIdle) {
       return { ok: true, result: [] };
     }
-    const causeMsg = err.cause?.message || err.cause?.code || '';
-    const details = causeMsg ? `${err.message} (${causeMsg})` : err.message;
     if (proxyUrl && method !== 'getUpdates') {
       if (
         details.includes('ECONNREFUSED') ||
