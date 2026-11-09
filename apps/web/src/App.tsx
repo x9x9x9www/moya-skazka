@@ -21,6 +21,7 @@ import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, DailyIdeaDTO, UserDTO } from '@moya-skazka/shared';
 import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, getActiveApiUrl } from './services/storyGenerator';
 import { resolveChildAvatar } from './utils/avatarResolver';
+import { formatSafeCreationHeader } from './utils/russianGrammar';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -699,7 +700,7 @@ export const App: React.FC = () => {
     setIsCreatingStory(true);
     setJobProgress(15);
     updateCreationStage('writing');
-    setCreationMessage('Сочиняем уникальный сюжет и character bible...');
+    setCreationMessage('Сочиняем сюжет и диалоги...');
     setRemainingSeconds(75);
     haptic.medium();
 
@@ -952,20 +953,22 @@ export const App: React.FC = () => {
 
             <div className="space-y-1">
               <h3 className="font-serif font-bold text-lg text-stone-900">
-                Создаём сказку для {wizardData.childName || 'малыша'}
+                {formatSafeCreationHeader(wizardData.childName, wizardData.gender)}
               </h3>
               <p className="text-xs text-stone-600 font-medium min-h-[32px] flex items-center justify-center">
-                {creationMessage}
+                {jobProgress >= 95
+                  ? 'Ещё пара мгновений, художник заканчивает последние детали...'
+                  : creationMessage}
               </p>
             </div>
 
-            {/* Таймер с примерным временем ожидания */}
+            {/* Честная динамическая индикация этапов без секундного таймера */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
               <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
               <span>
-                {remainingSeconds > 0 && creationStage !== 'finishing'
-                  ? `Примерное ожидание: ~${remainingSeconds} сек`
-                  : 'Завершаем оформление книги...'}
+                {jobProgress >= 95
+                  ? 'Ещё пара мгновений, художник заканчивает последние детали...'
+                  : 'Обычно сказка готова за 1–2 минуты'}
               </span>
             </div>
 
@@ -995,7 +998,7 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>2. 5 иллюстраций в стиле Pixar</span>
+                  <span>2. 5 красочных 3D-иллюстраций</span>
                 </span>
                 <span className="text-[11px] text-stone-500 font-medium">
                   {creationStage === 'writing'

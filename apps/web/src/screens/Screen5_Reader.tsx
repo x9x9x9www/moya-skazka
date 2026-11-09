@@ -226,7 +226,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
       <div
         ref={scrollRef}
         className="flex-1 p-5 space-y-6 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-contain"
-        style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 24px))' }}
+        style={{ paddingBottom: 'calc(140px + env(safe-area-inset-bottom, 24px))' }}
       >
         {/* Для иллюстрированных историй - живая иллюстрация, для текстовых - аккуратный книжный заголовок главы */}
         {book.format === 'TEXT' ? (

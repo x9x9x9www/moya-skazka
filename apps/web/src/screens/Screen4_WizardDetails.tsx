@@ -488,7 +488,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
               Вопросы для совместной беседы
             </div>
             <div className="text-xs text-stone-500 mt-0.5">
-              2–3 добрых вопроса, чтобы обсудить сказку после чтения
+              Добрые вопросы для совместной беседы во время и после чтения
             </div>
           </div>
         </div>
@@ -515,10 +515,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>
-                {creationMessage ||
-                  (remainingSeconds && remainingSeconds > 0
-                    ? `Создаём сказку... (~${remainingSeconds} с)`
-                    : 'Завершаем оформление...')}
+                {creationMessage || 'Создаём сказку... Обычно сказка готова за 1–2 минуты'}
               </span>
             </div>
           ) : (

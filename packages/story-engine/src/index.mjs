@@ -11,14 +11,17 @@ export const STORY_ENGINE_VERSION = '2.0.0';
 // 1. Визуальный стиль (3D Pixar, как в макете)
 // --------------------------------------------------------
 export const STYLE_3D_PIXAR =
-  'Rendered as a high-end 3D animated children’s film still in the visual language of a modern Pixar-style movie: ' +
+  'Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: ' +
   'soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, ' +
   'cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, ' +
   'absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. ' +
   'Any books, signs, or labels in the scene are completely blank.';
+export const STYLE_3D_CARTOON = STYLE_3D_PIXAR;
 
 import {
   declineRussianName,
+  formatSafeForWhom,
+  formatSafeCreationHeader,
   removeAgeFromText,
   fixGenderAgreements,
   getOPreposition,
@@ -27,6 +30,8 @@ import {
 } from './declension.mjs';
 export {
   declineRussianName,
+  formatSafeForWhom,
+  formatSafeCreationHeader,
   removeAgeFromText,
   fixGenderAgreements,
   getOPreposition,
@@ -42,6 +47,7 @@ import {
   applyTypographySpacing,
   sanitizeToneAndPurity,
   simplifyChildQuestion,
+  removeTautologiesAndDuplications,
   verifyNarrativeIntegrity,
 } from './editorialAgent.mjs';
 export {
@@ -52,6 +58,7 @@ export {
   applyTypographySpacing,
   sanitizeToneAndPurity,
   simplifyChildQuestion,
+  removeTautologiesAndDuplications,
   verifyNarrativeIntegrity,
 };
 
@@ -106,6 +113,8 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 - NATURAL CHILD-DIRECTED LITERARY RUSSIAN (ЕСТЕСТВЕННЫЙ ЯЗЫК ДЛЯ ДЕТЕЙ 2–6 ЛЕТ):
   * ABSOLUTELY FORBIDDEN: Awkward synthetic AI phrasing, weird biological/fabric metaphors (FORBIDDEN: «тканевые пятнышки затрепетали», «глазки наполнились серебром», «душа запела хрусталём»).
   * Use vivid, warm, sensory words understandable to a 2–6 year old. Speak naturally like a loving parent telling a cozy bedtime story.
+- ANTI-TAUTOLOGY & LITERARY QUALITY (АНТИ-ТАВТОЛОГИЯ И ЛИТЕРАТУРНОЕ КАЧЕСТВО):
+  * Категорически запрещены тавтологии, механические повторы слов ("бежал, бежал", "шевелились, шевелились") и канцеляризмы. Речь должна быть живой, тёплой, напевной и образной, как в лучших классических иллюстрированных книгах для малышей.
 - ALL visual fields (\`characters[].visual_description\`, \`cover_visual\`, \`scenes[].visual\`) MUST be written in precise, concrete ENGLISH.
 - Never transliterate Russian names in English visual fields; describe appearance naturally.
 
@@ -136,9 +145,9 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 ### 4. FOUR SCENES, STRICT WORD LIMITS & MOBILE LAYOUT
 Write EXACTLY four scenes (\`scenes\` array with length exactly 4). NEVER 3, NEVER 5. Total reading time 3–5 minutes.
 Strict word counts ensure fast reading and perfect mobile viewport fit without overflow:
-- Age 2–3: 50–75 words per scene (total 200–300 words); short musical sentences (5–8 words), repetitions, onomatopoeia, tactile warmth.
-- Age 4–5: 85–110 words per scene (total 340–440 words); lively dialogue, sensory details, empathy, ingenuity.
-- Age 6: 110–140 words per scene (total 440–560 words); richer vocabulary, gentle humor, cause-and-effect.
+- Age 2–3: 45–65 words per scene (total 180–260 words); short musical sentences (5–8 words), sound imitation / onomatopoeia, clear comforting actions.
+- Age 4–5: 75–100 words per scene (total 300–400 words); lively simple dialogue, sensory details, empathy, friendship.
+- Age 6: 105–130 words per scene (total 420–520 words); richer vocabulary, expanded plot, gentle humor, cause-and-effect.
 Scene roles:
 1. Hook & discovery: sensory opening, child in specific clothing meets/wakes the toy companion in the themed world.
 2. Gentle problem / mystery matching theme and interests. Ends with action and natural pause for Question 1.
@@ -149,6 +158,9 @@ Use 2 short paragraphs per scene separated by "\\n\\n".
 ### 5. PEDAGOGICAL QUESTIONS (RULE OF ONE SIMPLE QUESTION)
 - Return exactly 2 questions (one after scene 2: \`after_scene: 2\`, one after scene 4: \`after_scene: 4\`).
 - Each question MUST contain EXACTLY ONE simple, direct question (max 10–12 words).
+- AGE-CALIBRATED QUESTIONS:
+  * For ages 2–3: focus on recognition, colors, and basic emotions («Какого цвета был фонарик?», «Как звёздочка улыбнулась?»).
+  * For ages 4–6: focus on empathy and reflection («Что помогло героям помириться?», «Как бы ты поступил на месте героя?»).
 - FORBIDDEN: Compound, double questions joined by "and/or" («Что почувствовал герой, и кто помог ему стать смелее?»).
 - Questions must be specific to THIS story, warm, and answerable by a child. No test-like questions.
 - \`parent_hint\`: short, practical tip for the parent in Russian.
@@ -160,7 +172,7 @@ Use 2 short paragraphs per scene separated by "\\n\\n".
   * DO NOT repeat characters' physical appearance or clothing (the renderer appends character_ids descriptions automatically).
 - \`cover_visual\`: ENGLISH ONLY. 1–2 sentences: iconic warm book cover composition with hero and companion, generous space at top for title.
 - \`scenes[].character_ids\`: array of ids of characters actually present in that scene (e.g. \`["hero", "companion"]\`).
-- Style: 3D Pixar animation movie still. No text, letters, captions, speech bubbles, watermarks, logos, signatures, or UI in any image. All books, covers, signs, and labels are completely blank.
+- Style: 3D cartoon style / 3D animated children's movie still. No text, letters, captions, speech bubbles, watermarks, logos, signatures, or UI in any image. All books, covers, signs, and labels are completely blank.
 
 ### 7. SAFETY
 - Safe and comforting for young children: no violence, death, blood, scary monsters, danger, illness, or adult themes.
@@ -373,6 +385,42 @@ export function formatFullClothingRus(appearance = {}) {
   return `${color} одежда`;
 }
 
+export function resolveExactHairPrompt(appearance = {}) {
+  const rawColor = String(appearance.hairColor || '').toLowerCase();
+  const rawType = String(appearance.hairType || '').toLowerCase();
+  const rawLength = String(appearance.hairLength || '').toLowerCase();
+  const rawStructure = String(appearance.hairStructure || '').toLowerCase();
+  const combined = `${rawLength} ${rawType} ${rawStructure} ${rawColor}`;
+
+  const isCurly = combined.includes('кудр') || combined.includes('curly') || combined.includes('волнист') || combined.includes('wavy');
+  const isStraight = combined.includes('прям') || combined.includes('straight');
+  const isLong = combined.includes('длинн') || combined.includes('long');
+
+  const isBlond = rawColor.includes('светл') || rawColor.includes('blond') || rawColor.includes('желт') || rawColor.includes('жёлт');
+  const isDark = rawColor.includes('темн') || rawColor.includes('тёмн') || rawColor.includes('брюнет') || rawColor.includes('черн') || rawColor.includes('чёрн') || rawColor.includes('dark') || rawColor.includes('chestnut');
+  const isRed = rawColor.includes('рыж') || rawColor.includes('red') || rawColor.includes('ginger');
+
+  const colorPrefix = isBlond
+    ? 'golden-blond'
+    : isDark
+    ? 'warm chestnut dark brown'
+    : isRed
+    ? 'vibrant ginger reddish-brown'
+    : 'soft light-brown';
+
+  if (isLong) {
+    const texture = isCurly ? 'bouncy curly' : isStraight ? 'silky straight' : 'silky';
+    return `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same hair length and tone across all scenes`;
+  }
+  if (isCurly) {
+    return `${colorPrefix} bouncy curly hair`;
+  }
+  if (isStraight) {
+    return `${colorPrefix} neat smooth straight silky hair`;
+  }
+  return `${colorPrefix} neat short playful hair`;
+}
+
 export function appearanceHints(appearance = {}) {
   const hairColor = HAIR_COLOR_EN[appearance.hairColor] || 'soft light-brown';
 
@@ -408,6 +456,7 @@ export function appearanceHints(appearance = {}) {
     hairType = HAIR_TYPE_EN[appearance.hairType];
   }
 
+  const exactHairPrompt = resolveExactHairPrompt(appearance);
   const eyes = EYE_COLOR_EN[appearance.eyeColor] || 'warm sparkling hazel-brown eyes';
   const skin = SKIN_TONE_EN[appearance.skinTone] || 'warm healthy peach complexion';
   const itemClean = appearance.clothingItem ? String(appearance.clothingItem).trim() : 'уютный свитер';
@@ -420,7 +469,7 @@ export function appearanceHints(appearance = {}) {
   const hasGlasses = features.includes('очк') || features.includes('glasses');
   const glasses = hasGlasses ? ', wearing cute round glasses' : '';
 
-  return { hairColor, hairType, eyes, skin, clothes, toy, glasses, hasGlasses };
+  return { hairColor, hairType, exactHairPrompt, eyes, skin, clothes, toy, glasses, hasGlasses };
 }
 
 /**
@@ -440,7 +489,7 @@ export function formatClothingNarrativePrompt({ appearance = {}, theme = '', sto
   * СЮЖЕТНЫЙ ХОД (выбери самый органичный для фабулы):
     ${isSuper ? `1) ВАРИАНТ «ВРУЧЕНИЕ КОСТЮМА»: в Сцене 1 или 2 спутник/волшебные друзья торжественно дарят или вручают ${childName} этот супергеройский костюм («${fullClothingRus}») для важной миссии по спасению друзей! Герой с гордостью надевает его и обретает уверенность.\n    2) ВАРИАНТ «СНАРЯЖЕНИЕ ГОТОВО»: ${childName} уже надел${childName.endsWith('а') || childName.endsWith('я') ? 'а' : ''} свой любимый костюм для игры в супергероя и отправляется на подвиг.` : `1) Герой уже одет в свой любимый ${fullClothingRus} для сказочного похода.\n    2) Герою вручают или помогают примерить ${fullClothingRus} как символ дружбы и посвящения в тайну.`}
   * Костюм должен служить действию (развеваться на ветру, согревать, помогать в полете или преодолении испытания), а НЕ быть сухим каталожным описанием ткани.
-  * В 3D Pixar иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
+  * В 3D-иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
 `.trim();
     }
 
@@ -449,7 +498,7 @@ export function formatClothingNarrativePrompt({ appearance = {}, theme = '', sto
 - ОДЕЖДА ГЕРОЯ («${fullClothingRus}») — ЦЕНТРАЛЬНАЯ ТЕМА СКАЗКИ:
   * Тема посвящена стилю, моде, примерке и пошиву нарядов.
   * Обыграй выбор, преображение или создание наряда («${fullClothingRus}») как увлекательный творческий процесс и радость совместного праздника.
-  * В 3D Pixar иллюстрациях строго сохраняй: ${hints.clothes}.
+  * В 3D-иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
 `.trim();
     }
 
@@ -458,7 +507,7 @@ export function formatClothingNarrativePrompt({ appearance = {}, theme = '', sto
 - ОДЕЖДА ГЕРОЯ («${fullClothingRus}») — ПРАКТИЧЕСКАЯ ДЕТАЛЬ СИТУАЦИИ:
   * Одежда («${fullClothingRus}») защищает героя или помогает в обстановке (сапожки для весёлых брызг в лужах, тёплый пуховик от свежего ветерка, мягкая пижамка для засыпания).
   * Упомяни её ТОЛЬКО через реальное действие в сюжете (прыгнул в лужу в сапожках, уютно поправил воротник), БЕЗ шаблонного занудного описания цветов и пуговиц.
-  * В 3D Pixar иллюстрациях строго сохраняй: ${hints.clothes}.
+  * В 3D-иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
 `.trim();
   }
 
@@ -469,7 +518,7 @@ export function formatClothingNarrativePrompt({ appearance = {}, theme = '', sto
   * СТРОГО ЗАПРЕЩЕНО начинать сказку со стереотипного описания одежды («${childName} в своём любимом свитере/платьице поправил рукава...» — ЗАПРЕЩЕНО!).
   * Повседневная одежда не играет роли в этом сюжете. Не трать на неё драгоценные слова сказки: начинай СРАЗУ с интриги, настроения, звука, действия или живого диалога со спутником.
   * Упоминать одежду в тексте можно ТОЛЬКО мимолётно при конкретном осязаемом действии (например, «положил камушек в кармашек»). Специально описывать фасон, цвет или ткань свитера/платья ЗАПРЕЩЕНО.
-  * В 3D Pixar иллюстрациях (visual-поля) обязательно сохраняй: ${hints.clothes} для 100% консистентности персонажа на картинках.
+  * В 3D-иллюстрациях (visual-поля) обязательно сохраняй: ${hints.clothes} для 100% консистентности персонажа на картинках.
 `.trim();
 }
 
@@ -497,12 +546,12 @@ function pick(list, random) {
 
 function ageBand(age) {
   if (age <= 3) {
-    return { label: '2–3 года', total: [240, 360], perScene: [50, 95], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
+    return { label: '2–3 года', total: [180, 260], perScene: [45, 65], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
   }
   if (age <= 5) {
-    return { label: '4–5 лет', total: [380, 540], perScene: [85, 140], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
+    return { label: '4–5 лет', total: [300, 400], perScene: [75, 100], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
   }
-  return { label: '6 лет', total: [520, 720], perScene: [120, 185], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
+  return { label: '6 лет', total: [420, 520], perScene: [105, 130], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
 }
 
 function getThemedWorld(params, random) {
@@ -1340,7 +1389,7 @@ ${formatClothingNarrativePrompt({
 - Каждая сцена — 2–4 небольших абзаца.
 - Никаких заезженных штампов («Жил-был», «Однажды»). Начинай сразу с сенсорного крючка.
 - Ровно один вопрос после сцены 2 и ровно один после сцены 4. Правило одного простого вопроса (до 10–12 слов, без «и/или»).
-- visual-поля — только английский, 3D Pixar render, без текста на картинках.
+- visual-поля — только английский, 3D cartoon style render, без текста на картинках.
 
 Верни только валидный JSON по контракту из системной инструкции.`;
 
@@ -1677,60 +1726,60 @@ function characterBlock(characters) {
 }
 
 export function buildCharacterAnchor(params = {}) {
-  const child = params.childName || params.name || 'Hero';
-  const age = Number(params.age) || 4;
-  const isGirl = params.gender === 'girl' || (String(child).endsWith('а') || String(child).endsWith('я'));
+  const child = params.child_name || params.childName || params.name || 'Hero';
+  const age = Number(params.child_age || params.age) || 4;
+  const isGirl = (params.child_gender || params.gender) === 'girl' || (String(child).endsWith('а') || String(child).endsWith('я'));
   const genderWord = isGirl ? 'girl' : 'boy';
   const hints = appearanceHints(params.appearance || params);
 
-  const rawType = String(params.appearance?.hairType || params.hairType || '').toLowerCase();
-  const rawLength = String(params.appearance?.hairLength || params.hairLength || '').toLowerCase();
-  const combined = `${rawLength} ${rawType}`;
-  const isLong = combined.includes('длинн') || combined.includes('long');
+  const skinTone = hints.skin || 'healthy peach';
+  const eyeColor = hints.eyes || 'warm sparkling hazel-brown';
+  const exactHairPrompt = resolveExactHairPrompt(params.appearance || params);
+  const clothingItem = hints.clothes || 'cozy outfit';
 
-  const hairDescriptor = isLong
-    ? `long ${hints.hairColor} hair (${hints.hairType})`
-    : `${hints.hairType} ${hints.hairColor} hair`;
-
-  const companion = hints.toy || 'companion';
-  const clothes = hints.clothes || 'cozy outfit';
-  const skin = hints.skin || 'healthy peach complexion';
-
-  return `[CHARACTER CONSISTENCY MANDATORY: A cute ${age}-year-old ${genderWord} named ${child}, ${skin}, distinct ${hairDescriptor}, wearing ${clothes}${hints.glasses}, accompanied by ${companion}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${age}-year-old ${genderWord} named ${child}, ${skinTone} skin, ${eyeColor} eyes, ${exactHairPrompt}, wearing ${clothingItem}. IDENTICAL facial features and hairstyle across all images.]`;
 }
 
-export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null } = {}) {
+export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null, story = null } = {}) {
   const base = asString(visual);
   if (!base) throw new Error('buildImagePrompt: visual is empty');
-  const hero = characters.find((c) => c.role === 'hero' || c.id === 'hero');
+  const hero = characters.find((c) => c.role === 'hero' || c.id === 'hero') || story?.characters?.find((c) => c.role === 'hero' || c.id === 'hero');
   const companion = characters.find((c) => c.role === 'companion' || c.id === 'companion');
+
+  let characterAnchor = '';
+  if (story) {
+    characterAnchor = buildCharacterAnchor(story);
+  } else if (hero) {
+    const childName = hero.name || 'Hero';
+    const isGirl = hero.gender === 'girl' || (childName.endsWith('а') || childName.endsWith('я'));
+    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old ${isGirl ? 'girl' : 'boy'} named ${childName}, healthy peach skin, warm sparkling hazel-brown eyes, ${hero.visual_description || 'neat short playful hair'}, wearing cozy outfit. IDENTICAL facial features and hairstyle across all images.]`;
+  } else {
+    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute child, healthy peach skin, warm sparkling hazel-brown eyes, neat short playful hair, wearing cozy outfit. IDENTICAL facial features and hairstyle across all images.]`;
+  }
+
+  const companionPart = companion ? ` Accompanied by ${companion.name} (${companion.visual_description || 'beloved toy companion'}).` : '';
   const avatarRefNote = avatarUrl
     ? ` [Reference Avatar Image: ${avatarUrl} - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar].`
     : '';
-  let characterAnchor = '';
-  if (hero) {
-    const companionPart = companion ? `, accompanied by ${companion.name} (${companion.visual_description})` : '';
-    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: A cute child named ${hero.name}, strictly immutable facial features, exact same face, consistent child proportions, ${hero.visual_description}${companionPart}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
-  }
-  const heroRef = characterAnchor ? `${characterAnchor}${avatarRefNote}` : (avatarRefNote || '');
+
   const composition =
     kind === 'cover'
       ? 'Warm iconic children’s book cover composition: hero and companion as the clear focal point, inviting eye contact, generous negative space at the top for a title, rich layered background. If any books, covers, spines, signs, or labels appear, they are completely blank with no lettering.'
       : 'Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures.';
   const people = characters.length ? `Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): ${characterBlock(characters)}.` : '';
-  const style = /pixar|3d animated|3d render|feature film/i.test(base) ? '' : STYLE_3D_PIXAR;
-  return `${heroRef} ${base}. ${composition} ${people} ${style}`.replace(/\s+/g, ' ').trim();
+  const style = /3d animated|3d render|feature film|3d cartoon/i.test(base) ? '' : STYLE_3D_PIXAR;
+  return `${characterAnchor}${avatarRefNote}${companionPart} ${base}. ${composition} ${people} ${style}`.replace(/\s+/g, ' ').trim();
 }
 
 export function buildScenePrompt(story, scene, avatarUrl = null) {
   const present = (story.characters || []).filter((c) => (scene.character_ids || []).includes(c.id));
   const effectiveAvatar = avatarUrl || story.avatar_url || story.avatar_reference || null;
-  return buildImagePrompt({ visual: scene.visual, characters: present.length ? present : story.characters, kind: 'scene', avatarUrl: effectiveAvatar });
+  return buildImagePrompt({ visual: scene.visual, characters: present.length ? present : story.characters, kind: 'scene', avatarUrl: effectiveAvatar, story });
 }
 
 export function buildCoverPrompt(story, avatarUrl = null) {
   const effectiveAvatar = avatarUrl || story.avatar_url || story.avatar_reference || null;
-  return buildImagePrompt({ visual: story.cover_visual, characters: story.characters, kind: 'cover', avatarUrl: effectiveAvatar });
+  return buildImagePrompt({ visual: story.cover_visual, characters: story.characters, kind: 'cover', avatarUrl: effectiveAvatar, story });
 }
 
 // --------------------------------------------------------

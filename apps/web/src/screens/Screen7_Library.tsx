@@ -106,7 +106,7 @@ export const Screen7_Library: React.FC<Screen7LibraryProps> = ({
                     {book.title}
                   </h3>
                   <div className="text-[10px] text-stone-500 mb-2">
-                    Для: {book.child_name}
+                    Герой: {book.child_name}
                   </div>
                 </div>
 

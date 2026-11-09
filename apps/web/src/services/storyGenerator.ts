@@ -166,8 +166,8 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
   const finaleBedtimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось тихим теплом и радостью. Приключение счастливо завершилось, ${companionName} уютно устроился рядом, напевая нежную колыбельную. На небе мягко засияли добрые звёзды. Самое время сладко закрыть глазки и уснуть.`;
   const finaleDaytimeText = `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось ликованием и солнечным теплом. Приключение завершилось настоящей победой добра! ${declined.nom} и ${companionName} дали друг другу пять и весело засмеялись. Впереди их ждало ещё множество удивительных открытий, новых игр и счастливых моментов!`;
 
-  const finaleBedtimePrompt = `3D Pixar style scene 4: peaceful cozy bedtime finale, starry night sky, child sleeping peacefully, glowing warm light`;
-  const finaleDaytimePrompt = `3D Pixar style scene 4: joyful daytime finale, smiling child celebrating victory with friend, bright sunlight, happy vibrant colors`;
+  const finaleBedtimePrompt = `3D cartoon style scene 4: peaceful cozy bedtime finale, starry night sky, child sleeping peacefully, glowing warm light`;
+  const finaleDaytimePrompt = `3D cartoon style scene 4: joyful daytime finale, smiling child celebrating victory with friend, bright sunlight, happy vibrant colors`;
 
   const isCostume = /супергеро|скафандр|космонавт|манти|волшебн|рыцар|доспех|кигуруми|дождевик|бальн.*плат|пижам/i.test(clothes) ||
     /супергеро|космос|рыцар|маги|волшеб/i.test(theme);
@@ -185,21 +185,21 @@ export function createMockStory(params: GenerateStoryParams): BookDetailsDTO {
       scene_index: 1,
       text: `Однажды солнечным утром ${declined.nom} ${vFelt}, что день готовит нечто по-настоящему чудесное.${costumeSentence ? ' ' + costumeSentence : ''} Рядом был любимый спутник — ${companionName}, ласково согревая ладошку. Вдруг тёплый ветерок зашелестел листвой, приглашая в удивительный мир — ${worldName}!`,
       image_url: scene1Img,
-      image_prompt: `3D Pixar style scene 1: ${declined.nom} as a cute child smiling with ${companionName} in ${worldName}, Pixar render`,
+      image_prompt: `3D cartoon style scene 1: ${declined.nom} as a cute child smiling with ${companionName} in ${worldName}, soft 3D animation render`,
     },
     {
       id: 'scene_2',
       scene_index: 2,
       text: `Сделав смелый шаг, ${declined.nom} ${vStepped} на тропинку, где вокруг оживали ${interest}. ${companionName} тихонько прошептал: «Здравствуй, ${declined.nom}! Нам очень нужно ${goalText}». Маленькая ${heroWord} с радостью согласилась помочь верному другу.`,
       image_url: scene2Img,
-      image_prompt: `3D Pixar style scene 2: ${declined.nom} and ${companionName} walking along friendly fairytale path, magical lighting`,
+      image_prompt: `3D cartoon style scene 2: ${declined.nom} and ${companionName} walking along friendly fairytale path, magical lighting`,
     },
     {
       id: 'scene_3',
       scene_index: 3,
       text: `Впереди возникло испытание: ${trialText}. Но ${declined.nom} не растерялась, ${vSmiled} и крепко взяла спутника за руку. ${victoryText}.${wishAction} Вместе друзья дружно справились с препятствием, доказав силу добра и дружбы!`,
       image_url: scene3Img,
-      image_prompt: `3D Pixar style scene 3: ${declined.nom} gently holding light lantern with friends, overcoming challenge together`,
+      image_prompt: `3D cartoon style scene 3: ${declined.nom} gently holding light lantern with friends, overcoming challenge together`,
     },
     {
       id: 'scene_4',
@@ -527,7 +527,7 @@ async function pollJob<T>(
 
 /**
  * Генерация одной иллюстрации через серверный мост.
- * Промпт уже содержит 3D Pixar-стиль и character bible от Story Engine.
+ * Промпт уже содержит 3D-мультяшный стиль и character bible от Story Engine.
  */
 export async function generateWellflowImage(prompt: string, timeoutMs = 120000): Promise<string | null> {
   const controller = new AbortController();
@@ -1044,42 +1044,57 @@ export async function generateDynamicStory(
 
 export function buildFairytaleCharacterAnchor(params: GenerateStoryParams): string {
   const genderWord = params.gender === 'girl' ? 'girl' : 'boy';
-  const hairColorMap: Record<string, string> = {
-    светлые: 'golden blond',
-    русые: 'soft light-brown',
-    тёмные: 'warm chestnut dark brown',
-    рыжие: 'vibrant ginger reddish-brown',
-  };
-  const LONG_HAIR_DESCRIPTOR = 'long flowing hair reaching below shoulders, neat hairstyle, consistent length';
-  const rawHairCombined = `${params.appearance?.hairLength || ''} ${params.appearance?.hairType || ''} ${params.appearance?.hairStructure || ''}`.toLowerCase();
-  const isCurly = rawHairCombined.includes('кудр') || rawHairCombined.includes('curly') || rawHairCombined.includes('волнист') || rawHairCombined.includes('wavy');
-  const isStraight = rawHairCombined.includes('прям') || rawHairCombined.includes('straight');
-  const isLong = rawHairCombined.includes('длинн') || rawHairCombined.includes('long');
+  const rawColor = String(params.appearance?.hairColor || '').toLowerCase();
+  const rawType = String(params.appearance?.hairType || '').toLowerCase();
+  const rawLength = String(params.appearance?.hairLength || '').toLowerCase();
+  const rawStructure = String(params.appearance?.hairStructure || '').toLowerCase();
+  const combined = `${rawLength} ${rawType} ${rawStructure} ${rawColor}`;
 
-  let exactHairPrompt = 'neat short playful';
-  if (isLong && isCurly) {
-    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, bouncy curly wavy with a cute ribbon`;
-  } else if (isLong && isStraight) {
-    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, smooth straight silky with a cute ribbon`;
-  } else if (isLong) {
-    exactHairPrompt = `${LONG_HAIR_DESCRIPTOR}, with a cute ribbon`;
+  const isCurly = combined.includes('кудр') || combined.includes('curly') || combined.includes('волнист') || combined.includes('wavy');
+  const isStraight = combined.includes('прям') || combined.includes('straight');
+  const isLong = combined.includes('длинн') || combined.includes('long');
+
+  const isBlond = rawColor.includes('светл') || rawColor.includes('blond') || rawColor.includes('желт') || rawColor.includes('жёлт');
+  const isDark = rawColor.includes('темн') || rawColor.includes('тёмн') || rawColor.includes('брюнет') || rawColor.includes('черн') || rawColor.includes('чёрн') || rawColor.includes('dark') || rawColor.includes('chestnut');
+  const isRed = rawColor.includes('рыж') || rawColor.includes('red') || rawColor.includes('ginger');
+
+  const colorPrefix = isBlond
+    ? 'golden-blond'
+    : isDark
+    ? 'warm chestnut dark brown'
+    : isRed
+    ? 'vibrant ginger reddish-brown'
+    : 'soft light-brown';
+
+  let exactHairPrompt: string;
+  if (isLong) {
+    const texture = isCurly ? 'bouncy curly' : isStraight ? 'silky straight' : 'silky';
+    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same hair length and tone across all scenes`;
   } else if (isCurly) {
-    exactHairPrompt = 'soft bouncy curly wavy';
+    exactHairPrompt = `${colorPrefix} bouncy curly hair`;
   } else if (isStraight) {
-    exactHairPrompt = 'neat smooth straight silky';
+    exactHairPrompt = `${colorPrefix} neat smooth straight silky hair`;
+  } else {
+    exactHairPrompt = `${colorPrefix} neat short playful hair`;
   }
 
   const skinToneMap: Record<string, string> = {
-    светлая: 'fair rosy-cheeked skin',
-    персиковая: 'warm healthy peach complexion',
-    смуглая: 'warm golden sun-kissed skin tone',
+    светлая: 'fair rosy-cheeked',
+    персиковая: 'healthy peach',
+    смуглая: 'warm golden sun-kissed',
   };
-  const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'warm healthy peach complexion';
-  const hairColor = hairColorMap[params.appearance?.hairColor?.toLowerCase() || 'русые'] || 'soft light-brown';
-  const clothing = params.appearance?.clothingItem || 'cozy outfit';
-  const companion = params.appearance?.toy || 'beloved toy companion';
+  const eyeColorMap: Record<string, string> = {
+    карие: 'warm sparkling hazel-brown',
+    голубые: 'bright clear sky-blue',
+    зелёные: 'gentle expressive emerald-green',
+    серые: 'soft thoughtful slate-grey',
+  };
 
-  return `[CHARACTER CONSISTENCY MANDATORY: A cute ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin}, distinct ${params.appearance?.hairLength || (isLong ? 'длинные' : 'короткие')} ${params.appearance?.hairType || ''} ${hairColor} hair (${exactHairPrompt}), wearing ${clothing}, accompanied by ${companion}. EXACT SAME HAIRSTYLE AND HAIR LENGTH ON ALL SCENES.]`;
+  const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'healthy peach';
+  const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling hazel-brown';
+  const clothing = params.appearance?.clothingItem || 'cozy outfit';
+
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin} skin, ${eyes} eyes, ${exactHairPrompt}, wearing ${clothing}. IDENTICAL facial features and hairstyle across all images.]`;
 }
 
 /**
@@ -1224,5 +1239,5 @@ export function buildFairytaleImagePrompt(params: GenerateStoryParams, sceneActi
 
   const characterAnchor = buildFairytaleCharacterAnchor(params);
 
-  return `${characterAnchor} A breathtaking 3D Disney Pixar animation style movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
+  return `${characterAnchor} A breathtaking 3D cartoon style, soft 3D animation movie still for a children's fairytale book. A cute ${params.age}-year-old ${genderWord} named ${params.childName} with ${hair}, ${eyes}, ${skin}, wearing ${clothes}, accompanied by ${companion}, ${sceneAction}. Cinematic volumetric golden hour lighting, soft glowing particles, fireflies, rich depth of field (85mm f/1.4 lens bokeh), warm cozy bedtime atmosphere, Octane 3D CGI render, masterpiece, no text, no words.`;
 }

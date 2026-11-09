@@ -506,7 +506,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         </h2>
         <p className="text-xs text-stone-500 mt-1">
           {isPhotoBased
-            ? '3D Pixar герой ожил по фото! Выберите наряд и спутника'
+            ? '3D-герой ожил по фото! Выберите наряд и спутника'
             : 'Загрузите фото для мгновенной 3D-аватарки или выберите готовый образ'}
         </p>
       </div>
@@ -521,7 +521,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           </div>
           <div>
             <h3 className="font-serif font-bold text-base text-amber-950">
-              Волшебная кисть рисует 3D Pixar портрет... 🎨
+              Волшебная кисть рисует 3D-портрет... 🎨
             </h3>
             <p className="text-xs text-amber-800 mt-1 max-w-xs mx-auto leading-relaxed">
               Считываем черты лица (Zero-Storage: фото сразу удаляется) → Создаём сияющий 3D-образ (~10–15 сек)
@@ -854,7 +854,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   Загрузить портрет малыша 📸
                 </div>
                 <div className="text-[10px] text-stone-500">
-                  Создаст персональный 3D Pixar портрет за 10–15 секунд
+                  Создаст персональный 3D-портрет за 10–15 секунд
                 </div>
               </div>
             </label>

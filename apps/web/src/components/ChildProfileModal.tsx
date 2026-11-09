@@ -411,7 +411,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                   <span>{name.trim() || (gender === 'girl' ? 'Новая героиня' : 'Новый герой')}</span>
                   {avatarUrl && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold">
-                      ✨ 3D Pixar
+                      ✨ 3D-стиль
                     </span>
                   )}
                 </div>

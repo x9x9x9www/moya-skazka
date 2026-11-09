@@ -514,6 +514,38 @@ export function simplifyChildQuestion(qText) {
 }
 
 /**
+ * Устранение тавтологий, механических повторов слов и склеенных предикатов
+ * (например, «бежал, бежал» -> «бежал», «шевелились, шевелились» -> «шевелились»)
+ */
+export function removeTautologiesAndDuplications(text) {
+  if (!text || typeof text !== 'string') return '';
+  let out = text;
+
+  // 1. Механические повторы одного и того же слова через запятую, тире, двоеточие или пробел:
+  // «бежал, бежал» -> «бежал», «шевелились, шевелились» -> «шевелились»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})([,\s—–-]+)\1(?![а-яёА-ЯЁ0-9])/giu, '$1');
+
+  // Тройные повторы: «бежал, бежал, бежал» -> «бежал»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})([,\s—–-]+)\1([,\s—–-]+)\1(?![а-яёА-ЯЁ0-9])/giu, '$1');
+
+  // 2. Повтор через союз «и»: «бежал и бежал» -> «бежал», «смотрел и смотрел» -> «внимательно смотрел»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})\s+и\s+\1(?![а-яёА-ЯЁ0-9])/giu, (match, word) => {
+    const wLow = word.toLowerCase();
+    if (wLow === 'все' || wLow === 'всё' || wLow === 'еще' || wLow === 'ещё') return match;
+    return word;
+  });
+
+  // 3. Шаблонные тавтологии с двоеточием и предикатами:
+  // «ушки смешно задвигались: шевелились» -> «ушки смешно задвигались и шевелились»
+  out = out.replace(/:\s*([а-яёА-ЯЁ]{4,})(?:лись|лось|лась|лись)\b/giu, ' и $1');
+
+  // Устранение сдвоенных запятых или пробелов после чистки
+  out = out.replace(/,\s*,/gu, ',').replace(/\s{2,}/gu, ' ');
+
+  return out.trim();
+}
+
+/**
  * Проверка и выравнивание сюжетной целостности (Narrative Integrity)
  */
 export function verifyNarrativeIntegrity(story, params = {}) {
@@ -536,7 +568,7 @@ export function verifyNarrativeIntegrity(story, params = {}) {
       scenes.push({
         index: idx,
         text: `Вместе ${childName} и ${companionHint} продолжили свой добрый путь, радуясь новым открытиям.`,
-        visual: `3D Pixar style scene ${idx} with ${childName}`,
+        visual: `3D cartoon style scene ${idx} with ${childName}`,
       });
       fixes.push(`Добавлена гармонизирующая сцена ${idx}`);
     }
@@ -659,31 +691,48 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     scenes[3].text = patched;
   }
 
-  // 7. Вопросы для обсуждения с родителями
+  // 7. Вопросы для обсуждения с родителями (калибровка по возрасту: 2–3 года vs 4–6 лет)
   const rawQuestions = Array.isArray(story.questions) ? [...story.questions] : [];
+  const age = Number(params.age || story.age || 4);
+  const isToddler = age <= 3;
 
-  const canonicalQ2 = {
-    after_scene: 4,
-    question: isBedtimeMood
-      ? `Что помогло ${childName} почувствовать спокойствие и уют перед сном?`
-      : `Что подарило ${childName} самую большую радость от общего успеха в этом приключении?`,
-    parent_hint: isBedtimeMood
-      ? 'Сделайте акцент на чувстве безопасности, уюта и тёплом настрое на сон.'
-      : 'Сделайте акцент на радости победы, взаимной поддержке и уверенности в своих силах.',
-    skill_tag: isBedtimeMood ? 'emotions' : 'reflection',
-  };
+  const canonicalQ1 = isToddler
+    ? {
+        after_scene: 2,
+        question: `Что больше всего обрадовало ${childName} на полянке?`,
+        parent_hint: 'Попросите малыша показать любимую деталь на картинке и назвать знакомые цвета.',
+        skill_tag: 'emotions',
+      }
+    : {
+        after_scene: 2,
+        question: `Что помогло ${childName} и друзьям справиться с первой загадкой?`,
+        parent_hint: 'Обсудите с ребёнком ценность взаимовыручки, смелости и поддержки друзей.',
+        skill_tag: 'empathy',
+      };
+
+  const canonicalQ2 = isToddler
+    ? {
+        after_scene: 4,
+        question: isBedtimeMood
+          ? `Как добрые звёздочки согрели мир перед самым сладким сном?`
+          : `Как ${childName} и верные друзья весело улыбнулись?`,
+        parent_hint: 'Сделайте акцент на чувстве безопасности, уюта и мягком настрое на отдых.',
+        skill_tag: 'emotions',
+      }
+    : {
+        after_scene: 4,
+        question: isBedtimeMood
+          ? `Что помогло ${childName} почувствовать спокойствие и уют перед сном?`
+          : `Что подарило ${childName} самую большую радость от общего успеха в этом приключении?`,
+        parent_hint: isBedtimeMood
+          ? 'Сделайте акцент на чувстве безопасности, уюта и тёплом настрое на сон.'
+          : 'Сделайте акцент на радости победы, взаимной поддержке и уверенности в своих силах.',
+        skill_tag: isBedtimeMood ? 'emotions' : 'reflection',
+      };
 
   let questions = [];
   if (rawQuestions.length === 0) {
-    questions = [
-      {
-        after_scene: 2,
-        question: `Как ${childName} ${isGirl ? 'проявила' : 'проявил'} заботу о друге в этом путешествии?`,
-        parent_hint: 'Обсудите с ребёнком ценность взаимовыручки и умения поддерживать друзей.',
-        skill_tag: 'empathy',
-      },
-      canonicalQ2,
-    ];
+    questions = [canonicalQ1, canonicalQ2];
     fixes.push('Сформированы канонические вопросы для родителя после сцен 2 и 4');
   } else if (rawQuestions.length === 1) {
     questions = [
@@ -756,6 +805,7 @@ export function runEditorialAgent(story, params = {}) {
   edited.scenes = edited.scenes.map((scene) => {
     let text = scene.text || '';
     text = sanitizeToneAndPurity(text);
+    text = removeTautologiesAndDuplications(text);
     text = proofreadRussianGrammar(text, params);
     text = formatRussianDialogues(text);
     text = applyYoification(text);

@@ -167,6 +167,46 @@ export function declineRussianName(name, gender = 'boy') {
 }
 
 /**
+ * Безопасное формирование конструкции «для кого» с Zero-Grammar-Risk фоллбэком.
+ * Если имя не склоняется или иностранное, возвращает конструкцию в именительном падеже:
+ * «главная героиня — Аэлита» или «для Аэлиты».
+ * @param {string} name
+ * @param {'boy' | 'girl' | string} gender
+ * @returns {string}
+ */
+export function formatSafeForWhom(name, gender = 'boy') {
+  if (!name || typeof name !== 'string') {
+    return gender === 'girl' ? 'для малышки' : 'для малыша';
+  }
+  const trimmed = name.trim();
+  const declined = declineRussianName(trimmed, gender);
+  const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
+  if (declined.gen === trimmed) {
+    return isGirl ? `главная героиня — ${trimmed}` : `главный герой — ${trimmed}`;
+  }
+  return `для ${declined.gen}`;
+}
+
+/**
+ * Заголовок создания сказки с Zero-Grammar-Risk фоллбэком
+ * @param {string} name
+ * @param {'boy' | 'girl' | string} gender
+ * @returns {string}
+ */
+export function formatSafeCreationHeader(name, gender = 'boy') {
+  if (!name || typeof name !== 'string') {
+    return gender === 'girl' ? 'Создаём сказку для малышки' : 'Создаём сказку для малыша';
+  }
+  const trimmed = name.trim();
+  const declined = declineRussianName(trimmed, gender);
+  const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
+  if (declined.gen === trimmed) {
+    return `Создаём сказку. Главн${isGirl ? 'ая героиня' : 'ый герой'} — ${trimmed}`;
+  }
+  return `Создаём сказку для ${declined.gen}`;
+}
+
+/**
  * Очистка текста от технических скобок возраста: «(4 года)», «(5)», «(3 лет)»
  */
 export function removeAgeFromText(text) {

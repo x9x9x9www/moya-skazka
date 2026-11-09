@@ -764,7 +764,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     onProgress?.({
       stage: 'drawing',
       progress: 65,
-      message: 'Художник создаёт 3D Pixar-иллюстрации...',
+      message: 'Художник создаёт 3D-иллюстрации...',
     });
     await new Promise((r) => setTimeout(r, 700));
 
@@ -849,29 +849,29 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
           index: 1,
           text: `Уютным солнечным утром ${child} ${vFelt}, что день готовит доброе чудо.${costumeIntro ? ' ' + costumeIntro : ''}${wishes} Вдруг прямо на ладошку опустился крошечный теплый огонек — это был ${companionName}, который приветливо мигнул и позвал в ${worldName}!`,
           image_url: sceneImg,
-          visual: `${characterAnchor} 3D Pixar style scene 1 of ${child} meeting ${companionName}`,
-          image_prompt: `${characterAnchor} 3D Pixar style scene 1 of ${child} meeting ${companionName}`,
+          visual: `${characterAnchor} 3D cartoon style scene 1 of ${child} meeting ${companionName}`,
+          image_prompt: `${characterAnchor} 3D cartoon style scene 1 of ${child} meeting ${companionName}`,
         },
         {
           index: 2,
           text: `Сделав смелый шаг, ${child} и ${companionName} вместе ${vStepped} на мягкую тропинку, где повсюду оживали ${interest}. «Здравствуй, ${child}! — радостно прошептал спутник. — Только твое чуткое сердце и смелость помогут нам найти путь к волшебной полянке!»`,
           image_url: sceneImg,
-          visual: `${characterAnchor} 3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
-          image_prompt: `${characterAnchor} 3D Pixar style scene 2 with ${child} and ${companionName} walking together`,
+          visual: `${characterAnchor} 3D cartoon style scene 2 with ${child} and ${companionName} walking together`,
+          image_prompt: `${characterAnchor} 3D cartoon style scene 2 with ${child} and ${companionName} walking together`,
         },
         {
           index: 3,
           text: `Впереди на дорожку опустился ${trialText}. ${child} ${vSmiled} друга за руку. ${companionName} засветился еще теплее и ярче, разгоняя сумерки, и вместе они легко нашли дорогу вперед, доказав, что дружба побеждает любые преграды!`,
           image_url: sceneImg,
-          visual: `${characterAnchor} 3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
-          image_prompt: `${characterAnchor} 3D Pixar style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
+          visual: `${characterAnchor} 3D cartoon style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
+          image_prompt: `${characterAnchor} 3D cartoon style scene 3 showing ${child} and ${companionName} overcoming challenge together`,
         },
         {
           index: 4,
           text: `И вот тайна открылась: ${climaxText}! Сердце ${declined.gen} наполнилось теплом, радостью и гордостью. Это удивительное приключение ${vProved}: самые настоящие чудеса рождаются из смелости, дружбы и доброты!`,
           image_url: sceneImg,
-          visual: `${characterAnchor} 3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
-          image_prompt: `${characterAnchor} 3D Pixar style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
+          visual: `${characterAnchor} 3D cartoon style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
+          image_prompt: `${characterAnchor} 3D cartoon style scene 4 triumphant bedtime finale with ${child} and ${companionName}`,
         },
       ],
       questions: params.includeQuestions
@@ -1017,17 +1017,33 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
 
   let completedImages = 0;
   const executeImageJob = async (job) => {
+    // Image QA Gate: гарантия префикса консистентности персонажа
+    if (!job.prompt.includes('[CHARACTER CONSISTENCY MANDATORY:')) {
+      const anchor = buildCharacterAnchor(story);
+      job.prompt = `${anchor} ${job.prompt}`.trim();
+    }
+
     let url;
-    try {
-      const remoteUrl = await generateWellflowImageAI(job.prompt, 2, avatarReferenceUrl);
-      url = await saveGeneratedImage(remoteUrl, jobId, job.name);
-    } catch (error) {
-      console.error(`[StoryEngine] ⚠️ ${job.name}: ошибка генерации — ${error.message}`);
-      // При сбое ни в коем случае не используем чужие демо-картинки из другого сюжета!
-      // Используем: 1) готовую обложку этой сказки; 2) аватар этого ребенка; 3) тематический фон
-      url = (story.cover_url && !story.cover_url.includes('/demo/'))
-        ? story.cover_url
-        : (avatarReferenceUrl || job.fallback);
+    let attempts = 0;
+    const maxAttempts = 2;
+
+    while (attempts < maxAttempts && !url) {
+      attempts += 1;
+      try {
+        const remoteUrl = await generateWellflowImageAI(job.prompt, 2, avatarReferenceUrl);
+        url = await saveGeneratedImage(remoteUrl, jobId, job.name);
+      } catch (error) {
+        console.error(`[StoryEngine] ⚠️ ${job.name} (попытка ${attempts}/${maxAttempts}): ошибка генерации — ${error.message}`);
+        if (attempts >= maxAttempts) {
+          // При сбое ни в коем случае не используем чужие демо-картинки из другого сюжета!
+          // Используем: 1) готовую обложку этой сказки; 2) аватар этого ребенка; 3) тематический фон
+          url = (story.cover_url && !story.cover_url.includes('/demo/'))
+            ? story.cover_url
+            : (avatarReferenceUrl || job.fallback);
+        } else {
+          await new Promise((r) => setTimeout(r, 600));
+        }
+      }
     }
 
     if (job.kind === 'cover') {
@@ -2128,7 +2144,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       // Шаг А (Vision): Gemini Flash / gpt-6-luna извлекает JSON с чертами лица
       const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
-Внимательно посмотри на фото ребёнка и определи его анатомические и визуальные черты для мультяшного 3D Pixar персонажа.
+Внимательно посмотри на фото ребёнка и определи его анатомические и визуальные черты для мультяшного 3D-персонажа.
 Выбирай строго из указанных вариантов:
 - gender: "boy" или "girl"
 - approxAge: число от 1 до 12 (приблизительный возраст)
@@ -2260,7 +2276,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         else outfitEn = outfit;
       }
 
-      const avatarPrompt = `Close-up 3D animated Pixar-style character avatar portrait of a cute ${approxAge}-year-old ${genderEn}, ${hairColorEn} ${hairTypeEn} hair, bright expressive ${eyeColorEn} eyes, ${skinToneEn} skin${distinctiveEn ? ', ' + distinctiveEn : ''}, wearing ${outfitEn || 'cozy fairytale outfit'}, warm gentle smile looking at camera, soft cinematic studio lighting, magical blurry background with warm bokeh, square 1:1, ultra-detailed, 8k, no text, no watermark.`;
+      const avatarPrompt = `Close-up 3D cartoon style character avatar portrait of a cute ${approxAge}-year-old ${genderEn}, ${hairColorEn} ${hairTypeEn} hair, bright expressive ${eyeColorEn} eyes, ${skinToneEn} skin${distinctiveEn ? ', ' + distinctiveEn : ''}, wearing ${outfitEn || 'cozy fairytale outfit'}, warm gentle smile looking at camera, soft cinematic studio lighting, magical blurry background with warm bokeh, square 1:1, ultra-detailed, 8k, no text, no watermark.`;
 
       console.log(`[AvatarGen] 🎨 Запуск генерации 3D аватара: ${avatarPrompt.slice(0, 100)}...`);
 
@@ -2379,7 +2395,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
           distinctiveFeatures: '',
           hasGlasses: false,
           avatar_id: `${mockGender}_brown`,
-          confidenceTip: 'Внешность малыша определена (3D Pixar аватар подобран)!',
+          confidenceTip: 'Внешность малыша определена (3D-аватар подобран)!',
         };
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
@@ -2401,7 +2417,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
           ? `Имя ребёнка: ${knownName} (девочка).`
           : '');
 
-      const visionPrompt = `Ты детский фото-стилист для 3D Pixar анимации. Внимательно взгляни на фото ребёнка и определи его визуальные черты. ${genderHint}
+      const visionPrompt = `Ты детский фото-стилист для 3D-мультипликации. Внимательно взгляни на фото ребёнка и определи его визуальные черты. ${genderHint}
 
 Выбери строго из разрешённых вариантов:
 - gender: ${knownGender ? `"${knownGender}"` : `"boy" или "girl"`}
@@ -3324,7 +3340,7 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
 
 🌟 **Создание сказок через ИИ:**
 • 📖 Текст пишется нейросетью под характер малыша
-• 🎨 3D Pixar обложка и 4 иллюстрации от **Nano-Banana-2**
+• 🎨 Красочные 3D-иллюстрации от **Nano-Banana-2**
 • 🧸 4 сцены + вопросы для тёплой беседы перед сном
 • 🎁 Первая персональная сказка — в подарок!${refNote}
 

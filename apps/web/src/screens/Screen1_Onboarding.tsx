@@ -564,7 +564,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 <span>Будущий герой сказки</span>
                 {avatarUrl && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center gap-1">
-                    ✨ 3D Pixar
+                    ✨ 3D-стиль
                   </span>
                 )}
               </div>

@@ -81,7 +81,7 @@ export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
                 Станет
               </span>
               <span className="text-xs font-bold text-brand-900">
-                Живая книга с картинами
+                Книга с 3D-иллюстрациями
               </span>
             </div>
           </div>
@@ -99,7 +99,7 @@ export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
               <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                 <Check className="w-3.5 h-3.5" />
               </div>
-              <span>4 уникальные иллюстрации по сюжету</span>
+              <span>4 красочные 3D-иллюстрации в мультяшном стиле</span>
             </div>
 
             <div className="flex items-center gap-2.5 text-xs text-stone-800 font-semibold">
@@ -125,14 +125,14 @@ export const Screen8_UpgradeModal: React.FC<Screen8UpgradeModalProps> = ({
                 className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>Оживить сказку рисунками (1 сказка)</span>
+                <span>Оживить сказку 3D-иллюстрациями (1 сказка)</span>
               </button>
             ) : (
               <button
                 onClick={onOpenShop}
                 className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
               >
-                <span>Открыть сказку с рисунками — 199 ₽ (≈ 400 ⭐)</span>
+                <span>Открыть сказку с 3D-иллюстрациями — 199 ₽ (≈ 400 ⭐)</span>
               </button>
             )}
 

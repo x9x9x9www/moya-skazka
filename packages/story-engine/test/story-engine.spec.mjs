@@ -87,7 +87,7 @@ const fixture = () => ({
   ],
 });
 
-test('промпт требует 3D Pixar-стиль и запрещает текст на картинке', () => {
+test('промпт требует 3D-стиль и запрещает текст на картинке', () => {
   assert.match(STYLE_3D_PIXAR, /3D animated/i);
   assert.match(STYLE_3D_PIXAR, /no text/i);
   assert.match(STYLE_3D_PIXAR, /no letters/i);
@@ -139,7 +139,7 @@ test('buildStoryPrompt содержит возрастной объём и ге�
   const { system, user } = buildStoryPrompt(params, { random: createSeededRandom('seed-1') });
   assert.match(system, /STRICT JSON CONTRACT/);
   assert.match(user, /Миша/);
-  assert.match(user, /380–540/);
+  assert.match(user, /300–400/);
   assert.match(user, /Ориентир на каждую сцену/);
   assert.match(user, /НЕ ПОВТОРЯЙ/);
 });
@@ -211,8 +211,8 @@ test('buildCoverPrompt включает character bible и стиль', () => {
   const story = normalizeStory(fixture(), params);
   const prompt = buildCoverPrompt(story);
   assert.match(prompt, /Миша/);
-  assert.match(prompt, /Дино/);
-  assert.match(prompt, /Pixar-style/);
+  assert.match(prompt, /CHARACTER CONSISTENCY MANDATORY/);
+  assert.match(prompt, /3D cartoon style|3D animated/i);
   assert.match(prompt, /no text/i);
 });
 

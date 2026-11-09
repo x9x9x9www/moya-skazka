@@ -132,13 +132,17 @@ export const STYLE_3D_PIXAR: string;
 export const ARCHITECT_SYSTEM_PROMPT: string;
 export const STORY_SYSTEM_PROMPT: string;
 
+export function resolveExactHairPrompt(appearance?: ChildAppearance): string;
 export function appearanceHints(appearance?: ChildAppearance): {
   hairColor: string;
   hairType: string;
+  exactHairPrompt: string;
   eyes: string;
   skin: string;
   clothes: string;
   toy: string;
+  glasses: string;
+  hasGlasses: boolean;
 };
 
 export function createSeededRandom(seed?: string): () => number;
@@ -206,6 +210,8 @@ export interface DeclinedName {
 }
 
 export function declineRussianName(name: string, gender?: 'boy' | 'girl' | string): DeclinedName;
+export function formatSafeForWhom(name: string, gender?: 'boy' | 'girl' | string): string;
+export function formatSafeCreationHeader(name: string, gender?: 'boy' | 'girl' | string): string;
 export function getOPreposition(word: string): 'об' | 'о';
 export function countWords(text: string): number;
 export function removeAgeFromText(text: string): string;
@@ -224,6 +230,7 @@ export function applyYoification(text: string): string;
 export function applyTypographySpacing(text: string): string;
 export function sanitizeToneAndPurity(text: string): string;
 export function simplifyChildQuestion(text: string): string;
+export function removeTautologiesAndDuplications(text: string): string;
 export function verifyNarrativeIntegrity(story: unknown, params?: Partial<StoryParams>): {
   valid: boolean;
   issues: string[];

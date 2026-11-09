@@ -15,6 +15,7 @@ import {
 } from '../components/FairytaleIcons';
 import { ChildProfileDTO, DailyIdeaDTO } from '@moya-skazka/shared';
 import { resolveChildAvatar } from '../utils/avatarResolver';
+import { formatSafeForWhom } from '../utils/russianGrammar';
 
 interface Screen2HomeProps {
   activeChild: ChildProfileDTO | null;
@@ -180,7 +181,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
               <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-300/60 shadow-xs shrink-0 bg-cream-50">
                 <img src={avatarSrc} alt={childName} className="w-full h-full object-cover" />
               </div>
-              <span>Сказка для {childName}</span>
+              <span>{formatSafeForWhom(childName, activeChild?.gender).startsWith('для') ? `Сказка ${formatSafeForWhom(childName, activeChild?.gender)}` : formatSafeForWhom(childName, activeChild?.gender)}</span>
             </div>
           )}
 
@@ -190,7 +191,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           </h2>
 
           <p className="text-xs text-amber-100/80 mb-5 font-sans leading-relaxed">
-            Создайте уникальную сказку, где {childName} станет главным героем
+            Создайте уникальную сказку, где {childName} станет {activeChild?.gender === 'girl' || (String(childName).endsWith('а') || String(childName).endsWith('я')) ? 'главной героиней' : 'главным героем'}
           </p>
 
           {/* Главная кнопка действия: Золотая с мягким пульсирующим ореолом (glow-gold) */}
@@ -311,7 +312,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
             </h3>
             {activeChild && (
               <span className="text-[11px] font-medium text-amber-900/80 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200/60 shrink-0">
-                для {activeChild.name}
+                {formatSafeForWhom(activeChild.name, activeChild.gender)}
               </span>
             )}
           </div>
