@@ -13,6 +13,7 @@ import {
   PrincessCrownIcon,
 } from './FairytaleIcons';
 import { resolveChildAvatar } from '../utils/avatarResolver';
+import { inferRussianNameGender } from '../utils/russianGrammar';
 
 interface ChildProfileModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
   const [name, setName] = useState('');
   const [age, setAge] = useState(4);
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
+  const [hasUserExplicitlySetGender, setHasUserExplicitlySetGender] = useState(false);
   const [hairColor, setHairColor] = useState('светлые');
   const [hairType, setHairType] = useState('короткие');
   const [skinTone, setSkinTone] = useState('персиковая');
@@ -94,8 +96,8 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
 
           try {
             const res = await api.generateCharacterAvatar(compressedDataUrl, undefined, 'image/jpeg', {
-              knownGender: gender,
-              knownName: name,
+              knownGender: hasUserExplicitlySetGender ? gender : undefined,
+              knownName: name.trim() || undefined,
               knownAge: age,
             });
 
@@ -104,7 +106,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             }
 
             const a = res?.traits || {};
-            if (a.gender && !gender) setGender(a.gender);
+            if (a.gender) setGender(a.gender);
             if (a.approxAge && Number(a.approxAge) >= 2 && Number(a.approxAge) <= 6) {
               setAge(Number(a.approxAge));
             }
@@ -428,7 +430,14 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setName(val);
+                  if (!hasUserExplicitlySetGender) {
+                    const inferred = inferRussianNameGender(val);
+                    if (inferred) setGender(inferred);
+                  }
+                }}
                 placeholder="Как зовут вашего малыша?"
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium"
@@ -443,7 +452,10 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setGender('boy')}
+                  onClick={() => {
+                    setHasUserExplicitlySetGender(true);
+                    setGender('boy');
+                  }}
                   className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'boy'
                       ? 'bg-brand-500 text-white border-brand-500 shadow-sm'
@@ -457,7 +469,10 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGender('girl')}
+                  onClick={() => {
+                    setHasUserExplicitlySetGender(true);
+                    setGender('girl');
+                  }}
                   className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                     gender === 'girl'
                       ? 'bg-rose-500 text-white border-rose-500 shadow-sm'

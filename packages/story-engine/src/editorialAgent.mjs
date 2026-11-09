@@ -186,6 +186,11 @@ const STYLE_REPLACEMENTS = [
   [new RegExp(`${CYR_PRE}импульс(?:а|ом|ы)?\\s+тепл(?:а)?${CYR_POST}`, 'giu'), 'тёплая искорка'],
   [new RegExp(`${CYR_PRE}глазк(?:и|ами)?\\s+наполнились\\s+серебр(?:ом)?${CYR_POST}`, 'giu'), 'глазки засияли от радости'],
   [new RegExp(`${CYR_PRE}душа\\s+запела\\s+хрустал(?:ём|ем)?${CYR_POST}`, 'giu'), 'на сердце стало легко и радостно'],
+
+  // Очистка от заезженных клише начала сказки про форточку и носик
+  [new RegExp(`${CYR_PRE}в\\s+приоткрытую\\s+форточку\\s+заглянул\\s+пушистый\\s+рыжий\\s+солнечный\\s+лучик\\s+и\\s+мягко\\s+пощекотал\\s+носик(?:\\.)?\\s*`, 'giu'), ''],
+  [new RegExp(`${CYR_PRE}пощекотал(?:а)?\\s+носик(?:\\.)?\\s*`, 'giu'), 'ласково согрело щёчки. '],
+  [new RegExp(`${CYR_PRE}в\\s+приоткрытую\\s+форточку\\s+заглянул(?:а|о)?\\s*`, 'giu'), 'ласково выглянуло солнышко, '],
 ];
 
 /**
@@ -337,7 +342,7 @@ export function proofreadRussianGrammar(text, params = {}) {
       );
     }
 
-    // Замена глаголов непосредственно после маркеров субъекта
+    // Замена глаголов непосредственно после маркеров девочки
     const girlSubjects = `${childName}|девочка|малышка|героиня|она`;
     for (const [m, f] of GENDER_VERB_PAIRS) {
       result = result.replace(
@@ -345,49 +350,87 @@ export function proofreadRussianGrammar(text, params = {}) {
         (match, subj, verb) => `${subj} ${f}`
       );
     }
-
-    // Согласование составных сказуемых в рамках одного предложения/клаузы:
-    // «Аэлита пошла ..., увидел ... и улыбнулся» -> увидела ... и улыбнулась
-    const mascVerbsList = GENDER_VERB_PAIRS.map(([m]) => m).join('|');
-    const femMap = new Map(GENDER_VERB_PAIRS);
-
-    // Случай 1: запятая перед глаголом «, увидел» -> «, увидела»
-    result = result.replace(
-      new RegExp(`,\\s*(${mascVerbsList})${CYR_POST}`, 'giu'),
-      (match, verb) => `, ${femMap.get(verb.toLowerCase()) || verb}`
-    );
-
-    // Случай 2: союз «и / но / а» перед глаголом «и улыбнулся» -> «и улыбнулась»
-    result = result.replace(
-      new RegExp(`\\s+(и|но|а)\\s+(${mascVerbsList})${CYR_POST}`, 'giu'),
-      (match, conj, verb) => ` ${conj} ${femMap.get(verb.toLowerCase()) || verb}`
-    );
   }
 
-  // 4. Согласование глаголов для мальчика
-  if (effectiveGender === 'boy') {
-    const boySubjects = `${childName}|мальчик|малыш|герой|он`;
-    const boyMap = new Map(GENDER_VERB_PAIRS.map(([m, f]) => [f, m]));
-    const femVerbsList = GENDER_VERB_PAIRS.map(([, f]) => f).join('|');
+  // 4. Защита и согласование глаголов для спутников и персонажей мужского рода
+  // (например: «Он подмигнул и протянул лапку», «Енотик улыбнулся»)
+  const mascVerbsList = GENDER_VERB_PAIRS.map(([m]) => m).join('|');
+  const femVerbsList = GENDER_VERB_PAIRS.map(([, f]) => f).join('|');
+  const femMap = new Map(GENDER_VERB_PAIRS);
+  const boyMap = new Map(GENDER_VERB_PAIRS.map(([m, f]) => [f, m]));
 
-    // Прямой субъект: «Марк пошла» -> «Марк пошёл», «Малыш улыбнулась» -> «Малыш улыбнулся»
+  const MASC_COMPANIONS = 'он|енотик|мишка|медвежонок|щенок|котик|кот|лис|лисёнок|пёсик|пёс|зайчик|робот|динозаврик|папа|дедушка|мальчик|малыш|друг|спутник|зверёк|лучик|ветерок|ручеёк';
+  const FEM_COMPANIONS = 'она|девочка|малышка|героиня|белочка|лисичка|птичка|куколка|мама|бабушка|звёздочка|тучка|игрушка';
+
+  // Прямое согласование мужского субъекта: «Он протянула» -> «Он протянул», «Енотик улыбнулась» -> «Енотик улыбнулся»
+  result = result.replace(
+    new RegExp(`${CYR_PRE}(${MASC_COMPANIONS})\\s+(${femVerbsList})${CYR_POST}`, 'giu'),
+    (match, subj, verb) => `${subj} ${boyMap.get(verb.toLowerCase()) || verb}`
+  );
+
+  // Составное сказуемое мужского субъекта: «Он подмигнул пуговичным глазком и протянула» -> «и протянул»
+  result = result.replace(
+    new RegExp(`(${CYR_PRE}(?:${MASC_COMPANIONS})[^.!?—–\n]+?\\s+(?:и|но|а)\\s+)(${femVerbsList})${CYR_POST}`, 'giu'),
+    (match, prefix, verb) => `${prefix}${boyMap.get(verb.toLowerCase()) || verb}`
+  );
+
+  // Прямое согласование женского субъекта: «Белочка протянул» -> «Белочка протянула»
+  result = result.replace(
+    new RegExp(`${CYR_PRE}(${FEM_COMPANIONS})\\s+(${mascVerbsList})${CYR_POST}`, 'giu'),
+    (match, subj, verb) => `${subj} ${femMap.get(verb.toLowerCase()) || verb}`
+  );
+
+  // Составное сказуемое женского субъекта: «Она взглянула на карту и понял» -> «и поняла»
+  result = result.replace(
+    new RegExp(`(${CYR_PRE}(?:${FEM_COMPANIONS})[^.!?—–\n]+?\\s+(?:и|но|а)\\s+)(${mascVerbsList})${CYR_POST}`, 'giu'),
+    (match, prefix, verb) => `${prefix}${femMap.get(verb.toLowerCase()) || verb}`
+  );
+
+  // 5. Согласование сложных сказуемых конкретно героини/героя
+  if (effectiveGender === 'girl') {
+    // Если в клаузе подлежащее — героиня: «Аэлита сделала шаг и улыбнулся» -> «и улыбнулась»
     result = result.replace(
-      new RegExp(`${CYR_PRE}(${boySubjects})\\s+(${femVerbsList})${CYR_POST}`, 'giu'),
-      (match, subj, verb) => {
-        const replacement = boyMap.get(verb.toLowerCase()) || verb;
-        return `${subj} ${replacement}`;
+      new RegExp(`(${CYR_PRE}(?:${childName}|девочка|малышка|героиня)[^.!?—–\n]+?\\s+(?:и|но|а)\\s+)(${mascVerbsList})${CYR_POST}`, 'giu'),
+      (match, prefix, verb) => {
+        if (new RegExp(`(?:${MASC_COMPANIONS})\\s+[^.!?—–\n]+$`, 'iu').test(prefix)) {
+          return match;
+        }
+        return `${prefix}${femMap.get(verb.toLowerCase()) || verb}`;
       }
     );
-
-    // Составные сказуемые для мальчика: «Марк пошёл вперед и увидела» -> «и увидел»
     result = result.replace(
-      new RegExp(`,\\s*(${femVerbsList})${CYR_POST}`, 'giu'),
-      (match, verb) => `, ${boyMap.get(verb.toLowerCase()) || verb}`
+      new RegExp(`(${CYR_PRE}(?:${childName}|девочка|малышка|героиня)[^.!?—–\n]+?,\\s*)(${mascVerbsList})${CYR_POST}`, 'giu'),
+      (match, prefix, verb) => {
+        if (new RegExp(`(?:${MASC_COMPANIONS})\\s+[^.!?—–\n]+$`, 'iu').test(prefix)) {
+          return match;
+        }
+        return `${prefix}${femMap.get(verb.toLowerCase()) || verb}`;
+      }
+    );
+  } else if (effectiveGender === 'boy') {
+    const boySubjects = `${childName}|мальчик|малыш|герой|он`;
+    result = result.replace(
+      new RegExp(`${CYR_PRE}(${boySubjects})\\s+(${femVerbsList})${CYR_POST}`, 'giu'),
+      (match, subj, verb) => `${subj} ${boyMap.get(verb.toLowerCase()) || verb}`
     );
 
     result = result.replace(
-      new RegExp(`\\s+(и|но|а)\\s+(${femVerbsList})${CYR_POST}`, 'giu'),
-      (match, conj, verb) => ` ${conj} ${boyMap.get(verb.toLowerCase()) || verb}`
+      new RegExp(`(${CYR_PRE}(?:${childName}|мальчик|малыш|герой)[^.!?—–\n]+?\\s+(?:и|но|а)\\s+)(${femVerbsList})${CYR_POST}`, 'giu'),
+      (match, prefix, verb) => {
+        if (new RegExp(`(?:${FEM_COMPANIONS})\\s+[^.!?—–\n]+$`, 'iu').test(prefix)) {
+          return match;
+        }
+        return `${prefix}${boyMap.get(verb.toLowerCase()) || verb}`;
+      }
+    );
+    result = result.replace(
+      new RegExp(`(${CYR_PRE}(?:${childName}|мальчик|малыш|герой)[^.!?—–\n]+?,\\s*)(${femVerbsList})${CYR_POST}`, 'giu'),
+      (match, prefix, verb) => {
+        if (new RegExp(`(?:${FEM_COMPANIONS})\\s+[^.!?—–\n]+$`, 'iu').test(prefix)) {
+          return match;
+        }
+        return `${prefix}${boyMap.get(verb.toLowerCase()) || verb}`;
+      }
     );
   }
 
@@ -592,6 +635,28 @@ export function verifyNarrativeIntegrity(story, params = {}) {
       const verbFelt = isGirl ? 'почувствовала' : 'почувствовал';
       scenes[0].text = `В самый уютный и добрый день ${childName} ${verbFelt} приближение настоящего чуда. ${scenes[0].text}`;
       fixes.push(`Имя «${childName}» аккуратно вплетено в начало первой сцены`);
+    }
+  }
+
+  // 2.1. Синхронизация места действия первой сцены (устранение оконных шаблонов для уличного визуала)
+  if (scenes[0] && scenes[0].text) {
+    const s1Visual = String(scenes[0].visual || '').toLowerCase();
+    const isOutdoorSetting = [
+      'mountain', 'trail', 'path', 'stream', 'creek', 'river', 'forest', 'trees',
+      'meadow', 'nature', 'outdoors', 'raincoat', 'boots', 'sea', 'beach', 'ocean',
+      'space', 'sky', 'clouds', 'park', 'playground', 'camp', 'hills'
+    ].some((w) => s1Visual.includes(w));
+
+    if (isOutdoorSetting) {
+      let s1Text = scenes[0].text;
+      s1Text = s1Text.replace(/В\s+приоткрытую\s+форточку\s+заглянул\s+[^.!?]+[.!?]\s*/giu, '');
+      s1Text = s1Text.replace(/за\s+окном\s+увидел([а-яё]*)\s+/giu, 'впереди увидела ');
+      s1Text = s1Text.replace(/увидела\s+за\s+окном\s+/giu, 'увидела впереди ');
+      s1Text = s1Text.replace(/увидел\s+за\s+окном\s+/giu, 'увидел впереди ');
+      if (s1Text !== scenes[0].text) {
+        scenes[0].text = s1Text.trim();
+        fixes.push('Синхронизировано место действия первой сцены: устранены оконные шаблоны для уличного визуала');
+      }
     }
   }
 

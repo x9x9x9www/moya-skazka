@@ -197,3 +197,55 @@ test('Агент: упрощение вопросов ребёнку до одн
   const simplifiedCompound = simplifyChildQuestion(compoundQ);
   assert.equal(simplifiedCompound, 'Что почувствовал герой?');
 });
+
+test('Агент: сохранение мужского рода глаголов у спутника при героине-девочке', () => {
+  const text = 'Аэлита улыбнулась и посмотрела вперёд. Он подмигнул пуговичным глазком и протянул лапку к маленькой карте.';
+  const proofread = proofreadRussianGrammar(text, 'girl', 'Аэлита');
+  
+  assert.ok(
+    proofread.includes('Он подмигнул пуговичным глазком и протянул лапку'),
+    `Глагол спутника "протянул" не должен превращаться в женский род "протянула": ${proofread}`
+  );
+  assert.ok(!proofread.includes('протянула лапку'), 'Не должно быть "протянула лапку" после "Он"');
+});
+
+test('Агент: исправление ошибочного женского глагола спутника обратно в мужской род', () => {
+  const corrupted = 'Аэлита шагнула на тропинку. Он подмигнул пуговичным глазком и протянула лапку к карте.';
+  const fixed = proofreadRussianGrammar(corrupted, 'girl', 'Аэлита');
+  
+  assert.ok(
+    fixed.includes('Он подмигнул пуговичным глазком и протянул лапку'),
+    `Ошибочный глагол спутника должен быть исправлен на "протянул": ${fixed}`
+  );
+});
+
+test('Агент: устранение комнатных штампов и синхронизация при уличной первой сцене', () => {
+  const story = {
+    title: 'Поход к горному ручью',
+    scenes: [
+      {
+        text: 'Утром в приоткрытую форточку заглянул солнечный лучик и пощекотал носик. Аэлита обула резиновые сапожки и весело зашагала по мокрой горной тропинке к ручью.',
+        visual: 'A little girl wearing a bright yellow raincoat and rubber boots on a mountain trail near a rushing stream',
+      },
+      { text: 'Сцена 2.', visual: 'Trail continue' },
+      { text: 'Сцена 3.', visual: 'Trail climax' },
+      { text: 'Сцена 4.', visual: 'Resting safely' },
+    ],
+    questions: [
+      { question: 'Что почувствовала Аэлита?' },
+      { question: 'Куда побегут друзья завтра?' },
+    ],
+  };
+
+  const integrity = verifyNarrativeIntegrity(story, {
+    childName: 'Аэлита',
+    gender: 'girl',
+    theme: 'Горный ручей',
+  });
+
+  const s1Text = integrity.story.scenes[0].text;
+  assert.ok(!s1Text.includes('форточку'), 'Штамп с форточкой должен быть удалён из уличной завязки');
+  assert.ok(!s1Text.includes('пощекотал носик'), 'Штамп с пощекотал носик должен быть удалён');
+  assert.ok(s1Text.includes('сапожки') || s1Text.includes('тропинке'), 'Уличный сюжет должен сохраниться');
+});
+

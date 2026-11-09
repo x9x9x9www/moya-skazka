@@ -22,6 +22,7 @@ import {
   declineRussianName,
   formatSafeForWhom,
   formatSafeCreationHeader,
+  inferRussianNameGender,
   removeAgeFromText,
   fixGenderAgreements,
   getOPreposition,
@@ -32,6 +33,7 @@ export {
   declineRussianName,
   formatSafeForWhom,
   formatSafeCreationHeader,
+  inferRussianNameGender,
   removeAgeFromText,
   fixGenderAgreements,
   getOPreposition,
@@ -104,6 +106,10 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
   * If girl ("девочка"): ALL past tense verbs for the child MUST have feminine grammatical endings (-ла / -лась / -а: увидела, почувствовала, побежала, улыбнулась, нашла, помогла, обрадовалась, решила). NEVER use masculine verbs for a female hero (FORBIDDEN: «Аэлита почувствовал», «Аэлита побежал»).
   * If girl ("девочка"): ALL adjectives describing the child MUST be feminine (смелая, маленькая, добрая).
   * If boy ("мальчик"): ALL past tense verbs are masculine (увидел, почувствовал, побежал, улыбнулся).
+- MULTI-CHARACTER GENDER SEPARATION (РАЗДЕЛЕНИЕ РОДОВ ПЕРСОНАЖЕЙ):
+  * When the child is a girl ("девочка") and her companion is masculine (он, енотик, мишка, щенок, кот, робот, лис, друг, папа): The child's actions are feminine (-ла / -лась), BUT the companion's actions MUST REMAIN MASCULINE!
+  * STRICTLY FORBIDDEN to assign feminine verbs to masculine companions: «Он подмигнул пуговичным глазком и протянул лапку» (FORBIDDEN: «Он подмигнул ... и протянула»).
+  * Each character's verbs MUST agree with that specific character's grammatical gender!
 - DECLENSION OF NAMES (СКЛОНЕНИЕ ИМЕНИ): Correctly decline the child's Russian name in all grammatical cases!
   * Родительный падеж (кого? чьё?): «сердце Аэлиты», «ладошка Аэлиты» (FORBIDDEN: «сердце Аэлита»).
   * Дательный падеж (кому?): «навстречу Аэлите», «сказал Аэлите».
@@ -125,7 +131,10 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
   * В КАЖДОЙ из 4 страниц ОБЯЗАТЕЛЬНО должны присутствовать минимум 2–3 физических осязаемых атрибута этой темы.
   * КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО игнорировать кастомную тему или сводить её к абстрактному фону!
   * КАТЕГОРИЧЕСКИЙ ЗАПРЕТ НА КЛИШЕ «СПАСЕНИЕ ОТ ХОЛОДА»: ЗАПРЕЩЕНО вставлять замерзающих зверей, озябшие лапки или обогрев от мороза, если только тема напрямую не про зиму или снег! Вся интрига и действие должны на 100% происходить внутри выбранной темы («Мода и стиль» — примерка, создание стиля, показ, праздник; «Цирк» — фокусы, трюки; «Машинки» — ремонт, трасса).
-- FORBIDDEN openings: "Жил-был", "Однажды", "В некотором царстве", "В одном волшебном лесу", "Как-то раз". Start directly in media res with a sensory sound, texture, smell, movement, or line of dialogue.
+- STRICT SETTING SYNCHRONIZATION WITH SCENE 1 VISUAL (СИНХРОНИЗАЦИЯ НАЧАЛА С ИЛЛЮСТРАЦИЕЙ):
+  * The text of Scene 1 (\`scenes[0].text\`) and the visual description of Scene 1 (\`scenes[0].visual\`) MUST DEPICT THE EXACT SAME ENVIRONMENT!
+  * If the theme, outfit, or visual is outdoors (mountain trail, forest, stream, puddle jumping, sea, space, playground, raincoat and boots): the story text MUST START DIRECTLY OUTDOORS in media res!
+  * FORBIDDEN OPENING CLICHÉS: "Жил-был", "Однажды", "В некотором царстве", "В одном волшебном лесу", "Как-то раз", as well as domestic bedroom clichés for outdoor stories (FORBIDDEN: "в приоткрытую форточку заглянул солнечный лучик и пощекотал носик", "в своей комнате проснулся"). If the hero is in a raincoat on a mossy path, start right on the path, feeling the drizzle or tapping the puddles!
 - MEANING & MORAL: Every fairytale must have a clear, heartwarming meaning (friendship, kindness, perseverance, mutual aid, curiosity, courage). The moral MUST be expressed through the child's own courageous, kind, or ingenious ACTION in Scene 3, NEVER through preachy didactic lectures at the end.
 - No brands, no real people, no pop-culture references, no advertisements.
 
@@ -856,41 +865,133 @@ function getThemedCompanionQuirk(params, random) {
   return `верный и добрый спутник (${toyName}): ласково подмигивает пуговичным глазком, согревает ладошку и всегда готов прийти на выручку`;
 }
 
-function getThemedHook(params, random) {
+function getThemedHook(params, random = Math.random) {
   const interests = (params.interests || []).map((i) => i.toLowerCase());
   const theme = (params.theme || '').toLowerCase();
   const wishes = (params.customWishes || '').toLowerCase();
+  const clothing = String(params.appearance?.clothingItem || params.appearance?.clothing || params.appearance?.outfit || '').toLowerCase();
+  const mood = String(params.storyMood || params.mood || '').toLowerCase();
+  const isBedtime = mood.includes('сон') || theme.includes('сон');
 
-  if (theme.includes('новогод') || theme.includes('нов год') || theme.includes('рождеств') || theme.includes('зим') || theme.includes('мороз')) {
-    return 'За морозным окном тихо кружились пушистые снежинки, а на нарядной пушистой ёлке мягко звенел серебряный колокольчик.';
+  // 1. Зимняя / новогодняя сказка
+  if (theme.includes('новогод') || theme.includes('нов год') || theme.includes('рождеств') || theme.includes('зим') || theme.includes('мороз') || theme.includes('снег')) {
+    const winterHooks = [
+      'Пушистые резные снежинки тихо кружились в воздухе, а искристый снег пах сладкими мандаринами и праздничной хвоей.',
+      'С пушистых заснеженных веток тихо вспорхнула птичка, осыпав дорожку веером серебристых снежинок.',
+      'На нарядной пушистой ёлке мягко звенел хрустальный колокольчик, а под ногами весело поскрипывал чистый белый снежок.',
+    ];
+    return pick(winterHooks, random);
   }
-  if (theme.includes('цирк')) {
-    return 'В воздухе запахло сладким попкорном, а из-за бархатной кулисы весело вылетел разноцветный праздничный серпантин.';
+
+  // 2. Дождевик и сапожки (лужи, ручей, горная тропа, свежий дождик)
+  if (clothing.includes('дождевик') || clothing.includes('сапожк') || theme.includes('дожд') || theme.includes('луж')) {
+    const rainHooks = [
+      'Звонкий горный ручеёк весело перекатывал гладкие камушки, а в воздухе пахло свежей хвоей и тёплым дождиком.',
+      'Яркие сапожки весело шлёпнули по прозрачной лужице, подняв веер солнечных хрустальных брызг.',
+      'Сквозь влажные изумрудные листья ласково проглянуло солнышко, играя бликами на чистых дождевых капельках.',
+      'На горной тропе звенели хрустальные капли, стекая с пушистых ветвей прямо в весёлый прозрачный ручей.',
+    ];
+    return pick(rainHooks, random);
   }
-  if (theme.includes('самолёт') || theme.includes('самолет') || theme.includes('полёт') || theme.includes('полет')) {
-    return 'На ладошку опустилось лёгкое розовое перышко, пахнущее высокими облаками и тёплым попутным ветром.';
+
+  // 3. Море / океан / пляж / подводный мир
+  if (wishes.includes('мор') || wishes.includes('океан') || theme.includes('мор') || theme.includes('океан') || theme.includes('пляж') || theme.includes('рыбк') || theme.includes('кит')) {
+    const seaHooks = [
+      'Ласковая бирюзовая волна с тихим шелестом коснулась золотистого песка, оставив у самой кромки воды сияющую перламутровую ракушку.',
+      'Тёплый морской бриз принёс свежий солоноватый аромат, а над прозрачной зеркальной гладью весело закружились чайки.',
+      'На тёплом песчаном берегу сияли разноцветные гладкие камушки, умытые чистой лазурной волной.',
+    ];
+    return pick(seaHooks, random);
   }
-  if (wishes.includes('мор') || wishes.includes('океан') || theme.includes('мор') || theme.includes('океан')) {
-    return 'Тёплый вечерний ветерок принёс в комнату ласковый шум морской волны и аромат солоноватого бриза.';
+
+  // 4. Космос / звёзды / ракеты
+  if (interests.some((i) => i.includes('косм')) || theme.includes('косм') || theme.includes('звезд') || theme.includes('звёзд') || theme.includes('планет')) {
+    const spaceHooks = [
+      'За панорамным прозрачным куполом мягко мерцали далёкие созвездия, рассыпая в тишине золотистую звёздную пыльцу.',
+      'Маленькая серебристая комета тихо прочертила бархатное небо, оставив за собой мерцающий искристый след.',
+      'Мерцающие кольца далёкой планеты тихо переливались всеми оттенками сиреневого и золотого света.',
+    ];
+    return pick(spaceHooks, random);
   }
-  if (interests.some((i) => i.includes('косм')) || theme.includes('косм')) {
-    return 'За круглым вечерним окном тихо вспыхнула крошечная золотая звёздочка, оставив в небе искрящийся хвостик.';
+
+  // 5. Полёты / самолётики / воздушный шар
+  if (theme.includes('самолёт') || theme.includes('самолет') || theme.includes('полёт') || theme.includes('полет') || theme.includes('шар')) {
+    const flightHooks = [
+      'На ладошку опустилось лёгкое розовое пёрышко, пахнущее высокими пушистыми облаками и тёплым попутным ветром.',
+      'Сквозь пушистые ватные облака открылся удивительный вид на цветущие холмы и зеркальные озёра.',
+      'Ласковый попутный ветерок весело надул разноцветный парус, зовя в плавный полёт над солнечной долиной.',
+    ];
+    return pick(flightHooks, random);
   }
+
+  // 6. Динозаврики
   if (interests.some((i) => i.includes('дино')) || theme.includes('дино')) {
-    return 'В комнате пахло сладкими сушёными яблоками, когда под мягким ковриком тихонько зашелестел сказочный листик.';
-  }
-  if (interests.some((i) => i.includes('машин')) || theme.includes('машин')) {
-    return 'На ковре тихонько заурчал маленький дружелюбный моторчик, а фары осветили дорогу к сказочной дверце.';
-  }
-  if (interests.some((i) => i.includes('животн')) || interests.some((i) => i.includes('природ'))) {
-    return 'В приоткрытую форточку заглянул пушистый рыжий солнечный лучик и мягко пощекотал носик.';
-  }
-  const mood = (params.storyMood || params.mood || '').toLowerCase();
-  if (theme.includes('сон') || mood.includes('сон')) {
-    return 'В сумерках тихо зазвенел хрустальный колокольчик, зовя за собой в мягкую страну добрых снов.';
+    const dinoHooks = [
+      'В тёплой зелёной долине весело шелестели гигантские папоротники, а над ласковым озером поднимался лёгкий солнечный туман.',
+      'Под изумрудным папоротником тихонько зашелестел сказочный лист, открывая тайную дорожку в долину динозавриков.',
+      'Тёплый ветерок донёс весёлый топот маленьких ножек: в долине начиналась добрая игра в прятки.',
+    ];
+    return pick(dinoHooks, random);
   }
 
-  return 'Солнечный озорной лучик весело скользнул по комнате, словно приглашая сделать шаг навстречу новому приключению.';
+  // 7. Машинки / транспорт / железная дорога
+  if (interests.some((i) => i.includes('машин')) || theme.includes('машин') || theme.includes('поезд') || theme.includes('дорог')) {
+    const carHooks = [
+      'Маленький светофорчик весело подмигнул зелёным огоньком, приглашая отправиться в путь по солнечной мостовой.',
+      'Уютный сказочный моторчик тихонько заурчал, а фары осветили дорогу навстречу новому интересному маршруту.',
+      'Мягкий перестук колёс по цветным рельсам наполнял всё вокруг ожиданием весёлого путешествия.',
+    ];
+    return pick(carHooks, random);
+  }
+
+  // 8. Цирк / праздник / день рождения
+  if (theme.includes('цирк') || theme.includes('праздник') || theme.includes('день рожд')) {
+    const circusHooks = [
+      'В воздухе запахло сладким попкорном, а из-за бархатной кулисы вылетел разноцветный праздничный серпантин.',
+      'В лучах прожекторов закружились радужные мыльные пузыри, переливающиеся всеми цветами радости.',
+      'Задорная музыка сказочной ярмарки звенела колокольчиками, обещая настоящий калейдоскоп сюрпризов.',
+    ];
+    return pick(circusHooks, random);
+  }
+
+  // 9. Мода / стиль / мастерская / творчество
+  if (theme.includes('мод') || theme.includes('стил') || theme.includes('наряд') || mood.includes('творч')) {
+    const styleHooks = [
+      'На деревянном верстаке мягко шуршали рулоны цветной ткани, а в баночках весело звенели перламутровые пуговицы.',
+      'В солнечной мастерской витал свежий аромат деревянных карандашей и ярких акварельных красок.',
+      'Солнечный зайчик весело заплясал на золотой мерной ленте, словно подсказывая новую творческую идею.',
+    ];
+    return pick(styleHooks, random);
+  }
+
+  // 10. Природа / животные / горы / лес
+  if (interests.some((i) => i.includes('животн')) || interests.some((i) => i.includes('природ')) || theme.includes('лес') || theme.includes('гор') || wishes.includes('лес')) {
+    const natureHooks = [
+      'Звонкий горный ручеёк весело перекатывал гладкие камушки, а в воздухе пахло свежей хвоей и нагретой солнцем смолой.',
+      'На лесной тропинке ласково шелестела изумрудная листва, и сквозь кроны высоких деревьев пробивались золотистые лучи.',
+      'Под ногами мягко пружинил пушистый мох, а на соседней ветке беззаботно звенели птичьи трели.',
+      'Свежий утренний ветерок весело качнул ромашки на полянке, стряхивая прозрачные хрустальные капельки росы.',
+    ];
+    return pick(natureHooks, random);
+  }
+
+  // 11. Спокойный сон (только если выбран сон)
+  if (isBedtime) {
+    const bedtimeHooks = [
+      'В мягких вечерних сумерках зажёгся тёплый ночничок, и по стене заплясали добрые сонные звёздочки.',
+      'В сумерках тихо зазвенел хрустальный колокольчик, зовя за собой в мягкую страну добрых снов.',
+      'Тёплый вечерний ветерок тихо убаюкивал сонные травинки, наполняя мир тишиной и покоем.',
+    ];
+    return pick(bedtimeHooks, random);
+  }
+
+  // 12. Общий универсальный крючок на природе / в мире сказки (по умолчанию)
+  const defaultHooks = [
+    'В чистом воздухе витало радостное предчувствие открытия: впереди петляла неизведанная тропинка, залитая ласковым светом.',
+    'Весёлый озорной ветерок ласково взъерошил листья на ветках, словно подсказывая, что за ближайшим поворотом прячется маленькое чудо.',
+    'Тёплые солнечные лучи золотили верхушки деревьев, наполняя всё вокруг бодрой радостью и предвкушением доброго приключения.',
+  ];
+  return pick(defaultHooks, random);
 }
 
 function getHeroAnchor(params, hints) {
@@ -1093,7 +1194,7 @@ export function buildStoryPrompt(params = {}, options = {}) {
 - Имя: ${params.childName || 'Малыш'}
 - Пол: ${genderRus}
 - Падежные формы имени: Родительный (кого? чьё?): «сердце ${declinedName.gen}», Дательный (кому?): «навстречу ${declinedName.dat}», Творительный (с кем?): «вместе с ${declinedName.ins}».
-- ВАЖНЕЙШЕЕ ПРАВИЛО ГРАММАТИКИ: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала», «решила»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
+- ВАЖНЕЙШЕЕ ПРАВИЛО ГРАММАТИКИ: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени для девочки ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала», «решила»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»! ДЛЯ СПУТНИКА МУЖСКОГО РОДА (он, енотик, мишка, щенок, робот) ГЛАГОЛЫ ОБЯЗАНЫ ОСТАВАТЬСЯ МУЖСКОГО РОДА («Он подмигнул пуговичным глазком и протянул лапку»)!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
 ${formatClothingNarrativePrompt({
   appearance: params.appearance,
   theme: params.theme,
@@ -1135,6 +1236,7 @@ ${params.customWishes ? `- ОСОБЫЕ ПОЖЕЛАНИЯ РОДИТЕЛЯ (В�
 5. ТРЕБОВАНИЯ ПО ТЗ (РАЗДЕЛЫ 6 И 15):
 - Ровно 4 сцены. Общий объём: ${band.total[0]}–${band.total[1]} русских слов. Ориентир на каждую сцену: ${band.perScene[0]}–${band.perScene[1]} слов. Стиль предложений: ${band.sentences}.
 - Сцена 1: Знакомство с миром, погружение в тему «${params.theme || 'Дружба'}» и встреча со спутником (${toy})${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? `, органичное сюжетное раскрытие костюма (${fullClothingRus})` : ''}.
+- СИНХРОНИЗАЦИЯ НАЧАЛА С ИЛЛЮСТРАЦИЕЙ: Текст Сцены 1 и иллюстрация Сцены 1 обязаны происходить В ОДНОМ И ТОМ ЖЕ МЕСТЕ! Если герой на улице (ручей, тропинка, лужи, лес, горы, космос) — начинай прямо на улице в сапожках/дождевике/скафандре! Категорически ЗАПРЕЩЕНЫ штампы («лучик заглянул в форточку и пощекотал носик», «в своей комнате проснулся»).
 - Сцена 2: Добрая интрига / маленькая задача. Завершается действием и паузой для Вопроса 1.
 - Сцена 3: Кульминация и доброе решение: ${dna.hero_anchor}${params.customWishes ? `, исполнение пожелания «${params.customWishes}»` : ''}.
 ${scene4Requirement}
@@ -1188,7 +1290,7 @@ export function normalizeBlueprint(raw, params = {}) {
     },
     scene_by_scene_blueprint: {
       scene_1_hook: {
-        setting: asString(s1.setting) || `Уютная комната или начало сказочного мира темы «${theme}»`,
+        setting: asString(s1.setting) || `Начало сказочного мира темы «${theme}»`,
         sensory_hook: asString(s1.sensory_hook) || `Тихий шелест или мягкий огонёк, привлекающий внимание`,
         clothing_action: asString(s1.clothing_action) || (classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant
           ? `${child} надевает или получает ${clothing} для своего доброго подвига`
@@ -1366,7 +1468,7 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
 - Имя: ${params.childName || 'Малыш'}
 - Пол: ${genderRus}
 - Падежные формы имени: Родительный («сердце ${declinedName.gen}»), Дательный («навстречу ${declinedName.dat}»), Творительный («вместе с ${declinedName.ins}»)
-- ГРАММАТИЧЕСКОЕ ПРАВИЛО: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
+- ГРАММАТИЧЕСКОЕ ПРАВИЛО: ${isGirl ? `ГЕРОИНЯ — ДЕВОЧКА! Все глаголы прошедшего времени для девочки ОБЯЗАНЫ иметь женские окончания -ла / -лась («${params.childName} почувствовала», «улыбнулась», «побежала»). Категорически запрещено писать в мужском роде! Обязательно склоняй имя: «сердце ${declinedName.gen}»! ДЛЯ СПУТНИКА МУЖСКОГО РОДА (он, енотик, мишка, щенок, робот) ГЛАГОЛЫ ОБЯЗАНЫ ОСТАВАТЬСЯ МУЖСКОГО РОДА («Он подмигнул пуговичным глазком и протянул лапку»)!` : `Герой — мальчик. Все глаголы прошедшего времени — мужского рода («${params.childName} почувствовал», «улыбнулся»). Обязательно склоняй имя: «сердце ${declinedName.gen}»!`}
 ${formatClothingNarrativePrompt({
   appearance: params.appearance,
   theme: params.theme,
@@ -1387,6 +1489,7 @@ ${formatClothingNarrativePrompt({
 4. ТРЕБОВАНИЯ ПО ТЗ:
 - Ровно 4 сцены. Общий объём: ${band.total[0]}–${band.total[1]} русских слов. Ориентир на каждую сцену: ${band.perScene[0]}–${band.perScene[1]} слов.
 - Каждая сцена — 2–4 небольших абзаца.
+- СИНХРОНИЗАЦИЯ НАЧАЛА С ИЛЛЮСТРАЦИЕЙ: Текст первой сцены и иллюстрация обязаны происходить В ОДНОМ И ТОМ ЖЕ МЕСТЕ! Если герой на улице (ручей, тропинка, лужи, лес, горы, космос) — начинай сразу с улицы в сапожках/дождевике! Никаких комнатных штампов («лучик заглянул в форточку и пощекотал носик», «в своей комнате проснулся»).
 - Никаких заезженных штампов («Жил-был», «Однажды»). Начинай сразу с сенсорного крючка.
 - Ровно один вопрос после сцены 2 и ровно один после сцены 4. Правило одного простого вопроса (до 10–12 слов, без «и/или»).
 - visual-поля — только английский, 3D cartoon style render, без текста на картинках.

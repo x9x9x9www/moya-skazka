@@ -207,6 +207,47 @@ export function formatSafeCreationHeader(name, gender = 'boy') {
 }
 
 /**
+ * Определение вероятного пола ребёнка по имени
+ * @param {string} name
+ * @returns {'boy' | 'girl' | null}
+ */
+export function inferRussianNameGender(name) {
+  if (!name || typeof name !== 'string') return null;
+  const trimmed = name.trim().toLowerCase();
+  if (trimmed.length < 2) return null;
+
+  const maleNamesOnAorYa = new Set([
+    'миша', 'саша', 'паша', 'ваня', 'даня', 'илья', 'никита', 'лёва', 'лева',
+    'сеня', 'тёма', 'тема', 'коля', 'дима', 'серёжа', 'сережа', 'рома', 'гоша',
+    'юра', 'гриша', 'федя', 'лука', 'кузьма', 'тима', 'жора', 'стёпа', 'степа',
+    'влад', 'женя', 'слава', 'боря', 'илюша', 'матвейка',
+  ]);
+
+  if (maleNamesOnAorYa.has(trimmed)) {
+    return 'boy';
+  }
+
+  const femaleExceptions = new Set(['любовь', 'николь', 'кармен', 'рахиль', 'руфь', 'адель']);
+  if (femaleExceptions.has(trimmed)) {
+    return 'girl';
+  }
+
+  const lastChar = trimmed.slice(-1);
+  if (lastChar === 'а' || lastChar === 'я') {
+    return 'girl';
+  }
+
+  const maleConsonants = new Set([
+    'б', 'в', 'г', 'д', 'ж', 'з', 'к', 'л', 'м', 'н', 'п', 'р', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'й'
+  ]);
+  if (maleConsonants.has(lastChar)) {
+    return 'boy';
+  }
+
+  return null;
+}
+
+/**
  * Очистка текста от технических скобок возраста: «(4 года)», «(5)», «(3 лет)»
  */
 export function removeAgeFromText(text) {

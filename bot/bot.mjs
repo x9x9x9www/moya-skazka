@@ -21,6 +21,7 @@ import {
   buildCharacterAnchor,
   fallbackQuestions,
   declineRussianName,
+  inferRussianNameGender,
   runEditorialAgent,
   classifyClothingNarrativeRole,
   generateDailyIdea,
@@ -106,7 +107,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
 const ADMIN_USERNAMES = ['dinar_fazlyev'];
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.7';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=3.8';
 if (!BOT_TOKEN && isMainModule) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -2104,6 +2105,15 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const parsedBody = JSON.parse(bodyStr || '{}');
       let imageBase64 = parsedBody.imageBase64 || parsedBody.image;
       const outfit = parsedBody.outfit || '';
+      const knownGender = parsedBody.knownGender || parsedBody.gender || null;
+      const knownName = parsedBody.knownName || parsedBody.name || null;
+      const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
+      const inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
+      const genderInstruction = knownGender
+        ? `Пол ребёнка уже точно подтверждён родителем: ${knownGender === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}.`
+        : (inferredGenderFromName
+          ? `Имя ребёнка: ${knownName} (пол: ${inferredGenderFromName === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}).`
+          : 'Внимательно определи пол ребёнка по лицу, причёске и одежде.');
 
       if (!imageBase64) {
         res.writeHead(400, {
@@ -2116,11 +2126,12 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       if (AI_MOCK_MODE) {
         console.log('[AvatarGen] ⚡️ Режим тестирования (AI_MOCK_MODE): возврат мок 3D аватара');
+        const mockGender = knownGender || inferredGenderFromName || 'boy';
         const mockTraits = {
-          gender: 'boy',
-          approxAge: 4,
+          gender: mockGender,
+          approxAge: knownAge || 4,
           hairColor: 'русые',
-          hairType: 'кудрявые',
+          hairType: mockGender === 'girl' ? 'длинные' : 'короткие',
           eyeColor: 'голубые',
           skinTone: 'светлая',
           distinctiveFeatures: 'милые круглые очки',
@@ -2144,9 +2155,9 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       // Шаг А (Vision): Gemini Flash / gpt-6-luna извлекает JSON с чертами лица
       const visionPrompt = `Ты профессиональный детский AI-стилист для создания персонализированной детской сказки.
-Внимательно посмотри на фото ребёнка и определи его анатомические и визуальные черты для мультяшного 3D-персонажа.
+Внимательно посмотри на фото ребёнка и определи его анатомические и визуальные черты для мультяшного 3D-персонажа. ${genderInstruction}
 Выбирай строго из указанных вариантов:
-- gender: "boy" или "girl"
+- gender: ${knownGender ? `"${knownGender}"` : `"girl" (если на фото девочка) или "boy" (если на фото мальчик)`}
 - approxAge: число от 1 до 12 (приблизительный возраст)
 - hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
 - hairType: строго один из: "кудрявые" | "короткие" | "длинные" | "прямые"
@@ -2156,7 +2167,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
 Ответь ИСКЛЮЧИТЕЛЬНО валидным JSON-объектом:
 {
-  "gender": "boy",
+  "gender": "${knownGender || inferredGenderFromName || 'girl'}",
   "approxAge": 4,
   "hairColor": "русые",
   "hairType": "кудрявые",
@@ -2205,11 +2216,17 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         : 'короткие';
       const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'голубые';
       const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'светлая';
-      const gender = parsed.gender === 'girl' ? 'girl' : 'boy';
+      const rawGender = String(parsed.gender || '').toLowerCase();
+      const detectedGender = rawGender.includes('girl') || rawGender.includes('девочк')
+        ? 'girl'
+        : (rawGender.includes('boy') || rawGender.includes('мальч')
+          ? 'boy'
+          : (inferredGenderFromName || 'boy'));
+      const gender = knownGender || detectedGender;
       const approxAge =
         Number(parsed.approxAge || parsed.estimatedAge) >= 1 && Number(parsed.approxAge || parsed.estimatedAge) <= 12
           ? Number(parsed.approxAge || parsed.estimatedAge)
-          : 4;
+          : (knownAge || 4);
       const distinctiveFeatures = parsed.distinctiveFeatures || '';
 
       const traits = {
@@ -2411,16 +2428,17 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         return;
       }
 
+      const inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
       const genderHint = knownGender
-        ? `Пол ребёнка уже точно известен: ${knownGender === 'girl' ? 'девочка' : 'мальчик'}.`
-        : (knownName && (knownName.endsWith('а') || knownName.endsWith('я'))
-          ? `Имя ребёнка: ${knownName} (девочка).`
-          : '');
+        ? `Пол ребёнка уже точно известен: ${knownGender === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}.`
+        : (inferredGenderFromName
+          ? `Имя ребёнка: ${knownName} (пол: ${inferredGenderFromName === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}).`
+          : 'Внимательно определи пол ребёнка по чертам лица, причёске и одежде.');
 
       const visionPrompt = `Ты детский фото-стилист для 3D-мультипликации. Внимательно взгляни на фото ребёнка и определи его визуальные черты. ${genderHint}
 
 Выбери строго из разрешённых вариантов:
-- gender: ${knownGender ? `"${knownGender}"` : `"boy" или "girl"`}
+- gender: ${knownGender ? `"${knownGender}"` : `"girl" (девочка) или "boy" (мальчик)`}
 - estimatedAge: число от 2 до 6
 - hairColor: строго один из: "светлые" | "русые" | "тёмные" | "рыжие"
 - hairLength: строго "короткие" или "длинные"
@@ -2434,7 +2452,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
 ОТВЕТЬ ТОЛЬКО ЧИСТЫМ JSON БЕЗ РАССУЖДЕНИЙ:
 {
-  "gender": "${knownGender || 'boy'}",
+  "gender": "${knownGender || inferredGenderFromName || 'girl'}",
   "estimatedAge": 4,
   "hairColor": "русые",
   "hairLength": "короткие",
@@ -2487,7 +2505,13 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
           : 'прямые';
       const eyeColor = ['карие', 'голубые', 'зелёные', 'серые'].includes(parsed.eyeColor) ? parsed.eyeColor : 'карие';
       const skinTone = ['светлая', 'персиковая', 'смуглая'].includes(parsed.skinTone) ? parsed.skinTone : 'персиковая';
-      const gender = knownGender || (parsed.gender === 'girl' ? 'girl' : 'boy');
+      const rawGender = String(parsed.gender || '').toLowerCase();
+      const detectedGender = rawGender.includes('girl') || rawGender.includes('девочк')
+        ? 'girl'
+        : (rawGender.includes('boy') || rawGender.includes('мальч')
+          ? 'boy'
+          : (inferredGenderFromName || 'boy'));
+      const gender = knownGender || detectedGender;
       const estimatedAge =
         Number(parsed.estimatedAge) >= 2 && Number(parsed.estimatedAge) <= 6
           ? Number(parsed.estimatedAge)

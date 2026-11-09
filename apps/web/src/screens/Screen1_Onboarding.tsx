@@ -39,6 +39,7 @@ import {
 } from '../components/FairytaleIcons';
 import { api } from '../api/client';
 import { resolveChildAvatar } from '../utils/avatarResolver';
+import { inferRussianNameGender } from '../utils/russianGrammar';
 
 export interface ChildRegistrationData {
   name: string;
@@ -77,6 +78,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
   // Состояние формы с умными предзаполненными значениями для супер-быстрой регистрации
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
+  const [hasUserExplicitlySetGender, setHasUserExplicitlySetGender] = useState(false);
   const [age, setAge] = useState<number>(4);
 
   // Внешность: цвет волос, тип и длина волос, цвет глаз, цвет кожи
@@ -306,8 +308,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       let avatarRes: any = null;
       try {
         avatarRes = await api.generateCharacterAvatar(optimizedBase64, undefined, 'image/jpeg', {
-          knownGender: gender,
-          knownName: name.trim(),
+          knownGender: hasUserExplicitlySetGender ? gender : undefined,
+          knownName: name.trim() || undefined,
           knownAge: age,
         });
       } catch (genErr) {
@@ -329,7 +331,12 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       }
       if (traits.eyeColor) setEyeColor(traits.eyeColor);
       if (traits.skinTone) setSkinTone(traits.skinTone);
-      if (traits.gender && !gender) setGender(traits.gender);
+      if (traits.gender) {
+        setGender(traits.gender);
+        if (!traits.hairType && !traits.hairLength) {
+          setHairLength(traits.gender === 'girl' ? 'длинные' : 'короткие');
+        }
+      }
       if (traits.distinctiveFeatures) {
         setDistinctiveFeatures(traits.distinctiveFeatures);
       } else if (traits.hasGlasses) {
@@ -595,7 +602,17 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setName(val);
+                if (!hasUserExplicitlySetGender) {
+                  const inferred = inferRussianNameGender(val);
+                  if (inferred) {
+                    setGender(inferred);
+                    setHairLength(inferred === 'girl' ? 'длинные' : 'короткие');
+                  }
+                }
+              }}
               placeholder="Как зовут вашего малыша?"
               className="w-full px-4 py-3 rounded-2xl bg-cream-50 border border-cream-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-base text-stone-900 placeholder:text-stone-400 placeholder:font-normal"
             />
@@ -610,6 +627,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    setHasUserExplicitlySetGender(true);
                     setGender('boy');
                     setHairLength('короткие');
                   }}
@@ -631,6 +649,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    setHasUserExplicitlySetGender(true);
                     setGender('girl');
                     setHairLength('длинные');
                   }}
