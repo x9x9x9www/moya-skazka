@@ -203,11 +203,19 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
         distinctiveFeatures: targetFeatures,
       });
 
+      const isRealGeneratedAvatar =
+        res &&
+        res.status === 'ok' &&
+        res.avatarUrl &&
+        (res.avatarUrl.startsWith('http://') ||
+          res.avatarUrl.startsWith('https://') ||
+          res.avatarUrl.startsWith('/media/'));
+
       const updatedHero: WizardHeroData = {
         ...heroData,
         appearance: {
           ...heroData.appearance,
-          avatar_url: res.avatarUrl,
+          avatar_url: isRealGeneratedAvatar ? res.avatarUrl : heroData.appearance?.avatar_url,
           avatar_id: targetAvatarId,
           hairColor: targetHair,
           hairType: traits.hairType || heroData.appearance?.hairType || 'кудрявые',

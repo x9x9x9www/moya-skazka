@@ -455,7 +455,7 @@ class ApiClient {
     try {
       const res: any = await this.request('/character/generate-avatar', {
         method: 'POST',
-        signal: createTimeoutSignal(90000),
+        signal: createTimeoutSignal(120000),
         body: JSON.stringify({
           imageBase64,
           outfit,
@@ -475,7 +475,7 @@ class ApiClient {
       }
       throw new Error('Ответ сервера не содержит avatarUrl');
     } catch (err: any) {
-      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, мгновенный подбор 3D пресета:', err.message);
+      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, подбор канонического 3D пресета:', err.message);
       const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
       const fbGender: 'boy' | 'girl' = isGirl ? 'girl' : 'boy';
       const traits = {
@@ -484,7 +484,7 @@ class ApiClient {
         hairColor: 'русые',
         hairType: isGirl ? 'длинные' : 'короткие',
         eyeColor: 'карие',
-        skinTone: 'персиковая',
+        skinTone: 'светлая',
         distinctiveFeatures: '',
         clothingItem: isGirl ? 'платьице' : 'уютный свитер',
         clothingColor: isGirl ? 'нежно-розовый' : 'небесно-голубой',

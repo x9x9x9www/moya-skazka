@@ -340,9 +340,17 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         distinctiveFeatures: targetFeatures,
       });
 
+      const isRealGeneratedAvatar =
+        res &&
+        res.status === 'ok' &&
+        res.avatarUrl &&
+        (res.avatarUrl.startsWith('http://') ||
+          res.avatarUrl.startsWith('https://') ||
+          res.avatarUrl.startsWith('/media/'));
+
       const newAppearance = {
         ...appearance,
-        avatar_url: res.avatarUrl,
+        avatar_url: isRealGeneratedAvatar ? res.avatarUrl : appearance.avatar_url,
         avatar_id: targetAvatarId,
         hairColor: targetHair,
         hairType: targetHairType,

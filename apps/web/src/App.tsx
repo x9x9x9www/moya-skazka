@@ -32,7 +32,7 @@ const PARENTING_ADVICE = [
   'Персонализированные сказки помогают мягко и экологично преодолевать детские страхи: темноты, разлуки или новых начинаний.',
 ];
 
-const ADMIN_USERNAMES = ['dinar_fazlyev'];
+const ADMIN_USERNAMES = ['dinar_fazlyev', 'x9x9x9ww'];
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -735,10 +735,11 @@ export const App: React.FC = () => {
     };
 
     const isFreeStory = !isAdmin && canClaimFree;
-    const storyFormat: 'TEXT' | 'ILLUSTRATED' = isFreeStory ? 'TEXT' : 'ILLUSTRATED';
+    // Все сказки создаются в полноразмерном 3D-иллюстрированном формате
+    const storyFormat: 'TEXT' | 'ILLUSTRATED' = 'ILLUSTRATED';
 
     try {
-      // 1. Story Engine: бесплатная первая сказка — строго текст; платная — текст + 4 3D-иллюстрации
+      // 1. Story Engine: генерация сказки + 5 персональных 3D-иллюстраций по аватару ребёнка
       const generatedBook = await generateDynamicStory(
         {
           userId: currentUserId,
@@ -784,7 +785,7 @@ export const App: React.FC = () => {
         child_id: activeChildId || 'default',
         child_name: wizardData.childName,
         title: generatedBook.title,
-        status: storyFormat === 'TEXT' ? 'TEXT_READY' : 'ILLUSTRATED',
+        status: (storyFormat as string) === 'TEXT' ? 'TEXT_READY' : 'ILLUSTRATED',
         format: storyFormat,
         cover_url: resolveMediaUrl(generatedBook.cover_url || generatedBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || generatedBook.title),
         created_at: new Date().toISOString(),

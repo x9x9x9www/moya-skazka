@@ -12,7 +12,7 @@ import {
   CurlyHairIcon,
   PrincessCrownIcon,
 } from './FairytaleIcons';
-import { resolveChildAvatar } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { inferRussianNameGender } from '../utils/russianGrammar';
 
 interface ChildProfileModalProps {
@@ -101,7 +101,15 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               knownAge: age,
             });
 
-            if (res && res.avatarUrl) {
+            const isRealGeneratedAvatar =
+              res &&
+              res.status === 'ok' &&
+              res.avatarUrl &&
+              (res.avatarUrl.startsWith('http://') ||
+                res.avatarUrl.startsWith('https://') ||
+                res.avatarUrl.startsWith('/media/'));
+
+            if (isRealGeneratedAvatar) {
               setAvatarUrl(res.avatarUrl);
             }
 
@@ -124,7 +132,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
               else setHairType('короткие');
             }
             if (a.clothingColor) setClothingColor(a.clothingColor);
-            setPhotoTip(res?.avatarUrl ? '✨ Персональный 3D-аватар малыша создан!' : 'Внешность определена по фото!');
+            setPhotoTip(isRealGeneratedAvatar ? '✨ Персональный 3D-аватар малыша создан!' : 'Внешность определена по фото!');
           } catch (err) {
             console.warn('ChildProfileModal photo analysis failed:', err);
             setPhotoTip('Параметры определены. Вы можете скорректировать их вручную.');
@@ -171,7 +179,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
     }
 
     setIsSubmitting(true);
-    const avatarFileName = resolveChildAvatar({ gender, hairColor, skinTone, distinctiveFeatures }).split('/').pop()?.replace('.webp', '') || `${gender}_brown`;
+    const avatarFileName = resolveChildAvatarKey({ gender, hairColor, skinTone, distinctiveFeatures });
     try {
       await onCreateChild({
         name: name.trim(),

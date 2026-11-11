@@ -111,8 +111,8 @@ const isMainModule = Boolean(
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
-const ADMIN_USERNAMES = ['dinar_fazlyev'];
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.0';
+const ADMIN_USERNAMES = ['dinar_fazlyev', 'x9x9x9ww'];
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.1';
 if (!BOT_TOKEN && isMainModule) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -716,8 +716,8 @@ async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = 
         n: 1,
         size: '1024x1024',
       };
-      if (referenceImageUrl) {
-        // Консистентность персонажа: референсный 3D-аватар для Nano-Banana-2 / Wellflow
+      if (referenceImageUrl && typeof referenceImageUrl === 'string' && (referenceImageUrl.startsWith('http://') || referenceImageUrl.startsWith('https://'))) {
+        // Консистентность персонажа: референсный 3D-аватар для Nano-Banana-2 / Wellflow (только реальные HTTPS-ссылки)
         bodyPayload.image_url = referenceImageUrl;
         bodyPayload.reference_image = referenceImageUrl;
         bodyPayload.init_image = referenceImageUrl;
@@ -2393,13 +2393,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       let avatarUrl = '';
       try {
-        let remoteUrl = null;
-        try {
-          remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, dataUrl);
-        } catch (photoErr) {
-          console.warn('[AvatarGen] Попытка генерации с photo reference не удалась, пробуем чистый промпт:', photoErr.message);
-          remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, null);
-        }
+        const remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, null);
         if (remoteUrl) {
           avatarUrl = await saveGeneratedImage(remoteUrl, 'avatars', 'avatar_' + Date.now());
         }
@@ -2861,13 +2855,13 @@ if (isMainModule) {
 async function checkTunnelHealth(url, timeoutMs = 7000) {
   if (!url) return false;
   const cleanUrl = url.replace(/\/$/, '');
-  const directAgent = new Agent({ connect: { timeout: timeoutMs } });
+  const agent = currentProxyAgent || new Agent({ connect: { timeout: timeoutMs } });
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       let res;
       try {
         res = await undiciFetch(`${cleanUrl}/health`, {
-          dispatcher: directAgent,
+          dispatcher: agent,
           headers: {
             'Bypass-Tunnel-Reminder': 'true',
             'Cache-Control': 'no-cache',
@@ -2875,13 +2869,25 @@ async function checkTunnelHealth(url, timeoutMs = 7000) {
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch {
-        res = await fetch(`${cleanUrl}/health`, {
-          headers: {
-            'Bypass-Tunnel-Reminder': 'true',
-            'Cache-Control': 'no-cache',
-          },
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        const directAgent = new Agent({ connect: { timeout: timeoutMs } });
+        try {
+          res = await undiciFetch(`${cleanUrl}/health`, {
+            dispatcher: directAgent,
+            headers: {
+              'Bypass-Tunnel-Reminder': 'true',
+              'Cache-Control': 'no-cache',
+            },
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+        } catch {
+          res = await fetch(`${cleanUrl}/health`, {
+            headers: {
+              'Bypass-Tunnel-Reminder': 'true',
+              'Cache-Control': 'no-cache',
+            },
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+        }
       }
       if (res && res.ok) {
         const json = await res.json().catch(() => null);
@@ -3018,7 +3024,7 @@ if (isMainModule) {
     }
     consecutiveWatchdogFailures++;
     const hasPendingJob = Array.from(jobs.values()).some((j) => j.status === 'pending');
-    const maxFailures = hasPendingJob ? 15 : 6;
+    const maxFailures = hasPendingJob ? 20 : 12;
     console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/${maxFailures})...`);
     if (consecutiveWatchdogFailures < maxFailures) {
       return;
@@ -3051,7 +3057,7 @@ if (isMainModule) {
         startPinggyTunnel();
       }
     }
-  }, 25000).unref();
+  }, 35000).unref();
 }
 
 let serveoProc = null;

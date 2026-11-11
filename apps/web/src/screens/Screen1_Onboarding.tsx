@@ -38,7 +38,7 @@ import {
   CurlyHairIcon,
 } from '../components/FairytaleIcons';
 import { api } from '../api/client';
-import { resolveChildAvatar } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { inferRussianNameGender } from '../utils/russianGrammar';
 
 export interface ChildRegistrationData {
@@ -316,7 +316,15 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
         console.warn('[Screen1] generateCharacterAvatar failed, fallback to analyzeChildPhoto:', genErr);
       }
 
-      if (avatarRes && avatarRes.avatarUrl) {
+      const isRealGeneratedAvatar =
+        avatarRes &&
+        avatarRes.status === 'ok' &&
+        avatarRes.avatarUrl &&
+        (avatarRes.avatarUrl.startsWith('http://') ||
+          avatarRes.avatarUrl.startsWith('https://') ||
+          avatarRes.avatarUrl.startsWith('/media/'));
+
+      if (isRealGeneratedAvatar) {
         setAvatarUrl(avatarRes.avatarUrl);
       }
 
@@ -346,7 +354,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
         setAge(Number(traits.approxAge));
       }
 
-      if (avatarRes?.avatarUrl) {
+      if (isRealGeneratedAvatar) {
         setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан и сохранён!');
       } else {
         setPhotoAnalysisTip('Внешность малыша определена!');
@@ -397,8 +405,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       hairStructure,
       eyeColor,
       skinTone,
-      distinctiveFeatures,
-      avatar_id: currentAvatarSrc.split('/').pop()?.replace('.webp', '') || `${gender}_brown`,
+      avatar_id: resolveChildAvatarKey({
+        gender,
+        hairColor,
+        hairType: `${hairLength} ${hairStructure}`,
+        skinTone,
+        distinctiveFeatures,
+      }),
       avatar_url: avatarUrl || undefined,
       personality,
       storyPreference,
