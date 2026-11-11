@@ -51,6 +51,8 @@ import {
   simplifyChildQuestion,
   removeTautologiesAndDuplications,
   verifyNarrativeIntegrity,
+  LINGUISTIC_EDITORIAL_SYSTEM_PROMPT,
+  buildLinguisticEditorialPrompt,
 } from './editorialAgent.mjs';
 export {
   runEditorialAgent,
@@ -62,6 +64,8 @@ export {
   simplifyChildQuestion,
   removeTautologiesAndDuplications,
   verifyNarrativeIntegrity,
+  LINGUISTIC_EDITORIAL_SYSTEM_PROMPT,
+  buildLinguisticEditorialPrompt,
 };
 
 import { generateDailyIdea } from './dailyIdeaGenerator.mjs';
@@ -80,19 +84,33 @@ You DO NOT write the full literary story text. Instead, you design a comprehensi
    - Age 2–3: focus on sensory security, tactile comfort, simple cause-and-effect, object permanence, familiar comforting routines.
    - Age 4–5: peak of magical thinking, harmless curiosity, overcoming gentle doubts/fears (darkness, shadows, sounds), teamwork and empathy.
    - Age 6: emerging autonomy, creative problem solving, self-confidence, gentle humor, social connection.
-2. CHARACTER INTEGRATION:
+2. 10 NARRATIVE ARCHETYPES:
+   - Root the story structure, conflict, and climax in the assigned narrative archetype:
+     1. inventors (Маленькие изобретатели: созидание, починка, крафт)
+     2. miracle_mystery (Тайна пропавшего чуда: уютный детектив, поиск следов и улик)
+     3. empathy_heart (Большое сердце для крохи: забота о меньшем, нежность, колыбельная)
+     4. brave_step (Смелость маленького шага: преодоление робости, первый шаг)
+     5. harmony_orchestra (Оркестр добрых дел: командная дружба непохожих талантов)
+     6. horizon_voyage (Путешествие за горизонт: экспедиция по карте, преодоление преград)
+     7. upside_down_fun (Праздник вверх дном: добрый юмор, игра, переворот правил)
+     8. nature_guardians (Хранители природы и волшебства: бережный лад в природе)
+     9. transformation_magic (Магия преображения: фантазия превращает обычные вещи в чудеса)
+     10. calm_haven (Тихая гавань и возвращение домой: вечернее умиротворение перед сном)
+3. PHYSICAL PROPS CONTINUITY (ОСЯЗАЕМЫЙ РЕКВИЗИТ):
+   - Choose 2–3 concrete physical props (e.g. glowing lantern, star map, wooden compass, shell ribbon, key) that MUST appear in the scenes and will be accurately rendered by the 3D illustrator.
+4. CHARACTER INTEGRATION:
    - The child's personality is not a passive label; it is the unique superpower that unlocks the story's gentle climax.
    - The toy companion retains its toy nature (plush texture, stitches, wheels, button eyes) while coming alive as a loyal sidekick.
-3. CUSTOM THEME & MOOD DEPTH (STRICT BAN ON CLICHÉS):
+5. CUSTOM THEME & MOOD DEPTH (STRICT BAN ON CLICHÉS):
    - The conflict, setting, and tactile actions MUST DERIVE 100% FROM THE CHOSEN THEME AND STORY MOOD.
    - ABSOLUTE BAN ON CLICHÉS: NEVER introduce freezing animals, shivering from cold, getting lost in dark woods, or fear of darkness UNLESS the parent explicitly chose a winter/cold/darkness theme!
    - In themes like "Fashion and Style" or "Circus" or "Cars", the action is about creativity, designing, playful mix-up, invention, or friendly cooperation — NOT about shivering or surviving the elements!
-4. FOUR-SCENE DRAMATURGY:
-   - Scene 1: Hook, atmosphere, meeting/waking the toy companion in the themed world (if a special costume like superhero suit or spacesuit is relevant, weave its role naturally).
-   - Scene 2: Gentle mystery or playful challenge, ending with a natural pause for Question 1.
-   - Scene 3: Climax where the child's kind choice or action solves the situation (integrating parent wishes if provided).
-   - Scene 4: Grounding bedtime calm, tactile reassurance, safe embrace, ending with Question 2.
-5. STRICT BREVITY & CONCISE JSON:
+6. FOUR-SCENE DRAMATURGY:
+   - Scene 1: Hook, atmosphere, meeting/waking the toy companion in the themed world.
+   - Scene 2: Gentle mystery or challenge, ending with a natural pause for Question 1.
+   - Scene 3: Climax where the child's kind choice solves the challenge (integrating parent wishes).
+   - Scene 4: Grounding calm or celebration, tactile reassurance, safe embrace, ending with Question 2.
+7. STRICT BREVITY & CONCISE JSON:
    - Keep each field to exactly 1 concise, sensory sentence (max 12–15 words).
    - Deliver deep psychological insight in compact tokens without verbose essays.
 
@@ -1131,6 +1149,156 @@ export function getPersonalityProfile(trait = 'Добрый', theme = '', mood =
   };
 }
 
+// --------------------------------------------------------
+// 5.5. 10 сюжетных архетипов сказок для детей 2–6 лет
+// --------------------------------------------------------
+export const STORY_ARCHETYPES = [
+  {
+    id: 'inventors',
+    title: 'Маленькие изобретатели',
+    category: 'Творческое созидание и крафт',
+    summary: 'Герои мастерят, чинят или собирают с нуля необычный волшебный предмет или механизм',
+    conflict: 'Нужно смастерить, починить или собрать волшебный предмет с нуля (мостик из шишек, летающий зонтик, необычный праздничный наряд, фонарик из светлячков)',
+    childAction: 'Проба, забавная ошибка, нестандартная догадка («а что если привязать ленточку к ракушке?») и восторг от создания осязаемого предмета своими руками',
+    toyRole: 'Подаёт детальки, держит край ткани или забавно примеряет чертёж на носик',
+    climaxBeat: 'Механизм или вещь оживает и запускает добрый праздник',
+    idealThemes: ['Творчество', 'Космос', 'Машинки', 'Мода и стиль', 'Игры и игрушки'],
+  },
+  {
+    id: 'miracle_mystery',
+    title: 'Тайна пропавшего чуда',
+    category: 'Уютный детский детектив и исследование',
+    summary: 'Поиск пропавшего звука, лучика, эха или ключика по цепочке добрых сенсорных улик',
+    conflict: 'Куда спряталось эхо? Кто оставляет искристые следы на тропинке? Где ночует солнечный зайчик на закате?',
+    childAction: 'Наблюдательность, сбор сенсорных подсказок (звон, шорох, цветная пыльца) и радость от разгадки доброго секрета',
+    toyRole: 'Находит незаметную для взрослого крошечную подсказку на уровне земли',
+    climaxBeat: 'Герой раскрывает добрый секрет и находит источник чуда',
+    idealThemes: ['Любознательность', 'Природа и лес', 'Следопыты', 'Волшебство'],
+  },
+  {
+    id: 'empathy_heart',
+    title: 'Большое сердце для крохи',
+    category: 'Забота, чуткость и эмпатия',
+    summary: 'Встреча с кем-то очень маленьким, растерянным или робким и помощь через нежность',
+    conflict: 'Встреча с кем-то растерянным, робким или очень маленьким (сонная звёздочка без огонька, птенчик, потерявший веточку, пугливый мотылёк)',
+    childAction: 'Умение понять без слов: согреть в ладошках, спеть колыбельную, укрыть листиком или шарфом, подарить чувство защищённости',
+    toyRole: 'Делится своим мягким боком или уступает свою подушечку',
+    climaxBeat: 'Малыш-найдёныш оживает, загорается мягким светом и снова чувствует себя в безопасности',
+    idealThemes: ['Доброта', 'Дружба', 'Спокойный сон', 'Животные'],
+  },
+  {
+    id: 'brave_step',
+    title: 'Смелость маленького шага',
+    category: 'Преодоление робости и страха',
+    summary: 'Герой делает первый решительный шаг навстречу новому, опираясь на верного друга',
+    conflict: 'Предстоит сделать то, перед чем замирает сердце (съехать с высокой горки, шагнуть в пещеру светлячков, войти на незнакомую поляну)',
+    childAction: 'Опора на верного плюшевого друга, зажигание внутреннего огонька уверенности и победный первый шаг',
+    toyRole: 'Служит якорем доверия и первой делает робкий шаг вместе с ребёнком',
+    climaxBeat: 'Шаг сделан — и за ним открывается не опасность, а невероятное чудо и радость',
+    idealThemes: ['Смелость', 'Преодоление темноты', 'Приключения', 'Спорт и движение'],
+  },
+  {
+    id: 'harmony_orchestra',
+    title: 'Оркестр добрых дел',
+    category: 'Командная дружба разных талантов',
+    summary: 'Большая задача объединяет непохожих друзей, и каждый вносит свой уникальный талант',
+    conflict: 'Задача слишком велика для одного; собираются друзья с совершенно непохожими способностями (один быстрый, второй зоркий, третий поёт)',
+    childAction: 'Добрый лидер: объединяет друзей, помогает каждому раскрыть свою уникальную силу без соперничества',
+    toyRole: 'Скрепляет команду своей верностью и вызывает общую улыбку в момент заминки',
+    climaxBeat: 'Складывается единый слаженный «оркестр», и общее дело побеждает',
+    idealThemes: ['Дружба', 'Приключения', 'Музыка', 'Команда'],
+  },
+  {
+    id: 'horizon_voyage',
+    title: 'Путешествие за горизонт',
+    category: 'Экспедиция и первооткрывательство',
+    summary: 'Герои снаряжаются в экспедицию по старинной карте к неизведанной вершине или острову',
+    conflict: 'Найдена старинная сказочная карта! Герои снаряжаются в путь к неведомому острову или водопаду радуги',
+    childAction: 'Находчивость при преодолении природных преград (туман из мыльных пузырей, река из киселя, ветреный перевал)',
+    toyRole: 'Держит компас, забавно выглядывает из походного кармашка или рюкзачка',
+    climaxBeat: 'Герои достигают вершины и видят перед собой захватывающий дух мир с высоты',
+    idealThemes: ['Приключения', 'Путешествия', 'Космос', 'Динозавры'],
+  },
+  {
+    id: 'upside_down_fun',
+    title: 'Праздник вверх дном',
+    category: 'Озорной юмор, игра и переворот правил',
+    summary: 'В мире всё весело перепуталось, и игра по новым правилам превращает путаницу в общий праздник',
+    conflict: 'В сказочном мире всё пошло кувырком самым весёлым образом (облака пахнут клубникой, гравитация стала батутной, деревья щекочут ветерок)',
+    childAction: 'Не пугается путаницы, а подхватывает игру, придумывая смешные правила и заражая всех радостным смехом',
+    toyRole: 'Забавно подпрыгивает на мягких лапках, кувыркается и становится главным источником веселья',
+    climaxBeat: 'Общий добрый взрыв смеха и праздник, объединяющий всех жителей мира',
+    idealThemes: ['Юмор и смех', 'Праздник', 'День рождения', 'Шутки'],
+  },
+  {
+    id: 'nature_guardians',
+    title: 'Хранители природы и волшебства',
+    category: 'Бережная гармония мира',
+    summary: 'Бережное наведение лада в природе: очистить ручеёк, укрыть цветы, вернуть пение птицам',
+    conflict: 'Нарушился природный ритм (ручеёк забился опавшими звёздами и перестал звенеть, лунные кувшинки забыли закрыться, ветерок запутался в кронах)',
+    childAction: 'Заботливые руки, бережное отношение: очистить русло, распутать веточки, вернуть цветам их сонную тишину',
+    toyRole: 'Аккуратно собирает листочки лапками, помогает герою наводить лад',
+    climaxBeat: 'Природа откликается — ручеёк звенит хрустальной песней, распускаются светящиеся бутоны',
+    idealThemes: ['Природа и лес', 'Животные', 'Доброта', 'Времена года'],
+  },
+  {
+    id: 'transformation_magic',
+    title: 'Магия преображения',
+    category: 'Сила детской фантазии в привычных вещах',
+    summary: 'Сила воображения превращает коробку в звездолёт, а подушки — в волшебные острова',
+    conflict: 'Обычные бытовые предметы в руках героя оживают и открывают волшебные миры (коробка становится звездолётом, диванные подушки — островами в океане)',
+    childAction: 'Полёт воображения, где ребёнок видит чудо там, где взрослый видит обыденность',
+    toyRole: 'Превращается в верного штурмана или первого помощника капитана',
+    climaxBeat: 'Мир детской комнаты и сказочный космос сливаются в единое захватывающее приключение',
+    idealThemes: ['Волшебство', 'Творчество', 'Сказки перед сном', 'Фантазия'],
+  },
+  {
+    id: 'calm_haven',
+    title: 'Тихая гавань и возвращение домой',
+    category: 'Вечернее умиротворение и сонный ритуал',
+    summary: 'Мягкое замедление ритма, укладывание игрушки спать и глубокое чувство защищённости',
+    conflict: 'Большой день приключений подходит к концу. Мир плавно замедляется (фонарщики гасят праздничные огни, сонные облака застилают небо)',
+    childAction: 'Замедление дыхания, благодарность прожитому дню, бережное укладывание игрушки в мягкую постельку, тёплые объятия',
+    toyRole: 'Устало трёт глазки, сладко зевает и сворачивается калачиком у подушки',
+    climaxBeat: 'Зажигается самый мягкий ночной огонёк, звучит тихая сказка на ночь',
+    idealThemes: ['Спокойный сон', 'Семья и дом', 'Уют', 'Колыбельная'],
+  },
+];
+
+export function selectStoryArchetype(params = {}, random = Math.random) {
+  const theme = String(params.theme || '').toLowerCase();
+  const mood = String(params.storyMood || params.mood || '').toLowerCase();
+  const interests = (params.interests || []).map((i) => String(i).toLowerCase());
+  const personality = String(params.personality || '').toLowerCase();
+
+  const scored = STORY_ARCHETYPES.map((arch) => {
+    let score = 0;
+    for (const ideal of arch.idealThemes) {
+      const idl = ideal.toLowerCase();
+      if (theme.includes(idl)) score += 3;
+      if (mood.includes(idl)) score += 3;
+      if (interests.some((it) => it.includes(idl))) score += 2;
+    }
+    if (arch.id === 'calm_haven' && (mood.includes('сон') || theme.includes('сон'))) score += 5;
+    if (arch.id === 'upside_down_fun' && (mood.includes('юмор') || mood.includes('смех') || personality.includes('весел'))) score += 5;
+    if (arch.id === 'inventors' && (mood.includes('творч') || theme.includes('творч') || interests.some((it) => it.includes('машин') || it.includes('робот')))) score += 4;
+    if (arch.id === 'brave_step' && (theme.includes('смел') || personality.includes('смел'))) score += 5;
+    if (arch.id === 'miracle_mystery' && (personality.includes('любознательн') || theme.includes('тайн') || theme.includes('загад'))) score += 4;
+    if (arch.id === 'empathy_heart' && (theme.includes('добр') || theme.includes('забот'))) score += 3;
+    if (arch.id === 'horizon_voyage' && (mood.includes('приключ') || theme.includes('космос') || interests.some((it) => it.includes('динозавр')))) score += 4;
+    if (arch.id === 'nature_guardians' && (theme.includes('природ') || theme.includes('лес') || theme.includes('животн'))) score += 4;
+    if (arch.id === 'transformation_magic' && (theme.includes('волшеб') || theme.includes('фантаз'))) score += 3;
+    return { arch, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const topScore = scored[0].score;
+  const topCandidates = scored.filter((item) => item.score >= Math.max(1, topScore - 1));
+
+  const chosenIndex = Math.floor(random() * topCandidates.length);
+  return topCandidates[chosenIndex]?.arch || STORY_ARCHETYPES[0];
+}
+
 export function chooseStoryDna(params = {}, random = Math.random) {
   const world = getThemedWorld(params, random);
   const quirk = getThemedCompanionQuirk(params, random);
@@ -1139,6 +1307,7 @@ export function chooseStoryDna(params = {}, random = Math.random) {
   const trait = params.personality || 'Добрый';
   const moodProfile = getMoodProfile(params.storyMood || params.mood, params.theme || '');
   const profile = getPersonalityProfile(trait, params.theme || '', params.storyMood || params.mood);
+  const archetype = selectStoryArchetype(params, random);
 
   return {
     world_scale: world.type,
@@ -1152,6 +1321,7 @@ export function chooseStoryDna(params = {}, random = Math.random) {
     opening_hook: hook,
     hero_anchor: getHeroAnchor(params, hints),
     age_band: ageBand(Number(params.age) || 4),
+    archetype,
   };
 }
 
@@ -1277,7 +1447,22 @@ export function normalizeBlueprint(raw, params = {}) {
   const mood = params.storyMood || params.mood || '';
   const isBedtime = mood === 'Спокойный сон' || (theme || '').toLowerCase().includes('сон');
 
+  const rawProps = src.physical_props;
+  let physical_props = [];
+  if (Array.isArray(rawProps)) {
+    physical_props = rawProps.map((p) => asString(p)).filter(Boolean);
+  } else if (typeof rawProps === 'string' && rawProps.trim()) {
+    physical_props = rawProps.split(/[,;\n]+/).map((p) => p.trim()).filter(Boolean);
+  }
+  if (physical_props.length === 0) {
+    physical_props = ['волшебный огонёк', toy];
+  }
+
+  const archetypeTitle = asString(src.archetype?.title || src.archetype_title || src.archetype) || 'Путешествие и добрые открытия';
+
   return {
+    archetype: archetypeTitle,
+    physical_props,
     psychological_profile: {
       age_focus: asString(psych.age_focus) || `Особенности возраста ${Number(params.age) || 4} лет: наглядность, эмоциональная безопасность, осязаемость`,
       character_strength: asString(psych.character_strength) || `Чуткость, доброта и внимание к окружающим`,
@@ -1333,6 +1518,7 @@ export function buildArchitectPrompt(params = {}, options = {}) {
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
   const fullClothingRus = formatFullClothingRus(params.appearance);
+  const arch = dna.archetype || STORY_ARCHETYPES[0];
 
   const mood = params.storyMood || params.mood || '';
   const isBedtime = mood === 'Спокойный сон' || (params.theme || '').toLowerCase().includes('сон');
@@ -1349,7 +1535,15 @@ ${(dna.personality_profile?.guidelines || ['Сделай акцент на до�
 - Одежда и костюм героя: ${fullClothingRus} (${classifyClothingNarrativeRole({ appearance: params.appearance, theme: params.theme, storyMood: mood, customWishes: params.customWishes }).isNarrativelyRelevant ? 'сюжетный костюм / снаряжение героя для миссии или вручение по сюжету' : 'только визуальный якорь для иллюстраций; в сюжете не акцентировать'})
 - Любимая игрушка-спутник: ${toy} (живой компаньон с повадкой: «${dna.companion_quirk}»)
 
-2. ТЕМА, НАСТРОЕНИЕ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
+2. ВЫБРАННЫЙ СЮЖЕТНЫЙ АРХЕТИП (ОСНОВА СЮЖЕТА):
+- Архетип: «${arch.title}» (${arch.category})
+- Суть: ${arch.summary}
+- Конфликт: ${arch.conflict}
+- Действие героя: ${arch.childAction}
+- Роль спутника: ${arch.toyRole}
+- Кульминационный аккорд: ${arch.climaxBeat}
+
+3. ТЕМА, НАСТРОЕНИЕ И ПОЖЕЛАНИЯ РОДИТЕЛЯ:
 - Главная тема: «${params.theme || 'Дружба'}» (строго определяет весь мир, предметы и задачу сюжета)
 - Настроение и направленность сказки: «${dna.mood_profile?.moodLabel || 'Дружба и забота'}»
   * Сюжетный фокус: ${dna.mood_profile?.engineFocus || 'Искренняя дружба и совместная радость'}
@@ -1358,16 +1552,18 @@ ${(dna.personality_profile?.guidelines || ['Сделай акцент на до�
   * Вплети эти увлечения в метафору и занятия героя.
 ${params.customWishes ? `- Особые пожелания родителя (ВЫСШИЙ ПРИОРИТЕТ): «${params.customWishes}»` : '- Особые пожелания родителя: нет'}
 
-3. БАЗОВАЯ ДНК МИРА:
+4. БАЗОВАЯ ДНК МИРА:
 - Масштаб мира: ${dna.world_scale} — ${dna.world_description}
 - Сюжетный движок: ${dna.narrative_engine} — ${dna.narrative_description}
 - Открывающий крючок: «${dna.opening_hook}»
 - Решение героя: ${dna.hero_anchor}
 ${recent.length ? `\nНЕ ПОВТОРЯЙ сюжеты из недавних сказок:\n${recent.map((t) => `- «${t}»`).join('\n')}\n` : ''}
 
-4. ТРЕБОВАНИЯ К ВЫХОДНОМУ STORY BLUEPRINT:
+5. ТРЕБОВАНИЯ К ВЫХОДНОМУ STORY BLUEPRINT:
 Сформируй глубокий, продуманный план в виде строгого JSON-объекта (пиши предельно емко, по 1 короткой фразе на каждое поле, без лишних вступлений и длинных рассуждений):
 {
+  "archetype": "${arch.title}",
+  "physical_props": ["осязаемый предмет 1", "осязаемый предмет 2", "осязаемый предмет 3"],
   "psychological_profile": {
     "age_focus": "психологическая специфика возраста ${Number(params.age) || 4} лет",
     "character_strength": "как именно характер (${dna.personality_profile?.traitLabel || params.personality || 'Добрый'}) поможет преодолеть задачу",
@@ -1434,6 +1630,9 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
   const user = `ВХОДНЫЕ ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗИРОВАННОЙ СКАЗКИ НА ОСНОВЕ АРХИТЕКТУРНОГО ПАСПОРТА
 
 1. УТВЕРЖДЁННЫЙ АРХИТЕКТУРНЫЙ ПАСПОРТ СКАЗКИ (STORY BLUEPRINT):
+- Сюжетный архетип: «${bp.archetype}»
+- Осязаемый реквизит (Physical Props): ${bp.physical_props.join(', ')}
+  * ОБЯЗАТЕЛЬНО: Эти предметы должны активно участвовать в сюжете, быть в руках или перед глазами персонажей!
 - Центральная метафора: ${bp.creative_concept.core_metaphor}
 - Мир сказки: ${bp.creative_concept.world_description}
 - Настроение и направленность: ${dna.mood_profile?.moodLabel || 'Дружба и забота'} (${dna.mood_profile?.engineFocus || 'совместное доброе дело'})
@@ -1932,6 +2131,67 @@ export function buildScenePrompt(story, scene, avatarUrl = null) {
 export function buildCoverPrompt(story, avatarUrl = null) {
   const effectiveAvatar = avatarUrl || story.avatar_url || story.avatar_reference || null;
   return buildImagePrompt({ visual: story.cover_visual, characters: story.characters, kind: 'cover', avatarUrl: effectiveAvatar, story });
+}
+
+// --------------------------------------------------------
+// 9.1. Арт-директор визуальных сцен (Visual Art Director)
+// --------------------------------------------------------
+export const VISUAL_DIRECTOR_SYSTEM_PROMPT = `You are an elite 3D Animation Art Director and Visual Scene Designer for award-winning Pixar/DreamWorks children's storybooks.
+Your mission is to read the finalized Russian text of a 4-scene children's fairytale and generate evocative, precise visual scene descriptions in ENGLISH for each scene and the cover.
+
+### ART DIRECTION MANDATES:
+1. SCENE RELEVANCE & KEY PHYSICAL PROPS:
+   - Identify the exact physical setting and physical items/props from the Russian scene text (e.g. glowing lantern, wooden star, crystal feather, seashell boat, paintbrush, toy car).
+   - Explicitly mention what the child is holding, touching, or looking at. The physical props MUST be clearly visible in the foreground or midground.
+2. CHARACTER ACTION & TACTILE EXPRESSION:
+   - Describe the child's exact physical action and emotional pose (e.g., crouching gently to touch a glowing petal, pointing up with wide sparkling eyes, lifting the lantern above their shoulder).
+   - Describe the living toy companion's distinct pose and physical interaction with the child or setting (e.g., peeking from behind the child's boot, sitting proudly on the child's shoulder, holding a tiny leaf).
+3. CINEMATIC CAMERA & LIGHTING:
+   - Cover: Warm iconic children's book cover composition, hero and companion front-and-center looking warm and inviting, generous negative space at top, rich lighting.
+   - Scene 1: Atmospheric wide-to-medium establishing shot capturing the themed environment and the start of the adventure.
+   - Scene 2: Medium action shot highlighting the discovery of the gentle mystery or obstacle.
+   - Scene 3: Emotional close-medium shot focusing on the triumphant, kind solution and the child's action.
+   - Scene 4: Calming soft-focus bedtime or celebratory golden-hour shot, deep reassurance and cozy warmth.
+4. TEXT RESTRICTIONS:
+   - Strictly NO text, NO letters, NO words, NO titles on any signs, books, or banners. Any books or objects are completely blank.
+5. PURE ENGLISH VISUAL DESCRIPTION:
+   - Do NOT include character appearance details (hair, clothes, skin) in the visual field — those are injected automatically from the character bible.
+   - Focus 100% on: Action, Props, Companion Interaction, Setting, Camera Angle, and Mood.
+   - Write 1–3 clear, vivid sentences per scene (30–60 words each).
+
+Return ONLY a valid JSON object matching:
+{
+  "cover_visual": "Warm iconic cover scene description...",
+  "scenes": [
+    { "index": 1, "visual": "Scene 1 action, props, camera angle, lighting..." },
+    { "index": 2, "visual": "Scene 2 action, props, camera angle, lighting..." },
+    { "index": 3, "visual": "Scene 3 action, props, camera angle, lighting..." },
+    { "index": 4, "visual": "Scene 4 action, props, camera angle, lighting..." }
+  ]
+}`;
+
+export function buildVisualDirectorPrompt(story, params = {}) {
+  const child = params.childName || story.childName || 'Child';
+  const toy = params.appearance?.toy || params.toy || 'toy companion';
+  const theme = story.theme || params.theme || 'Friendly adventure';
+
+  const user = `Here is the finalized Russian fairytale for which you need to direct 3D illustrations:
+
+CHILD: ${child}
+COMPANION: ${toy}
+THEME: ${theme}
+TITLE: ${story.title || 'Fairytale'}
+
+FINAL RUSSIAN SCENES:
+${(story.scenes || []).map((s) => `[Scene ${s.index || s.scene_index}]:\n${s.text}`).join('\n\n')}
+
+TASK:
+Craft precise English scene descriptions for the Cover and Scenes 1–4.
+For each scene, extract the exact physical props, the child's specific action, the companion's pose, the environment, and the cinematic camera framing.
+
+Return ONLY the valid JSON object.`;
+
+  return { system: VISUAL_DIRECTOR_SYSTEM_PROMPT, user };
 }
 
 // --------------------------------------------------------

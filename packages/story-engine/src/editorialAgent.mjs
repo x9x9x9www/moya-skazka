@@ -924,3 +924,66 @@ export function runEditorialAgent(story, params = {}) {
     integrityPassed: integrity.valid,
   };
 }
+
+/**
+ * Системный промпт для LLM-редактора и корректора (Уровень 1 двухуровневой редактуры).
+ */
+export const LINGUISTIC_EDITORIAL_SYSTEM_PROMPT = `You are a premier Russian children's literature editor, proofreader, and stylist at a top publishing house.
+Your job is to polish and proofread the Russian text of a 4-scene personalized bedtime fairytale for a young child.
+
+### EDITORIAL MANDATES:
+1. GENDER AGREEMENTS (СТРОЖАЙШИЙ ПРИОРИТЕТ):
+   - The child is explicitly defined as a girl ("девочка") or boy ("мальчик").
+   - If girl: ALL past-tense verbs for the child MUST have feminine endings (-ла / -лась: почувствовала, улыбнулась, увидела, побежала, помогла). NEVER use masculine verbs for a female hero.
+   - If boy: masculine endings (-л / -лся).
+   - MULTI-CHARACTER GENDER SEPARATION: When the child is a girl and her toy/companion is masculine (он, енотик, мишка, щенок, кот, робот, динозаврик, друг, папа): The companion's verbs MUST REMAIN MASCULINE («Он подмигнул и протянул лапку»). NEVER turn the companion's actions into feminine!
+2. DECLENSION OF NAMES (СКЛОНЕНИЕ ИМЕНИ):
+   - Ensure the child's name is declined naturally in all Russian grammatical cases (сердце Аэлиты, навстречу Аэлите, вместе с Аэлитой).
+3. LITERARY WARMTH & CHILD VOICE:
+   - Eliminate awkward AI calques, stiff adult bureaucratese, and forced weird metaphors.
+   - Ensure musical cadence and soothing bedtime rhythm when read aloud by parents to a 2–6 year old.
+4. PRESERVE PLOT & STRUCTURE:
+   - Preserve the exact storyline, scenes 1 to 4, and questions. Do NOT delete or rewrite the plot.
+5. NO AGE IN BRACKETS:
+   - Absolutely no age in brackets or inline text.
+
+Return ONLY a valid JSON object matching:
+{
+  "title": "Утверждённое название",
+  "scenes": [
+    { "index": 1, "text": "Отредактированный русский текст сцены 1..." },
+    { "index": 2, "text": "Отредактированный русский текст сцены 2..." },
+    { "index": 3, "text": "Отредактированный русский текст сцены 3..." },
+    { "index": 4, "text": "Отредактированный русский текст сцены 4..." }
+  ],
+  "questions": [
+    { "after_scene": 2, "question": "Один простой вопрос...", "parent_hint": "..." },
+    { "after_scene": 4, "question": "Один простой вопрос...", "parent_hint": "..." }
+  ]
+}`;
+
+/**
+ * Сборка промпта для LLM-редактора и корректора.
+ */
+export function buildLinguisticEditorialPrompt(story, params = {}) {
+  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
+  const child = params.childName || story.childName || 'Малыш';
+  const age = Number(params.age || story.age) || 4;
+
+  const user = `Отредактируй и вычитай черновой текст сказки:
+Имя ребёнка: ${child} (${isGirl ? 'девочка, женский род глаголов: пошла, улыбнулась, решила' : 'мальчик, мужской род глаголов: пошел, улыбнулся, решил'})
+Возраст: ${age} лет
+Тема: «${story.theme || params.theme || 'Дружба'}»
+
+ЧЕРНОВОЙ ТЕКСТ СКАЗКИ ДЛЯ ВЫЧИТКИ:
+${JSON.stringify({
+  title: story.title,
+  scenes: (story.scenes || []).map((s) => ({ index: s.index || s.scene_index, text: s.text })),
+  questions: (story.questions || []).map((q) => ({ after_scene: q.after_scene, question: q.question, parent_hint: q.parent_hint })),
+}, null, 2)}
+
+Верни ТОЛЬКО валидный JSON с отполированным текстом без markdown-обёрток.`;
+
+  return { system: LINGUISTIC_EDITORIAL_SYSTEM_PROMPT, user };
+}
+

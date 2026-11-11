@@ -8,6 +8,12 @@ import {
   normalizeBlueprint,
   chooseStoryDna,
   createSeededRandom,
+  STORY_ARCHETYPES,
+  selectStoryArchetype,
+  VISUAL_DIRECTOR_SYSTEM_PROMPT,
+  buildVisualDirectorPrompt,
+  LINGUISTIC_EDITORIAL_SYSTEM_PROMPT,
+  buildLinguisticEditorialPrompt,
 } from '../src/index.mjs';
 
 test('buildArchitectPrompt формирует промпт архитектора с психологией, темой и одеждой', () => {
@@ -182,3 +188,95 @@ test('buildArchitectPrompt для темы «Мода и стиль» с нас�
   assert.ok(!user.includes('согреть озябшие лапки'));
   assert.ok(!user.includes('поделиться последней земляничкой'));
 });
+
+test('STORY_ARCHETYPES содержит ровно 10 выверенных сюжетных архетипов с обязательными полями', () => {
+  assert.equal(STORY_ARCHETYPES.length, 10);
+  const requiredIds = [
+    'inventors',
+    'miracle_mystery',
+    'empathy_heart',
+    'brave_step',
+    'harmony_orchestra',
+    'horizon_voyage',
+    'upside_down_fun',
+    'nature_guardians',
+    'transformation_magic',
+    'calm_haven',
+  ];
+  for (const id of requiredIds) {
+    const arch = STORY_ARCHETYPES.find((a) => a.id === id);
+    assert.ok(arch, `Архитип ${id} должен присутствовать`);
+    assert.ok(arch.title && arch.title.length > 5);
+    assert.ok(arch.category && arch.category.length > 5);
+    assert.ok(arch.summary && arch.summary.length > 10);
+    assert.ok(arch.conflict && arch.conflict.length > 10);
+    assert.ok(arch.childAction && arch.childAction.length > 10);
+    assert.ok(arch.toyRole && arch.toyRole.length > 10);
+    assert.ok(arch.climaxBeat && arch.climaxBeat.length > 10);
+    assert.ok(Array.isArray(arch.idealThemes) && arch.idealThemes.length > 0);
+  }
+});
+
+test('selectStoryArchetype корректно подбирает архетип по настроению и теме', () => {
+  const bedtimeArch = selectStoryArchetype({ storyMood: 'Спокойный сон' });
+  assert.equal(bedtimeArch.id, 'calm_haven');
+
+  const humorArch = selectStoryArchetype({ storyMood: 'Юмор и смех' });
+  assert.equal(humorArch.id, 'upside_down_fun');
+
+  const creativeArch = selectStoryArchetype({ storyMood: 'Творчество', theme: 'Машинки' });
+  assert.equal(creativeArch.id, 'inventors');
+
+  const braveArch = selectStoryArchetype({ theme: 'Смелость' });
+  assert.equal(braveArch.id, 'brave_step');
+});
+
+test('buildVisualDirectorPrompt строит структурированный промпт для Арт-директора', () => {
+  const story = {
+    title: 'Звёздный маяк Алисы',
+    theme: 'Космос',
+    scenes: [
+      { index: 1, text: 'Алиса стояла на лунной пристани, держа в руках серебряный фонарик.' },
+      { index: 2, text: 'Плюшевый робот Болтик заметил мерцающую звёздочку на краю кратера.' },
+      { index: 3, text: 'Алиса бережно подняла упавшую звёздочку и прикрепила её к маяку.' },
+      { index: 4, text: 'Маяк озарился мягким золотым светом, и Алиса сладко зевнула.' },
+    ],
+  };
+  const { system, user } = buildVisualDirectorPrompt(story, { childName: 'Алиса', toy: 'робот Болтик' });
+
+  assert.equal(system, VISUAL_DIRECTOR_SYSTEM_PROMPT);
+  assert.ok(system.includes('3D Animation Art Director'));
+  assert.ok(system.includes('KEY PHYSICAL PROPS'));
+  assert.ok(user.includes('Алиса'));
+  assert.ok(user.includes('робот Болтик'));
+  assert.ok(user.includes('Звёздный маяк Алисы'));
+  assert.ok(user.includes('серебряный фонарик'));
+  assert.ok(user.includes('упавшую звёздочку'));
+});
+
+test('buildLinguisticEditorialPrompt формирует промпт для LLM-редактора с правилами рода и падежей', () => {
+  const story = {
+    title: 'Приключение Мии',
+    theme: 'Дружба',
+    scenes: [
+      { index: 1, text: 'Мия побежала по тропинке.' },
+      { index: 2, text: 'Мишка Топа помахал лапкой.' },
+      { index: 3, text: 'Мия улыбнулась другу.' },
+      { index: 4, text: 'Они крепко обнялись.' },
+    ],
+    questions: [
+      { after_scene: 2, question: 'Что почувствовала Мия?', parent_hint: 'Обсудите с ребёнком.' },
+      { after_scene: 4, question: 'Кто помог героям?', parent_hint: 'Вспомните вместе.' },
+    ],
+  };
+
+  const { system, user } = buildLinguisticEditorialPrompt(story, { childName: 'Мия', gender: 'girl', age: 4 });
+
+  assert.equal(system, LINGUISTIC_EDITORIAL_SYSTEM_PROMPT);
+  assert.ok(system.includes('GENDER AGREEMENTS'));
+  assert.ok(system.includes('MULTI-CHARACTER GENDER SEPARATION'));
+  assert.ok(user.includes('Мия'));
+  assert.ok(user.includes('девочка, женский род глаголов'));
+  assert.ok(user.includes('Приключение Мии'));
+});
+

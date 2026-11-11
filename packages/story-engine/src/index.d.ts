@@ -26,6 +26,21 @@ export interface StoryParams {
   recentOutlines?: string[];
 }
 
+export interface StoryArchetype {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  conflict: string;
+  childAction: string;
+  toyRole: string;
+  climaxBeat: string;
+  idealThemes: string[];
+}
+
+export const STORY_ARCHETYPES: StoryArchetype[];
+export function selectStoryArchetype(params?: Partial<StoryParams>, random?: () => number): StoryArchetype;
+
 export interface StoryDnaChoice {
   world_scale: string;
   world_description: string;
@@ -35,6 +50,7 @@ export interface StoryDnaChoice {
   companion_quirk: string;
   opening_hook: string;
   hero_anchor: string;
+  archetype?: StoryArchetype;
   age_band: {
     label: string;
     total: [number, number];
@@ -88,6 +104,8 @@ export interface NormalizedStory {
 }
 
 export interface StoryBlueprint {
+  archetype: string;
+  physical_props: string[];
   psychological_profile: {
     age_focus: string;
     character_strength: string;
@@ -131,6 +149,18 @@ export const STORY_ENGINE_VERSION: string;
 export const STYLE_3D_PIXAR: string;
 export const ARCHITECT_SYSTEM_PROMPT: string;
 export const STORY_SYSTEM_PROMPT: string;
+export const VISUAL_DIRECTOR_SYSTEM_PROMPT: string;
+export const LINGUISTIC_EDITORIAL_SYSTEM_PROMPT: string;
+
+export function buildVisualDirectorPrompt(
+  story: unknown,
+  params?: Partial<StoryParams>
+): { system: string; user: string };
+
+export function buildLinguisticEditorialPrompt(
+  story: unknown,
+  params?: Partial<StoryParams>
+): { system: string; user: string };
 
 export function resolveExactHairPrompt(appearance?: ChildAppearance): string;
 export function appearanceHints(appearance?: ChildAppearance): {

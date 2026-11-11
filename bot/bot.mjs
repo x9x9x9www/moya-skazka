@@ -25,6 +25,10 @@ import {
   runEditorialAgent,
   classifyClothingNarrativeRole,
   generateDailyIdea,
+  buildVisualDirectorPrompt,
+  buildLinguisticEditorialPrompt,
+  STORY_ARCHETYPES,
+  selectStoryArchetype,
 } from '../packages/story-engine/src/index.mjs';
 import { Agent, ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import localtunnel from 'localtunnel';
@@ -401,10 +405,11 @@ async function generateWellflowStoryAI(params) {
   );
 
   let storyPrompt = null;
-  if (params.useTwoStage) {
+  const enableTwoStage = params.useTwoStage !== false;
+  if (enableTwoStage) {
     try {
       const architectPrompt = buildArchitectPrompt(input, { dna });
-      console.log(`[StoryEngine/Этап 1] 🏛 Архитектор анализирует характер и проектирует метафору...`);
+      console.log(`[StoryEngine/Этап 1] 🏛 Архитектор анализирует архетип «${dna.archetype?.title || 'Приключение'}», характер и проектирует реквизит...`);
       const architectContent = await callWithRetry(
         [
           { role: 'system', content: architectPrompt.system },
@@ -418,7 +423,7 @@ async function generateWellflowStoryAI(params) {
       const rawBlueprint = parseJsonContent(architectContent);
       const blueprint = normalizeBlueprint(rawBlueprint, input);
       console.log(
-        `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: «${blueprint.creative_concept.core_metaphor}» | Сила героя: ${blueprint.psychological_profile.character_strength}`
+        `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: Архетип «${blueprint.archetype}» | Реквизит: ${blueprint.physical_props.join(', ')} | «${blueprint.creative_concept.core_metaphor}»`
       );
 
       storyPrompt = buildStoryFromBlueprintPrompt(input, blueprint, { dna });
@@ -431,7 +436,7 @@ async function generateWellflowStoryAI(params) {
   }
 
   console.log(
-    `[StoryEngine] ✍️ Сказочник (${WELLFLOW_TEXT_MODEL}) пишет 4 сцены...`
+    `[StoryEngine/Этап 2] ✍️ Сказочник (${WELLFLOW_TEXT_MODEL}) пишет 4 сцены...`
   );
 
   const content = await callWithRetry(
@@ -485,13 +490,52 @@ async function generateWellflowStoryAI(params) {
       }
     }
 
-    // Прогоняем через редакционный агент для безупречной грамматики и ёфикации
+    // Двухуровневая литературная редактура (LLM-редактор + детерминированный ГОСТ-редактор)
     try {
+      // Уровень 1: Интеллектуальный LLM-редактор (проверка согласования рода глаголов, падежей имени и литературности)
+      const linguisticPrompt = buildLinguisticEditorialPrompt(story, input);
+      console.log(`[StoryEngine/Этап 3] 📖 LLM-редактор вычитывает грамматику и литературный стиль...`);
+      try {
+        const editorialLlmContent = await callWithRetry(
+          [
+            { role: 'system', content: linguisticPrompt.system },
+            { role: 'user', content: linguisticPrompt.user },
+          ],
+          'linguistic-editorial',
+          1,
+          { max_tokens: 950, timeoutMs: 45000 }
+        );
+        const editorialLlmJson = parseJsonContent(editorialLlmContent);
+        if (editorialLlmJson && Array.isArray(editorialLlmJson.scenes) && editorialLlmJson.scenes.length === 4) {
+          story.title = editorialLlmJson.title || story.title;
+          for (const s of editorialLlmJson.scenes) {
+            const idx = s.index || s.scene_index;
+            const targetScene = story.scenes.find((sc) => sc.index === idx);
+            if (targetScene && typeof s.text === 'string' && s.text.length > 30) {
+              targetScene.text = s.text;
+            }
+          }
+          if (Array.isArray(editorialLlmJson.questions) && editorialLlmJson.questions.length >= 2) {
+            for (const q of editorialLlmJson.questions) {
+              const targetQ = story.questions.find((tq) => tq.after_scene === q.after_scene);
+              if (targetQ && q.question) {
+                targetQ.question = q.question;
+                if (q.parent_hint) targetQ.parent_hint = q.parent_hint;
+              }
+            }
+          }
+          console.log(`[StoryEngine/Этап 3] ✅ LLM-вычитка завершена успешно`);
+        }
+      } catch (llmEdErr) {
+        console.warn(`[StoryEngine/Этап 3] ⚠️ Сбой LLM-редактора (${llmEdErr.message}), переходим к детерминированному агенту`);
+      }
+
+      // Уровень 2: Детерминированный ГОСТ-редактор (ёфикация, диалоги, тире, очистка от штампов)
       const editorial = runEditorialAgent(story, input);
       if (editorial && editorial.story) {
         story = editorial.story;
         if (editorial.fixesApplied?.length) {
-          console.log(`[StoryEngine] 📚 EditorialAgent применил правки: ${editorial.fixesApplied.join(', ')}`);
+          console.log(`[StoryEngine/Этап 3] 📚 EditorialAgent применил детерминированные правки: ${editorial.fixesApplied.join(', ')}`);
         }
       }
     } catch (edErr) {
@@ -1009,6 +1053,41 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   story.child_age = story.age;
   story.appearance = { ...(params.appearance || {}), ...(story.appearance || {}) };
   console.log(`[StoryEngine] 👤 Опорный референс персонажа (Image-to-Image): ${avatarReferenceUrl}`);
+
+  // Этап 4: Арт-директор визуальных сцен (Visual Art Director)
+  // Читает утверждённый русский текст сказки и генерирует точные английские промпты
+  // с явным указанием осязаемых предметов (props), позы героя, повадки спутника и освещения
+  try {
+    const visualDirectorPrompt = buildVisualDirectorPrompt(story, params);
+    console.log(`[StoryEngine/Этап 4] 🎨 Арт-директор режиссирует сцены и реквизит из русского текста...`);
+    const visualDirectorContent = await callWithRetry(
+      [
+        { role: 'system', content: visualDirectorPrompt.system },
+        { role: 'user', content: visualDirectorPrompt.user },
+      ],
+      'visual-director',
+      1,
+      { max_tokens: 800, timeoutMs: 45000 }
+    );
+    const vdJson = parseJsonContent(visualDirectorContent);
+    if (vdJson) {
+      if (typeof vdJson.cover_visual === 'string' && vdJson.cover_visual.length > 25) {
+        story.cover_visual = vdJson.cover_visual;
+      }
+      if (Array.isArray(vdJson.scenes)) {
+        for (const s of vdJson.scenes) {
+          const idx = s.index || s.scene_index;
+          const targetScene = story.scenes.find((sc) => sc.index === idx);
+          if (targetScene && typeof s.visual === 'string' && s.visual.length > 25) {
+            targetScene.visual = s.visual;
+          }
+        }
+      }
+      console.log(`[StoryEngine/Этап 4] ✅ Арт-директор утвердил детальные раскадровки сцен`);
+    }
+  } catch (vdErr) {
+    console.warn(`[StoryEngine/Этап 4] ⚠️ Сбой Visual Art Director (${vdErr.message}), используются базовые visual описания`);
+  }
 
   const imageTasks = [
     { name: 'cover', kind: 'cover', prompt: buildCoverPrompt(story, avatarReferenceUrl), fallback: getThemedFallbackIllustration(params.theme, 0, params) },
