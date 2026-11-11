@@ -205,6 +205,40 @@
       },
       "is_active": true,
       "updatedAt": "2026-11-09T15:13:05.665Z"
+    },
+    "child_1794388095311_p8py": {
+      "id": "child_1794388095311_p8py",
+      "user_id": "1212593604",
+      "name": "Сьюзана",
+      "age": 6,
+      "gender": "girl",
+      "interests": [
+        "Животные",
+        "Волшебство",
+        "Природа и лес"
+      ],
+      "appearance": {
+        "avatar_id": "0?exp=1794477600&sig=d55ebdee225a841da534966fffe447b7780e9ccee946f976d6c5c7d3e2377db9",
+        "avatar_url": "https://api.wellflow.dev/v1/media/033ef860-d5ae-4668-944c-f850569a7580/0?exp=1794477600&sig=d55ebdee225a841da534966fffe447b7780e9ccee946f976d6c5c7d3e2377db9",
+        "gender": "girl",
+        "hair": "светлые волосы",
+        "clothing": "платьице",
+        "personality": "Весёлый непоседа",
+        "hairColor": "светлые",
+        "hairType": "длинные прямые",
+        "hairLength": "длинные",
+        "hairStructure": "прямые",
+        "clothingItem": "платьице",
+        "clothingColor": "изумрудный",
+        "toy": "Смайлик какашки",
+        "eyeColor": "голубые",
+        "skinTone": "светлая",
+        "distinctiveFeatures": "",
+        "storyPreference": "Смешные и озорные моменты",
+        "bedtimeRitual": "Чтение в тёплых объятиях"
+      },
+      "is_active": true,
+      "updatedAt": "2026-11-11T09:08:15.311Z"
     }
   },
   "books": {
@@ -854,28 +888,28 @@
       "created_at": "2026-11-07T10:33:25.790Z"
     },
     "child_test_2_2026-11-07": {
-      "id": "idea_30881063",
+      "id": "idea_415231131",
       "child_id": "child_test_2",
       "local_date": "2026-11-07",
-      "title": "Малыш и мостик через звонкий ручей",
-      "blurb": "Лесные зверята не могли перебраться на поляну праздника, пока Малыш и добрый динозаврик не собрали прочный мостик из цветных брёвнышек.",
-      "theme": "Дружба и взаимопомощь",
-      "cover_url": "/illustrations/cover_dino.jpg",
+      "title": "Малыш и секретный пояс добрых дел",
+      "blurb": "Малыш получает особый пояс с кристаллами, которые сияют только тогда, когда совершаешь бескорыстный добрый поступок.",
+      "theme": "Смелость",
+      "cover_url": "/illustrations/cover_star.jpg",
       "status": "REFRESHED",
       "is_saved": false,
       "suggested_params": {
         "childName": "Малыш",
         "gender": "boy",
         "age": 4,
-        "theme": "Дружба и взаимопомощь",
-        "mood": "Дружба",
+        "theme": "Смелость",
+        "mood": "Приключение",
         "interests": [
           "Волшебство"
         ],
-        "customWishes": "Умение делиться игрушками, командная работа и радость общего праздника."
+        "customWishes": "Супергеройская смелость, помощь друзьям и благородство."
       },
-      "created_at": "2026-11-11T08:40:31.270Z",
-      "_refreshCount": 16
+      "created_at": "2026-11-11T09:50:36.561Z",
+      "_refreshCount": 19
     },
     "child_test_3_2026-11-07": {
       "id": "idea_1981181318",
@@ -1042,6 +1076,30 @@
         "customWishes": "Исследование окружающего мира, живой интерес к природе."
       },
       "created_at": "2026-11-09T15:11:40.702Z"
+    },
+    "child_1794043139177_lrq4_2026-11-11": {
+      "id": "idea_1696279814",
+      "child_id": "child_1794043139177_lrq4",
+      "local_date": "2026-11-11",
+      "title": "Лев и тайна забытого острова",
+      "blurb": "Командное морское приключение, где только взаимное доверие и верность слову помогли экипажу Льва открыть остров добрых великанов.",
+      "theme": "Дружба и доверие",
+      "cover_url": "/illustrations/cover_dino.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Лев",
+        "gender": "boy",
+        "age": 6,
+        "theme": "Дружба и доверие",
+        "mood": "Дружба",
+        "interests": [
+          "Волшебство",
+          "Космос"
+        ],
+        "customWishes": "Умение договариваться, верность друзьям и взаимовыручка."
+      },
+      "created_at": "2026-11-11T09:06:02.116Z"
     }
   },
   "saved_ideas": {
@@ -1051,7 +1109,7 @@
       "user_id": "user_test_save",
       "title": "Малыш и мостик через звонкий ручей",
       "theme": "Дружба и взаимопомощь",
-      "saved_at": "2026-11-11T08:40:31.273Z"
+      "saved_at": "2026-11-11T09:50:36.563Z"
     }
   }
 }

@@ -18,6 +18,7 @@ import {
   buildCoverPrompt,
   buildScenePrompt,
   STYLE_3D_PIXAR,
+  robustParseJson,
 } from '@moya-skazka/story-engine';
 
 export const WELLFLOW_SYSTEM_PROMPT = `You are an award-winning Russian children's book author, child psychologist, and art director. Generate a personalized fairytale for a child aged 2–6 strictly as a valid JSON object without Markdown wrappers.
@@ -80,12 +81,8 @@ export const WELLFLOW_SYSTEM_PROMPT = `You are an award-winning Russian children
 
 export const NANO_BANANA_STYLE_TEMPLATE = `A whimsical, cozy 2D digital watercolor and gouache children's book illustration of [SCENE_AND_CHARACTERS]. The art style is heartwarming, playful, and natural, with visible gentle paper grain, textured brushwork, and soft sketchy dark brown outlines (no harsh black outlines). Rich, warm natural color palette with deep forest greens, earthy browns, warm gold, and sunset/dusk glows. Enchanting, gentle magical lighting with golden hour glimmers, glowing particles, tiny sparkles, and fireflies hovering around. The background is densely packed and richly detailed, featuring oversized fairytale foliage, curly whimsical trees, glowing mushrooms, and blooming fantasy flora, creating a layered, hand-crafted environment with soft atmospheric perspective. Cute, rounded 2D character designs with highly expressive, large warm eyes and friendly, gentle features. Everything has a safe, comforting, nostalgic, and adventurous storybook look, ideal for young children. Natural camera angle, cinematic focus. No text.`;
 
-function parseJsonContent(content: string) {
-  const cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
-  const first = cleaned.indexOf('{');
-  const last = cleaned.lastIndexOf('}');
-  if (first === -1 || last === -1) throw new Error('JSON object not found');
-  return JSON.parse(cleaned.slice(first, last + 1));
+function parseJsonContent(content: string, preferredKeys: string[] = ['scenes', 'title', 'characters']) {
+  return robustParseJson(content, preferredKeys);
 }
 
 export class WellflowAIProvider implements ITextAIProvider, IImageAIProvider {

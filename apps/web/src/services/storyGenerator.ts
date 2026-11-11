@@ -425,7 +425,7 @@ async function pollJob<T>(
           return (data.story || data.book || data.imageUrl || data) as T;
         }
         if (data.status === 'error' || data.status === 'FAILED_FINAL') {
-          throw new Error(data.error || 'Job failed');
+          throw new Error(`JOB_FAILED: ${data.error || 'Job failed'}`);
         }
       } else if (res.status === 404) {
         consecutiveErrors++;
@@ -452,8 +452,14 @@ async function pollJob<T>(
         consecutiveErrors++;
       }
     } catch (err: any) {
-      if (err.message && (err.message.includes('Job failed') || err.message.includes('Задача генерации не найдена'))) {
-        throw err;
+      if (
+        err.message &&
+        (err.message.startsWith('JOB_FAILED:') ||
+          err.message.includes('Job failed') ||
+          err.message.includes('Задача генерации не найдена'))
+      ) {
+        const cleanMsg = err.message.replace(/^JOB_FAILED:\s*/, '');
+        throw new Error(cleanMsg);
       }
       consecutiveErrors++;
       if (consecutiveErrors % 5 === 0 && onProgress) {

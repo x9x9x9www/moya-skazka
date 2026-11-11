@@ -229,6 +229,7 @@ export function buildCoverPrompt(story: NormalizedStory | { cover_visual: string
 export function buildRepairPrompt(raw: unknown, issues: string[]): string;
 export function buildLengthRepairPrompt(story: NormalizedStory, target?: [number, number]): string;
 export function fallbackQuestions(heroName?: string): StoryQuestion[];
+export function robustParseJson<T = any>(content: string | unknown, preferredKeys?: string[]): T;
 
 export interface DeclinedName {
   nom: string;

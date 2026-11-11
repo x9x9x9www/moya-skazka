@@ -1693,6 +1693,8 @@ ${formatClothingNarrativePrompt({
 - Ровно один вопрос после сцены 2 и ровно один после сцены 4. Правило одного простого вопроса (до 10–12 слов, без «и/или»).
 - visual-поля — только английский, 3D cartoon style render, без текста на картинках.
 
+- КРИТИЧЕСКОЕ ПРАВИЛО ФОРМАТА: Выведи СТРОГО ОДИН единый JSON-объект сказки по контракту, начинающийся с { и заканчивающийся на }. Категорически запрещено выводить несколько JSON-объектов, дублировать паспорт сказки перед текстом или добавлять комментарии до или после JSON.
+
 Верни только валидный JSON по контракту из системной инструкции.`;
 
   return { system: STORY_SYSTEM_PROMPT, user, dna };
@@ -2250,3 +2252,263 @@ export function fallbackQuestions(heroName = 'герой', isBedtime = false) {
     },
   ];
 }
+
+// --------------------------------------------------------
+// 12. Надёжный парсер и экстрактор JSON (Robust JSON Parser)
+// --------------------------------------------------------
+
+/**
+ * Вспомогательная функция для извлечения сбалансированных блоков {...}
+ */
+function extractBalancedBlocks(text) {
+  const blocks = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let startIndex = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (char === '\\') {
+        escape = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      if (depth === 0) {
+        startIndex = i;
+      }
+      depth++;
+    } else if (char === '}') {
+      if (depth > 0) {
+        depth--;
+        if (depth === 0 && startIndex !== -1) {
+          blocks.push(text.slice(startIndex, i + 1));
+          startIndex = -1;
+        }
+      }
+    }
+  }
+
+  // Если строка оборвалась при depth > 0, сохраняем незакрытый блок для автозакрытия
+  if (depth > 0 && startIndex !== -1) {
+    blocks.push(text.slice(startIndex));
+  }
+
+  return blocks;
+}
+
+/**
+ * Попытка распарсить фрагмент JSON с каскадным исправлением типичных ошибок моделей
+ */
+function tryParseJsonChunk(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return null;
+
+  // 1. Прямой парсинг
+  try {
+    return JSON.parse(trimmed);
+  } catch (_) {}
+
+  // 2. Очистка висячих запятых
+  try {
+    const noTrailing = trimmed.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(noTrailing);
+  } catch (_) {}
+
+  // 3. Удаление непечатных управляющих символов (кроме \n, \r, \t)
+  try {
+    const sanitized = trimmed
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+    return JSON.parse(sanitized);
+  } catch (_) {}
+
+  // 4. Экранирование сырых переводов строк внутри строковых литералов JSON
+  try {
+    let inStr = false;
+    let esc = false;
+    let fixed = '';
+    for (let i = 0; i < trimmed.length; i++) {
+      const ch = trimmed[i];
+      if (inStr) {
+        if (esc) {
+          esc = false;
+          fixed += ch;
+        } else if (ch === '\\') {
+          esc = true;
+          fixed += ch;
+        } else if (ch === '"') {
+          inStr = false;
+          fixed += ch;
+        } else if (ch === '\n') {
+          fixed += '\\n';
+        } else if (ch === '\r') {
+          fixed += '\\r';
+        } else if (ch === '\t') {
+          fixed += '\\t';
+        } else {
+          fixed += ch;
+        }
+      } else {
+        if (ch === '"') inStr = true;
+        fixed += ch;
+      }
+    }
+    fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(fixed);
+  } catch (_) {}
+
+  // 5. Автозакрытие незавершённых скобок при обрыве токенов (truncated response)
+  try {
+    const stack = [];
+    let inStr = false;
+    let esc = false;
+    for (let i = 0; i < trimmed.length; i++) {
+      const ch = trimmed[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') {
+        inStr = true;
+      } else if (ch === '{') {
+        stack.push('}');
+      } else if (ch === '}') {
+        if (stack.length > 0 && stack[stack.length - 1] === '}') stack.pop();
+      } else if (ch === '[') {
+        stack.push(']');
+      } else if (ch === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === ']') stack.pop();
+      }
+    }
+    let repaired = trimmed;
+    if (inStr) repaired += '"';
+    repaired = repaired.replace(/,\s*$/, '');
+    while (stack.length > 0) {
+      repaired += stack.pop();
+    }
+    repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(repaired);
+  } catch (_) {}
+
+  return null;
+}
+
+/**
+ * Извлекает и парсит наиболее релевантный JSON-объект из любого ответа LLM.
+ * @param {string|unknown} content Исходный ответ модели
+ * @param {string[]} [preferredKeys=[]] Приоритетные ключи (например, ['scenes', 'title'])
+ * @returns {any}
+ */
+export function robustParseJson(content, preferredKeys = []) {
+  if (content && typeof content === 'object') return content;
+  const str = String(content || '').trim();
+  if (!str) throw new Error('Пустой ответ от языковой модели (JSON отсутствует)');
+
+  const candidates = [];
+
+  // Стратегия 1: Поиск в markdown code fences (```json ... ``` или ``` ... ```)
+  const fenceRegex = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let match;
+  while ((match = fenceRegex.exec(str)) !== null) {
+    const block = match[1].trim();
+    const parsed = tryParseJsonChunk(block);
+    if (parsed && typeof parsed === 'object') {
+      candidates.push(parsed);
+    } else {
+      // Внутри блока кода также может быть несколько объектов
+      const subBlocks = extractBalancedBlocks(block);
+      for (const sb of subBlocks) {
+        const p = tryParseJsonChunk(sb);
+        if (p && typeof p === 'object') candidates.push(p);
+      }
+    }
+  }
+
+  // Стратегия 2: Извлечение сбалансированных {...} блоков из всего текста
+  const textBlocks = extractBalancedBlocks(str);
+  for (const tb of textBlocks) {
+    const parsed = tryParseJsonChunk(tb);
+    if (parsed && typeof parsed === 'object') {
+      const jsonStr = JSON.stringify(parsed);
+      if (!candidates.some((c) => JSON.stringify(c) === jsonStr)) {
+        candidates.push(parsed);
+      }
+    }
+  }
+
+  // Стратегия 3: Классический срез от первого { до последнего }
+  if (candidates.length === 0) {
+    const first = str.indexOf('{');
+    const last = str.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      const slice = str.slice(first, last + 1);
+      const parsed = tryParseJsonChunk(slice);
+      if (parsed && typeof parsed === 'object') {
+        candidates.push(parsed);
+      }
+    }
+  }
+
+  if (candidates.length === 0) {
+    throw new Error('В ответе нейросети не найден валидный JSON-объект');
+  }
+
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+
+  // Ранжирование кандидатов: выбираем объект, наиболее соответствующий preferredKeys
+  const keysToMatch = (preferredKeys && preferredKeys.length > 0)
+    ? preferredKeys
+    : ['scenes', 'scene_by_scene_blueprint', 'cover_visual', 'title'];
+
+  let bestCandidate = candidates[0];
+  let maxScore = -1;
+
+  for (const cand of candidates) {
+    let score = 0;
+    if (typeof cand === 'object' && cand !== null) {
+      for (const key of keysToMatch) {
+        if (key in cand) {
+          score += 20;
+          if (Array.isArray(cand[key]) && cand[key].length > 0) {
+            score += 15;
+          }
+        }
+      }
+      if (Array.isArray(cand.scenes) && cand.scenes.length === 4) {
+        score += 40;
+      }
+      if (cand.title && typeof cand.title === 'string' && cand.title.length > 3) {
+        score += 15;
+      }
+      // Предпочитаем более полные объекты по длине сериализации
+      score += Math.min(10, Math.floor(JSON.stringify(cand).length / 200));
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestCandidate = cand;
+    }
+  }
+
+  return bestCandidate;
+}
+

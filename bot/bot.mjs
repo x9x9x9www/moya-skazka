@@ -29,6 +29,7 @@ import {
   buildLinguisticEditorialPrompt,
   STORY_ARCHETYPES,
   selectStoryArchetype,
+  robustParseJson,
 } from '../packages/story-engine/src/index.mjs';
 import { Agent, ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import localtunnel from 'localtunnel';
@@ -289,32 +290,8 @@ function getAuthContext(req, url) {
 // ========================================================
 // 2. ВЫЗОВЫ AI API (Wellflow API: gpt-6-luna / nano-banana-2)
 // ========================================================
-function parseJsonContent(content) {
-  let cleaned = String(content || '').replace(/```json/gi, '').replace(/```/g, '').trim();
-  const first = cleaned.indexOf('{');
-  const last = cleaned.lastIndexOf('}');
-  if (first === -1 || last === -1) throw new Error('JSON object not found');
-  let jsonSlice = cleaned.slice(first, last + 1);
-
-  try {
-    return JSON.parse(jsonSlice);
-  } catch (e1) {
-    try {
-      // 1. Удаление висячих запятых в объектах и массивах
-      const noTrailing = jsonSlice.replace(/,\s*([}\]])/g, '$1');
-      return JSON.parse(noTrailing);
-    } catch (e2) {
-      try {
-        // 2. Очистка неэкранированных служебных символов
-        const sanitized = jsonSlice
-          .replace(/,\s*([}\]])/g, '$1')
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, (c) => (c === '\n' || c === '\r' || c === '\t' ? c : ''));
-        return JSON.parse(sanitized);
-      } catch (e3) {
-        throw new Error(e1.message);
-      }
-    }
-  }
+function parseJsonContent(content, preferredKeys = []) {
+  return robustParseJson(content, preferredKeys);
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {
@@ -420,7 +397,7 @@ async function generateWellflowStoryAI(params) {
         { max_tokens: 500, timeoutMs: 75000 }
       );
 
-      const rawBlueprint = parseJsonContent(architectContent);
+      const rawBlueprint = parseJsonContent(architectContent, ['scene_by_scene_blueprint', 'psychological_profile', 'creative_concept']);
       const blueprint = normalizeBlueprint(rawBlueprint, input);
       console.log(
         `[StoryEngine/Этап 1] ✅ Архитектурный паспорт утверждён: Архетип «${blueprint.archetype}» | Реквизит: ${blueprint.physical_props.join(', ')} | «${blueprint.creative_concept.core_metaphor}»`
@@ -446,14 +423,33 @@ async function generateWellflowStoryAI(params) {
     ],
     'story',
     2,
-    { max_tokens: 1800, timeoutMs: 90000 }
+    { max_tokens: 1800, timeoutMs: 120000 }
   );
 
   let raw;
   try {
-    raw = parseJsonContent(content);
+    raw = parseJsonContent(content, ['scenes', 'title', 'characters']);
   } catch (error) {
-    throw new Error(`story: невалидный JSON: ${error.message}`);
+    console.warn(`[StoryEngine] ⚠️ Ошибка парсинга JSON сказочника (${error.message}), запускаем аварийный ремонт синтаксиса...`);
+    try {
+      const repairPrompt = buildRepairPrompt(content, [
+        error.message,
+        'Верни ТОЛЬКО ОДИН валидный JSON-объект сказки по контракту: {"title":"...","scenes":[...],"characters":[...],"questions":[...]} без Markdown и без лишнего текста.',
+      ]);
+      const repairedContent = await callTextChat(
+        [
+          { role: 'system', content: storyPrompt.system },
+          { role: 'user', content: storyPrompt.user },
+          { role: 'assistant', content },
+          { role: 'user', content: repairPrompt },
+        ],
+        'json-syntax-repair',
+        { max_tokens: 2000, timeoutMs: 50000 }
+      );
+      raw = parseJsonContent(repairedContent, ['scenes', 'title', 'characters']);
+    } catch (repairErr) {
+      throw new Error(`story: невалидный JSON: ${error.message} (ремонт не удался: ${repairErr.message})`);
+    }
   }
 
   try {
@@ -479,7 +475,7 @@ async function generateWellflowStoryAI(params) {
           'length-repair',
           { max_tokens: 2200, timeoutMs: 90000 }
         );
-        const expandedRaw = parseJsonContent(expandedContent);
+        const expandedRaw = parseJsonContent(expandedContent, ['scenes', 'title']);
         const expanded = normalizeStory(expandedRaw, input, dna);
         if (expanded.metrics.total_words > story.metrics.total_words) {
           console.log(`[StoryEngine] ✅ Расширено: ${story.metrics.total_words} → ${expanded.metrics.total_words} слов`);
@@ -505,7 +501,7 @@ async function generateWellflowStoryAI(params) {
           1,
           { max_tokens: 950, timeoutMs: 45000 }
         );
-        const editorialLlmJson = parseJsonContent(editorialLlmContent);
+        const editorialLlmJson = parseJsonContent(editorialLlmContent, ['scenes', 'title', 'questions']);
         if (editorialLlmJson && Array.isArray(editorialLlmJson.scenes) && editorialLlmJson.scenes.length === 4) {
           story.title = editorialLlmJson.title || story.title;
           for (const s of editorialLlmJson.scenes) {
@@ -561,7 +557,7 @@ async function generateWellflowStoryAI(params) {
       'repair',
       { max_tokens: 1800, timeoutMs: 50000 }
     );
-    const repairedRaw = parseJsonContent(repairedContent);
+    const repairedRaw = parseJsonContent(repairedContent, ['scenes', 'title', 'characters']);
     try {
       let story = normalizeStory(repairedRaw, input, dna);
       try {
@@ -1069,7 +1065,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       1,
       { max_tokens: 800, timeoutMs: 45000 }
     );
-    const vdJson = parseJsonContent(visualDirectorContent);
+    const vdJson = parseJsonContent(visualDirectorContent, ['cover_visual', 'scenes']);
     if (vdJson) {
       if (typeof vdJson.cover_visual === 'string' && vdJson.cover_visual.length > 25) {
         story.cover_visual = vdJson.cover_visual;

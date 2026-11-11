@@ -276,10 +276,11 @@ function isRepeatingRecentBook(candidateTitle, candidateTheme, recentBooks = [])
 function fillNamePlaceholders(templateStr, childName, gender) {
   if (!templateStr) return '';
   const name = childName || 'Малыш';
-  const genName = declineRussianName(name, 'родительный', gender);
-  const datName = declineRussianName(name, 'дательный', gender);
-  const insName = declineRussianName(name, 'творительный', gender);
-  const prepName = declineRussianName(name, 'предложный', gender);
+  const decl = declineRussianName(name, gender);
+  const genName = decl?.gen || name;
+  const datName = decl?.dat || name;
+  const insName = decl?.ins || name;
+  const prepName = decl?.prep || name;
 
   return templateStr
     .replaceAll('{name}', name)
