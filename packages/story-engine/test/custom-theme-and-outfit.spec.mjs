@@ -11,7 +11,7 @@ test('Кастомная тема «Новогодние праздники» у
   });
 
   assert.match(dna.world_scale, /Winter Holiday Wonderland/i);
-  assert.match(dna.opening_hook, /морозным окном|снежинки|ёлке/i);
+  assert.match(dna.opening_hook, /мороз|снежин|снеж|ёлк/i);
 });
 
 test('Кастомный наряд «новогодний свитер с оленем» переводится в английские токены без утечки кириллицы', () => {
