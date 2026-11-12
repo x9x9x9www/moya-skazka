@@ -321,7 +321,7 @@ export function markApiUrlFailed(url?: string | null) {
   badApiUrls.add(clean);
   try {
     const cached = localStorage.getItem('ms_api_url');
-    if (cached && cached.replace(/\/$/, '') === clean) {
+    if (cached && (cached.replace(/\/$/, '') === clean || clean.includes(cached))) {
       localStorage.removeItem('ms_api_url');
     }
   } catch {}
@@ -353,16 +353,19 @@ export function getActiveApiUrl(): string {
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
-      if (
-        cached &&
-        !cached.includes('192a1eaba3c1ee78') &&
-        !cached.includes('b4e24b393c4c2c70') &&
-        !cached.includes('loca.lt') &&
-        !badApiUrls.has(cached.replace(/\/$/, ''))
-      ) {
-        return cached.replace(/\/$/, '');
-      } else if (cached && badApiUrls.has(cached.replace(/\/$/, ''))) {
+      const isDeadTunnel =
+        !cached ||
+        cached.includes('192a1eaba3c1ee78') ||
+        cached.includes('b4e24b393c4c2c70') ||
+        cached.includes('serveousercontent.com') ||
+        cached.includes('trycloudflare.com') ||
+        cached.includes('loca.lt') ||
+        badApiUrls.has(cached.replace(/\/$/, ''));
+
+      if (isDeadTunnel && cached) {
         localStorage.removeItem('ms_api_url');
+      } else if (cached && !isDeadTunnel) {
+        return cached.replace(/\/$/, '');
       }
     } catch {}
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

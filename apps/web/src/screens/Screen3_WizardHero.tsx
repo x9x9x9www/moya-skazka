@@ -377,7 +377,13 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
 
       setIsPhotoBased(true);
       setShowManualAppearance(false);
-      setVisionSuccess('✨ Герой ожил по фото!');
+      if (isRealGeneratedAvatar) {
+        setVisionSuccess('✨ 3D-образ персонажа успешно создан нейросетью по фото!');
+      } else if (res?.status === 'fallback') {
+        setVisionSuccess('⚠️ ИИ-мост недоступен. Выбран канонический образ.');
+      } else {
+        setVisionSuccess('✨ Герой ожил по фото!');
+      }
     } catch (err: any) {
       console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
       // Fallback: подбираем красивый 3D-пресет аватара, чтобы пользователь не остался без образа

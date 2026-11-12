@@ -6,7 +6,7 @@ import {
   UserBalanceDTO,
   UserDTO,
 } from '@moya-skazka/shared';
-import { getActiveApiUrl } from '../services/storyGenerator';
+import { getActiveApiUrl, markApiUrlFailed } from '../services/storyGenerator';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 
 const API_BASE = '/api/v1';
@@ -70,13 +70,14 @@ class ApiClient {
     }
 
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
     const primaryBase = getApiBaseUrl();
-    const candidates = [primaryBase];
+    const candidates = [primaryBase].filter(Boolean);
     if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       if (!candidates.includes('http://localhost:4040')) candidates.push('http://localhost:4040');
       if (!candidates.includes('http://127.0.0.1:4040')) candidates.push('http://127.0.0.1:4040');
     }
-    if (primaryBase !== '') {
+    if (!isGithubPages && !candidates.includes('')) {
       candidates.push('');
     }
 
@@ -109,6 +110,9 @@ class ApiClient {
       } catch (err: any) {
         lastError = err;
         console.warn(`[ApiClient] Сбой запроса к ${url}:`, err.message);
+        if (base) {
+          markApiUrlFailed(base);
+        }
       }
     }
 

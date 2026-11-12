@@ -110,7 +110,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
 const ADMIN_USERNAMES = ['dinar_fazlyev', 'x9x9x9ww'];
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.2';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.3';
 if (!BOT_TOKEN && isMainModule) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -3445,22 +3445,21 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
     adminBanner = `\n\n👑 **Статус: Администратор (@${userLower})**\nВам предоставлены права ADMIN с безлимитными кредитами на сказки!`;
   }
 
-  const richMarkdown =
-`# Моя сказка
+  const welcomeText =
+`✨ **Моя сказка** ✨
 
-![](tg://video?id=banner "***")
-
-Привет, **${name}**! ✨${adminBanner}
+Привет, **${name}**! 🤗${adminBanner}
 
 Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.
 
 🌟 **Создание сказок через ИИ:**
 • 📖 Текст пишется нейросетью под характер малыша
-• 🎨 Красочные 3D-иллюстрации от **Nano-Banana-2**
-• 🧸 4 сцены + вопросы для тёплой беседы перед сном
-• 🎁 Первая персональная сказка — в подарок!${refNote}
+• 🎨 Уникальный 3D Pixar-аватар малыша по фото (**Nano-Banana-2**)
+• 🧸 4 красочные сцены + вопросы для тёплой беседы перед сном
+• 🎁 Первая персональная сказка — **в подарок**!${refNote}
 
-Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
+🚀 [Открыть приложение «Моя сказка»](${currentAppUrl})
+или нажмите кнопку ниже 👇`;
 
   const keyboard = {
     inline_keyboard: [
@@ -3479,37 +3478,12 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
     ],
   };
 
-  try {
-    const res = await callTelegram('sendRichMessage', {
-      chat_id: chatId,
-      rich_message: {
-        markdown: richMarkdown,
-        media: [
-          {
-            id: 'banner',
-            media: {
-              type: 'animation',
-              media: BANNER_ANIMATION_FILE_ID,
-            },
-          },
-        ],
-      },
-      reply_markup: keyboard,
-    });
-    if (res && res.ok) {
-      return res;
-    }
-    console.warn('[Bot] sendRichMessage fallback triggered:', res?.description);
-  } catch (err) {
-    console.warn('[Bot] sendRichMessage error, falling back:', err.message);
-  }
-
-  // Фолбэк на классический sendMessage
   return await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: `🚀 Чтобы создать персональную терапевтическую сказку для вашего малыша, перейдите в приложение: https://x9x9x9www.github.io/moya-skazka/`,
+    text: welcomeText,
+    parse_mode: 'Markdown',
     link_preview_options: {
-      url: 'https://x9x9x9www.github.io/moya-skazka/',
+      url: currentAppUrl,
       prefer_small_media: true,
       show_above_text: false,
     },
@@ -3523,6 +3497,17 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
 async function startPolling() {
   console.log(`[Bot] Инициализация подключения к Telegram...`);
 
+  // Восстановление последнего подтверждённого URL туннеля из файла при старте
+  if (!publicTunnelUrl) {
+    try {
+      const savedTunnel = fs.readFileSync(path.resolve(process.cwd(), '.tunnel_url'), 'utf-8').trim();
+      if (savedTunnel && savedTunnel.startsWith('http')) {
+        publicTunnelUrl = savedTunnel;
+        console.log(`[Bot] 📂 Восстановлен сохранённый URL туннеля: ${publicTunnelUrl}`);
+      }
+    } catch {}
+  }
+
   let me = null;
   while (!me || !me.ok) {
     me = await callTelegram('getMe');
@@ -3533,7 +3518,9 @@ async function startPolling() {
   }
 
   console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);
-  await updateChatMenuWithApi(publicTunnelUrl);
+  if (publicTunnelUrl) {
+    await updateChatMenuWithApi(publicTunnelUrl);
+  }
 
   let offset = 0;
 
@@ -3612,6 +3599,18 @@ async function startPolling() {
                 reply_markup: {
                   inline_keyboard: [
                     [{ text: '✨ Начать как новый пользователь', web_app: { url: resetAppUrl } }],
+                  ],
+                },
+              });
+            } else if (text === '/link' || text === '/url' || text === '/site') {
+              const directAppUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
+              await callTelegram('sendMessage', {
+                chat_id: chatId,
+                text: `🔗 **Прямая ссылка на приложение «Моя сказка»:**\n\n${directAppUrl}\n\n_Нажмите на ссылку выше или на кнопку внизу для входа с подключённым ИИ._`,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: isAdmin ? '👑 Открыть (ADMIN)' : '✨ Открыть сказки', web_app: { url: directAppUrl } }],
                   ],
                 },
               });

@@ -356,7 +356,9 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       }
 
       if (isRealGeneratedAvatar) {
-        setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан и сохранён!');
+        setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан нейросетью!');
+      } else if (avatarRes?.status === 'fallback') {
+        setPhotoAnalysisTip('⚠️ ИИ-мост недоступен. Выбран канонический образ. Откройте приложение через /start бота.');
       } else {
         setPhotoAnalysisTip('Внешность малыша определена!');
       }
