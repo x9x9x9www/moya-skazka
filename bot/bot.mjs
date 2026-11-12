@@ -3442,24 +3442,25 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
 
   let adminBanner = '';
   if (isAdmin) {
-    adminBanner = `\n\n👑 **Статус: Администратор (@${userLower})**\nВам предоставлены права ADMIN с безлимитными кредитами на сказки!`;
+    adminBanner = `\n👑 **Статус: Администратор (@${userLower})** Вам предоставлены права ADMIN с безлимитными кредитами на сказки!`;
   }
 
-  const welcomeText =
-`✨ **Моя сказка** ✨
+  const richMarkdown =
+`# Моя сказка
 
-Привет, **${name}**! 🤗${adminBanner}
+![](tg://video?id=banner "***")
+
+Привет, **${name}**! ✨${adminBanner}
 
 Добро пожаловать в **«Моя сказка»** — уютное приложение для создания персональных терапевтических сказок на ночь для детей 2–6 лет.
 
 🌟 **Создание сказок через ИИ:**
 • 📖 Текст пишется нейросетью под характер малыша
-• 🎨 Уникальный 3D Pixar-аватар малыша по фото (**Nano-Banana-2**)
-• 🧸 4 красочные сцены + вопросы для тёплой беседы перед сном
-• 🎁 Первая персональная сказка — **в подарок**!${refNote}
+• 🎨 Красочные 3D-иллюстрации от **Nano-Banana-2**
+• 🧸 4 сцены + вопросы для тёплой беседы перед сном
+• 🎁 Первая персональная сказка — в подарок!${refNote}
 
-🚀 [Открыть приложение «Моя сказка»](${currentAppUrl})
-или нажмите кнопку ниже 👇`;
+Нажмите кнопку ниже, чтобы открыть сказочный визард! 👇`;
 
   const keyboard = {
     inline_keyboard: [
@@ -3478,10 +3479,35 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
     ],
   };
 
+  try {
+    const res = await callTelegram('sendRichMessage', {
+      chat_id: chatId,
+      rich_message: {
+        markdown: richMarkdown,
+        media: [
+          {
+            id: 'banner',
+            media: {
+              type: 'animation',
+              media: BANNER_ANIMATION_FILE_ID,
+            },
+          },
+        ],
+      },
+      reply_markup: keyboard,
+    });
+    if (res && res.ok) {
+      return res;
+    }
+    console.warn('[Bot] sendRichMessage fallback triggered:', res?.description);
+  } catch (err) {
+    console.warn('[Bot] sendRichMessage error, falling back:', err.message);
+  }
+
+  // Фолбэк на классический sendMessage с полным currentAppUrl
   return await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: welcomeText,
-    parse_mode: 'Markdown',
+    text: `🚀 Чтобы создать персональную терапевтическую сказку для вашего малыша, перейдите в приложение: ${currentAppUrl}`,
     link_preview_options: {
       url: currentAppUrl,
       prefer_small_media: true,
