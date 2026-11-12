@@ -61,7 +61,7 @@ loadEnv();
 // Настройка прокси для стабильного доступа к Telegram API и AI провайдерам
 const explicitProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
 const isProxyDisabled = process.env.DISABLE_PROXY === 'true' || process.env.NO_PROXY === '*';
-const proxyUrl = isProxyDisabled ? null : (explicitProxy || null);
+const proxyUrl = isProxyDisabled ? null : (explicitProxy || 'http://127.0.0.1:10809');
 
 let currentProxyAgent = null;
 
@@ -3008,12 +3008,7 @@ if (isMainModule) {
   setInterval(async () => {
     if (!publicTunnelUrl) {
       if (!serveoProc && !pinggyProc && !currentTunnel && !cloudflareProc) {
-        const binPath = path.resolve('bot/cloudflared');
-        if (fs.existsSync(binPath)) {
-          startCloudflareTunnel();
-        } else {
-          startPinggyTunnel();
-        }
+        startServeoTunnel();
       }
       return;
     }
@@ -3024,7 +3019,7 @@ if (isMainModule) {
     }
     consecutiveWatchdogFailures++;
     const hasPendingJob = Array.from(jobs.values()).some((j) => j.status === 'pending');
-    const maxFailures = hasPendingJob ? 20 : 12;
+    const maxFailures = hasPendingJob ? 10 : 3;
     console.warn(`[Tunnel Watchdog] ⚠️ Туннель ${publicTunnelUrl} (${activeTunnelSource}) не ответил (${consecutiveWatchdogFailures}/${maxFailures})...`);
     if (consecutiveWatchdogFailures < maxFailures) {
       return;
@@ -3038,10 +3033,10 @@ if (isMainModule) {
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startCloudflareTunnel();
+      startServeoTunnel();
     } else if (activeTunnelSource === 'serveo') {
       stopServeoTunnel();
-      startServeoTunnel();
+      startPinggyTunnel();
     } else {
       stopPinggyTunnel();
       if (currentTunnel) {
@@ -3050,12 +3045,7 @@ if (isMainModule) {
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      const binPath = path.resolve('bot/cloudflared');
-      if (fs.existsSync(binPath)) {
-        startCloudflareTunnel();
-      } else {
-        startPinggyTunnel();
-      }
+      startServeoTunnel();
     }
   }, 35000).unref();
 }
@@ -3352,11 +3342,14 @@ if (isMainModule) {
   if (SKIP_TUNNELS) {
     console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
   } else {
-    const binPath = path.resolve('bot/cloudflared');
-    if (fs.existsSync(binPath)) {
+    const preferredTunnel = (process.env.TUNNEL || '').toLowerCase();
+    if (preferredTunnel === 'cloudflare') {
       startCloudflareTunnel();
-    } else {
+    } else if (preferredTunnel === 'pinggy') {
       startPinggyTunnel();
+    } else {
+      // По умолчанию: Serveo туннель (работает мгновенно без блокировок Cloudflare)
+      startServeoTunnel();
     }
   }
 }
@@ -3390,6 +3383,7 @@ async function callTelegram(method, params = {}) {
       details.includes('other side closed') ||
       details.includes('ECONNRESET') ||
       details.includes('UND_ERR_SOCKET') ||
+      details.includes('Client network socket disconnected') ||
       details.includes('terminated');
 
     if (method === 'getUpdates' && isNetworkIdle) {
