@@ -16,6 +16,7 @@ import {
 import { ChildProfileDTO, DailyIdeaDTO } from '@moya-skazka/shared';
 import { resolveChildAvatar } from '../utils/avatarResolver';
 import { formatSafeForWhom } from '../utils/russianGrammar';
+import { haptic } from '../hooks/useTelegram';
 
 interface Screen2HomeProps {
   activeChild: ChildProfileDTO | null;
@@ -108,6 +109,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
   };
 
   const handleStart = () => {
+    haptic.selection();
     if (!canClaimFreeStory && balance <= 0) {
       onNavigateTab('shop');
       return;

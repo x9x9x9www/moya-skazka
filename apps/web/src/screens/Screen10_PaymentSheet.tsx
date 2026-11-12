@@ -51,7 +51,9 @@ export const Screen10_PaymentSheet: React.FC<Screen10PaymentSheetProps> = ({
               onClose();
             }, 1200);
           } else {
-            console.log('[Payment] Статус оплаты Telegram Stars:', status);
+            if ((import.meta as any).env?.DEV) {
+              console.log('[Payment] Статус оплаты Telegram Stars:', status);
+            }
           }
         });
       } else {

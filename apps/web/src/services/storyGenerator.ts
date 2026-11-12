@@ -36,6 +36,12 @@ export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_URL ||
   '';
 
+const logDev = (...args: unknown[]) => {
+  if ((import.meta as any).env?.DEV) {
+    console.log(...args);
+  }
+};
+
 export function isMockMode(): boolean {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -489,7 +495,7 @@ async function pollJob<T>(
             if (fallbackRes.ok) {
               const fallbackData = await fallbackRes.json();
               if (fallbackData.status === 'ready' && fallbackData.story) {
-                console.log('[StoryGenerator] 🔄 Найдена готовая сказка через latest-story!');
+                logDev('[StoryGenerator] 🔄 Найдена готовая сказка через latest-story!');
                 return fallbackData.story as T;
               }
             }
@@ -519,7 +525,7 @@ async function pollJob<T>(
       if (fallbackRes.ok) {
         const fallbackData = await fallbackRes.json();
         if (fallbackData.status === 'ready' && fallbackData.story) {
-          console.log('[StoryGenerator] 🔄 Готовая сказка получена перед таймаутом!');
+          logDev('[StoryGenerator] 🔄 Готовая сказка получена перед таймаутом!');
           return fallbackData.story as T;
         }
       }
@@ -731,13 +737,13 @@ export async function callWellflowStory(
       if (response.ok || response.status === 202) {
         const data = await response.json();
         if ((data.status === 'ready' || data.status === 'COMPLETED') && data.story && Array.isArray(data.story.scenes)) {
-          console.log('[StoryGenerator] ✅ Сказка готова сразу из ответа:', data.story.title);
+          logDev('[StoryGenerator] ✅ Сказка готова сразу из ответа:', data.story.title);
           return data.story;
         } else if (data.story && Array.isArray(data.story.scenes)) {
-          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.story.title);
+          logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.story.title);
           return data.story;
         } else if (data.scenes && Array.isArray(data.scenes)) {
-          console.log('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
+          logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
           return data;
         } else if (data.jobId || data.job_id) {
           jobId = data.jobId || data.job_id;
@@ -760,11 +766,11 @@ export async function callWellflowStory(
   }
 
   if (jobId) {
-    console.log(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
+    logDev(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
     const remainingMs = Math.max(30000, timeoutMs - (Date.now() - overallStart));
     const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress, params.childName, effectiveUserId);
     if (polled && polled.scenes) {
-      console.log('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
+      logDev('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
       return polled;
     }
   }
@@ -802,7 +808,7 @@ export async function generateDynamicStory(
 ): Promise<BookDetailsDTO> {
   // Бесплатный тестовый режим без вызовов API и без затрат денег
   if (isMockMode()) {
-    console.log('[StoryGenerator] ⚡️ Бесплатный тестовый режим (MOCK_AI): генерация без затрат API для', params.childName);
+    logDev('[StoryGenerator] ⚡️ Бесплатный тестовый режим (MOCK_AI): генерация без затрат API для', params.childName);
     onProgress?.({
       stage: 'writing',
       progress: 25,
@@ -972,7 +978,7 @@ export async function generateDynamicStory(
           const url = await generateWellflowImage(scene.image_prompt, 120000);
           if (url) {
             scene.image_url = url;
-            console.log(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
+            logDev(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
             if (typeof window !== 'undefined') {
               window.dispatchEvent(
                 new CustomEvent('ms_scene_image_updated', {

@@ -40,6 +40,7 @@ import {
 import { api } from '../api/client';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { inferRussianNameGender } from '../utils/russianGrammar';
+import { haptic } from '../hooks/useTelegram';
 
 export interface ChildRegistrationData {
   name: string;
@@ -640,6 +641,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    haptic.selection();
                     setHasUserExplicitlySetGender(true);
                     setGender('boy');
                     setHairLength('короткие');
@@ -662,6 +664,7 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    haptic.selection();
                     setHasUserExplicitlySetGender(true);
                     setGender('girl');
                     setHairLength('длинные');
@@ -695,7 +698,10 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                   <button
                     key={num}
                     type="button"
-                    onClick={() => setAge(num)}
+                    onClick={() => {
+                      haptic.selection();
+                      setAge(num);
+                    }}
                     className={`w-8 h-8 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
                       age === num
                         ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-500/30 scale-105'

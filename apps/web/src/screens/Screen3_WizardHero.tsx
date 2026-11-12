@@ -36,6 +36,7 @@ import {
 } from '../components/FairytaleIcons';
 import { resolveChildAvatar, resolveChildAvatarKey, ALL_AVATAR_KEYS } from '../utils/avatarResolver';
 import { api } from '../api/client';
+import { haptic } from '../hooks/useTelegram';
 
 export interface WizardHeroData {
   childName: string;
@@ -588,7 +589,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => onChange({ ...data, gender: 'boy' })}
+                    onClick={() => {
+                      haptic.selection();
+                      onChange({ ...data, gender: 'boy' });
+                    }}
                     className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                       data.gender === 'boy'
                         ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
@@ -600,7 +604,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onChange({ ...data, gender: 'girl' })}
+                    onClick={() => {
+                      haptic.selection();
+                      onChange({ ...data, gender: 'girl' });
+                    }}
                     className={`flex-1 py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                       data.gender === 'girl'
                         ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
@@ -622,7 +629,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                     <button
                       key={ageNum}
                       type="button"
-                      onClick={() => onChange({ ...data, age: ageNum })}
+                      onClick={() => {
+                        haptic.selection();
+                        onChange({ ...data, age: ageNum });
+                      }}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                         data.age === ageNum
                           ? 'bg-brand-500 text-white border-brand-500 shadow-xs'
@@ -920,7 +930,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               <div className="flex gap-1 text-[11px] font-bold">
                 <button
                   type="button"
-                  onClick={() => onChange({ ...data, gender: 'boy' })}
+                  onClick={() => {
+                    haptic.selection();
+                    onChange({ ...data, gender: 'boy' });
+                  }}
                   className={`px-2 py-0.5 rounded-lg border transition-all ${
                     data.gender === 'boy'
                       ? 'bg-brand-500 text-white border-brand-500'
@@ -931,7 +944,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onChange({ ...data, gender: 'girl' })}
+                  onClick={() => {
+                    haptic.selection();
+                    onChange({ ...data, gender: 'girl' });
+                  }}
                   className={`px-2 py-0.5 rounded-lg border transition-all ${
                     data.gender === 'girl'
                       ? 'bg-brand-500 text-white border-brand-500'

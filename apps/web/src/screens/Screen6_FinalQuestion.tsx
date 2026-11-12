@@ -2,6 +2,7 @@ import React from 'react';
 import { RotateCcw, BookOpen, Sparkles, Heart } from 'lucide-react';
 import { BookDetailsDTO } from '@moya-skazka/shared';
 import { ReaderSettings } from '../hooks/useReaderSettings';
+import { haptic } from '../hooks/useTelegram';
 
 interface Screen6FinalQuestionProps {
   book: BookDetailsDTO;
@@ -33,7 +34,12 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
       ? 'bg-stone-900 text-stone-100'
       : 'bg-cream-100 text-stone-900';
 
-  const isTextOnly = book.format === 'TEXT';
+  const hasIllustrations = Boolean(book.cover_url || book.scenes?.some((s) => Boolean(s.image_url)));
+  const isTextOnly = book.format === 'TEXT' && !hasIllustrations;
+
+  React.useEffect(() => {
+    haptic.success();
+  }, []);
 
   return (
     <div className={`min-h-screen flex flex-col justify-between max-w-md mx-auto transition-colors p-5 pb-8 ${themeClass}`}>
@@ -48,7 +54,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
         </div>
       </div>
 
-      <div className="space-y-5 my-auto py-2 overflow-y-auto">
+      <div className="space-y-5 my-auto py-2 overflow-y-auto overscroll-contain">
         {/* Иллюстрация счастливого финала */}
         {finalScene?.image_url && (
           <div className="w-full h-52 rounded-3xl overflow-hidden shadow-card border border-cream-300/60 bg-cream-200 relative">
@@ -84,7 +90,10 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 <span>Вопрос для тёплой беседы перед сном</span>
               </div>
               <button
-                onClick={() => setSkippedQuestion(true)}
+                onClick={() => {
+                  haptic.selection();
+                  setSkippedQuestion(true);
+                }}
                 className="text-[11px] font-bold text-stone-400 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
               >
                 Пропустить ›
@@ -119,7 +128,10 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 Создайте новую сказку с персональными красочными 3D-иллюстрациями в мультяшном стиле!
               </p>
               <button
-                onClick={onCreateNewStory}
+                onClick={() => {
+                  haptic.selection();
+                  onCreateNewStory();
+                }}
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:opacity-95 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 fill-white" />
@@ -139,11 +151,14 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 Отправьтесь в новое увлекательное путешествие с любимыми героями и красочными 3D-иллюстрациями!
               </p>
               <button
-                onClick={onCreateNewStory}
+                onClick={() => {
+                  haptic.selection();
+                  onCreateNewStory();
+                }}
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:opacity-95 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 fill-white" />
-                <span>Создать новую сказку</span>
+                <span>Создать новое приключение</span>
               </button>
             </div>
           )
@@ -153,7 +168,10 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
       {/* Кнопки действий (Экран 6: горизонтальный ряд) */}
       <div className="flex items-center gap-3 pt-3">
         <button
-          onClick={onRestart}
+          onClick={() => {
+            haptic.selection();
+            onRestart();
+          }}
           className="flex-1 py-3.5 px-4 rounded-2xl bg-cream-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 hover:bg-cream-300"
         >
           <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
@@ -161,7 +179,10 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
         </button>
 
         <button
-          onClick={onGoToLibrary}
+          onClick={() => {
+            haptic.selection();
+            onGoToLibrary();
+          }}
           className="flex-1 py-3.5 px-4 rounded-2xl bg-stone-700 hover:bg-stone-800 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
           <BookOpen className="w-3.5 h-3.5" />

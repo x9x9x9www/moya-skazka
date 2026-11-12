@@ -13,6 +13,7 @@ import { ReaderSettings } from '../hooks/useReaderSettings';
 import { useLullabyAudio } from '../hooks/useLullabyAudio';
 import { FairytaleIllustration, ChildAppearanceProps } from '../components/FairytaleIllustration';
 import { FairyStarIcon } from '../components/FairytaleIcons';
+import { haptic } from '../hooks/useTelegram';
 
 interface Screen5ReaderProps {
   book: BookDetailsDTO;
@@ -158,9 +159,12 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
       className={`h-[100dvh] max-h-[100dvh] flex flex-col justify-between max-w-md mx-auto transition-colors duration-300 relative overflow-hidden select-none touch-pan-y ${themeClass}`}
     >
       {/* 1. Воздушная шапка читалки */}
-      <div className="shrink-0 z-30 flex items-center justify-between px-4 py-3 backdrop-blur-md bg-inherit/90 border-b border-cream-300/40">
+      <div className="shrink-0 z-30 flex items-center justify-between px-4 py-3 pt-safe backdrop-blur-md bg-inherit/90 border-b border-cream-300/40">
         <button
-          onClick={onClose}
+          onClick={() => {
+            haptic.selection();
+            onClose();
+          }}
           className="p-2 -ml-1 rounded-full text-stone-600 hover:text-stone-900 active:scale-95 transition-all hover:bg-black/5"
           aria-label="В библиотеку"
           title="Вернуться на главную"
@@ -178,7 +182,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         <div className="flex items-center gap-1.5">
           {onCycleFontSize && (
             <button
-              onClick={onCycleFontSize}
+              onClick={() => {
+                haptic.selection();
+                onCycleFontSize();
+              }}
               className="px-2.5 py-1.5 rounded-full text-xs font-bold font-mono tracking-tight flex items-center justify-center transition-all active:scale-95 bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 text-stone-700 dark:text-stone-200 border border-black/5 dark:border-white/10"
               title={`Размер шрифта: ${settings.fontSize === 'small' ? 'Мелкий' : settings.fontSize === 'large' ? 'Крупный' : 'Стандартный'}`}
             >
@@ -189,7 +196,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           )}
 
           <button
-            onClick={onToggleQuestions}
+            onClick={() => {
+              haptic.selection();
+              onToggleQuestions?.();
+            }}
             className={`p-2 rounded-full text-xs font-semibold flex items-center justify-center transition-all active:scale-95 ${
               settings.showQuestions
                 ? 'bg-brand-50 text-brand-700 border border-brand-200 dark:bg-stone-800 dark:border-stone-700'
@@ -205,7 +215,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
           </button>
 
           <button
-            onClick={toggleMute}
+            onClick={() => {
+              haptic.light();
+              toggleMute();
+            }}
             className={`p-2 rounded-full text-xs font-semibold flex items-center justify-center transition-all active:scale-95 ${
               isPlaying
                 ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/40 dark:border-amber-700/60 shadow-xs'
@@ -324,12 +337,18 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
         <div className="h-40 shrink-0 pointer-events-none select-none" aria-hidden="true" />
       </div>
 
-      {/* 4. Плавающая стеклянная панель управления (Floating Glass Dock) */}
-      <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40 pointer-events-none">
+      {/* 4. Плавающая стеклянная панель управления (Floating Glass Dock) с адаптацией под безопасную зону */}
+      <div
+        className="fixed left-4 right-4 max-w-md mx-auto z-40 pointer-events-none"
+        style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <div className="pointer-events-auto rounded-3xl backdrop-blur-xl bg-white/75 dark:bg-stone-900/85 border border-white/60 dark:border-stone-700/60 shadow-2xl p-2.5 flex items-center justify-between gap-3">
           {/* Кнопка Назад */}
           <button
-            onClick={onPrevScene}
+            onClick={() => {
+              haptic.selection();
+              onPrevScene();
+            }}
             disabled={currentSceneIndex <= 1}
             className={`p-3 rounded-2xl transition-all flex items-center justify-center ${
               currentSceneIndex > 1
@@ -364,7 +383,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
 
           {/* Большая удобная кнопка «Дальше» для листания одним пальцем */}
           <button
-            onClick={onNextScene}
+            onClick={() => {
+              haptic.selection();
+              onNextScene();
+            }}
             className="flex-1 max-w-[175px] py-3.5 px-5 rounded-2xl bg-gradient-to-r from-brand-700 via-brand-600 to-brand-500 hover:from-brand-600 hover:to-brand-500 active:scale-[0.97] text-white font-bold text-sm shadow-lg shadow-brand-700/25 transition-all flex items-center justify-center gap-2"
           >
             <span>{currentSceneIndex >= 4 ? 'К финалу' : 'Дальше'}</span>

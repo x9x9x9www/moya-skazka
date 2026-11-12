@@ -866,7 +866,9 @@ export const App: React.FC = () => {
       }
 
       if (restoredBook) {
-        console.log('[App] 🎉 Сказка успешно восстановлена из серверного кэша!');
+        if ((import.meta as any).env?.DEV) {
+          console.log('[App] 🎉 Сказка успешно восстановлена из серверного кэша!');
+        }
         updateCreationStage('finishing');
         setJobProgress(100);
         const newSummary: BookSummaryDTO = {

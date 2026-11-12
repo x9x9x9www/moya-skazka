@@ -3,6 +3,7 @@ import { Sparkles, MessageCircleQuestion, Check, Edit2, Camera, RefreshCw } from
 import { WizardHeroData } from './Screen3_WizardHero';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { api } from '../api/client';
+import { haptic } from '../hooks/useTelegram';
 
 export interface Screen4WizardDetailsProps {
   heroData: WizardHeroData;
@@ -270,6 +271,7 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+    haptic.medium();
 
     const chosenOption = UNIFIED_THEME_OPTIONS.find((opt) => opt.id === selectedOptionId) || UNIFIED_THEME_OPTIONS[0];
     const finalTheme = selectedOptionId === 'custom'
@@ -409,7 +411,10 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
               <div key={item.id} className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedOptionId(item.id)}
+                  onClick={() => {
+                    haptic.selection();
+                    setSelectedOptionId(item.id);
+                  }}
                   className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                     isSelected
                       ? 'bg-amber-50/70 border-brand-500 ring-2 ring-brand-500/30 shadow-sm'
@@ -505,7 +510,10 @@ export const Screen4_WizardDetails: React.FC<Screen4WizardDetailsProps> = ({
           <input
             type="checkbox"
             checked={includeQuestions}
-            onChange={(e) => setIncludeQuestions(e.target.checked)}
+            onChange={(e) => {
+              haptic.selection();
+              setIncludeQuestions(e.target.checked);
+            }}
             className="sr-only peer"
           />
           <div className="w-12 h-7 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-500"></div>

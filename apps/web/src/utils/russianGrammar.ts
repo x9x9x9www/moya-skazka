@@ -17,15 +17,30 @@ export function getOPreposition(word?: string): 'об' | 'о' {
   return ['а', 'и', 'о', 'у', 'э'].includes(first) ? 'об' : 'о';
 }
 
-/**
- * Склонение имени ребёнка по падежам
- */
 export function declineRussianName(name?: string, gender: 'boy' | 'girl' | string = 'boy'): DeclinedName {
   if (!name || typeof name !== 'string') {
     return { nom: 'Малыш', gen: 'Малыша', dat: 'Малышу', acc: 'Малыша', ins: 'Малышом', prep: 'о Малыше' };
   }
 
   const trimmed = name.trim();
+  // Поддержка составных дефисных имён (например, «Анна-Мария», «Жан-Поль»)
+  if (trimmed.includes('-')) {
+    const parts = trimmed.split('-');
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      const d1 = declineRussianName(parts[0], gender);
+      const d2 = declineRussianName(parts[1], gender);
+      const prep = getOPreposition(trimmed);
+      return {
+        nom: `${d1.nom}-${d2.nom}`,
+        gen: `${d1.gen}-${d2.gen}`,
+        dat: `${d1.dat}-${d2.dat}`,
+        acc: `${d1.acc}-${d2.acc}`,
+        ins: `${d1.ins}-${d2.ins}`,
+        prep: `${prep} ${d1.prep.replace(/^(о|об|обо)\s+/i, '')}-${d2.prep.replace(/^(о|об|обо)\s+/i, '')}`,
+      };
+    }
+  }
+
   const lower = trimmed.toLowerCase();
   const lastChar = lower.slice(-1);
   const lastTwo = lower.slice(-2);
@@ -279,21 +294,31 @@ export function inferRussianNameGender(name?: string): 'boy' | 'girl' | null {
     return 'boy';
   }
 
-  const femaleExceptions = new Set(['любовь', 'николь', 'кармен', 'рахиль', 'руфь', 'адель']);
-  if (femaleExceptions.has(trimmed)) {
-    return 'girl';
-  }
-
-  const lastChar = trimmed.slice(-1);
-  if (lastChar === 'а' || lastChar === 'я') {
-    return 'girl';
-  }
+  const femaleExceptions = new Set(['любовь', 'николь', 'кармен', 'рахиль', 'руфь', 'адель', 'алиса']);
 
   const maleConsonants = new Set([
     'б', 'в', 'г', 'д', 'ж', 'з', 'к', 'л', 'м', 'н', 'п', 'р', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'й'
   ]);
-  if (maleConsonants.has(lastChar)) {
-    return 'boy';
+
+  const checkSingleWord = (word: string): 'boy' | 'girl' | null => {
+    if (maleNamesOnAorYa.has(word)) return 'boy';
+    if (femaleExceptions.has(word)) return 'girl';
+    const last = word.slice(-1);
+    if (last === 'а' || last === 'я') return 'girl';
+    if (maleConsonants.has(last)) return 'boy';
+    return null;
+  };
+
+  const direct = checkSingleWord(trimmed);
+  if (direct) return direct;
+
+  // Если составное имя (например, Анна-Мария или Марк-Аврелий)
+  const parts = trimmed.split(/[- ]+/).filter(Boolean);
+  if (parts.length > 1) {
+    const lastPartGender = checkSingleWord(parts[parts.length - 1]);
+    if (lastPartGender) return lastPartGender;
+    const firstPartGender = checkSingleWord(parts[0]);
+    if (firstPartGender) return firstPartGender;
   }
 
   return null;
