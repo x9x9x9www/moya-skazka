@@ -8,11 +8,17 @@ import {
 } from '@moya-skazka/shared';
 import { getActiveApiUrl, markApiUrlFailed, hasExplicitParamUrl } from '../services/storyGenerator';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
+import { inferRussianNameGender } from '../utils/russianGrammar';
 
 const API_BASE = '/api/v1';
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
+    // Если явно передан api_url в query или hash — абсолютный приоритет везде, включая localhost
+    if (hasExplicitParamUrl()) {
+      const active = getActiveApiUrl();
+      if (active) return active.replace(/\/$/, '');
+    }
     const host = window.location.hostname;
     // Локальная разработка через Vite dev server
     if (host === 'localhost' || host === '127.0.0.1') {
@@ -515,8 +521,12 @@ class ApiClient {
       throw new Error('Ответ сервера не содержит avatarUrl');
     } catch (err: any) {
       console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, подбор канонического 3D пресета:', err.message);
-      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
-      const fbGender: 'boy' | 'girl' = isGirl ? 'girl' : (context?.knownGender as 'boy' | 'girl') || 'boy';
+      const inferredGender = context?.knownName ? inferRussianNameGender(context.knownName) : null;
+      const fbGender: 'boy' | 'girl' =
+        context?.knownGender === 'girl' || context?.knownGender === 'boy'
+          ? (context.knownGender as 'boy' | 'girl')
+          : (inferredGender as 'boy' | 'girl') || 'boy';
+      const isGirl = fbGender === 'girl';
       const traits = {
         gender: fbGender,
         approxAge: context?.knownAge || 4,

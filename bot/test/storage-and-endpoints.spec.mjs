@@ -372,6 +372,30 @@ test('Парсинг Telegram hash и URL параметров корректн�
   // 3. Формат search параметров: ?api_url=https://bridge3.io
   const searchParams = new URLSearchParams('api_url=https%3A%2F%2Fbridge3.io');
   assert.equal(searchParams.get('api_url'), 'https://bridge3.io');
+
+  // 4. Формат хеша Telegram Mini App с tgWebAppStartParam: #tgWebAppData=...&tgWebAppStartParam=https%3A%2F%2Fbridge4.io
+  const hash4 = '#tgWebAppData=someData&tgWebAppStartParam=https%3A%2F%2Fbridge4.io';
+  const clean4 = hash4.replace(/^#/, '');
+  const params4 = new URLSearchParams(clean4.includes('?') ? clean4.slice(clean4.indexOf('?') + 1) : clean4);
+  const startParam = params4.get('tgWebAppStartParam') || params4.get('start_param');
+  assert.equal(startParam, 'https://bridge4.io');
 });
+
+test('inferRussianNameGender корректно определяет пол для имен с пробелами, разным регистром и исключений', async () => {
+  const { inferRussianNameGender } = await import('@moya-skazka/story-engine');
+  assert.equal(inferRussianNameGender('Алиса'), 'girl');
+  assert.equal(inferRussianNameGender('Алиса '), 'girl');
+  assert.equal(inferRussianNameGender('АЛИСА'), 'girl');
+  assert.equal(inferRussianNameGender('Любовь'), 'girl');
+  assert.equal(inferRussianNameGender('Николь'), 'girl');
+  assert.equal(inferRussianNameGender('Адель'), 'girl');
+
+  // Мужские имена на -а/-я не должны определяться как девочки
+  assert.equal(inferRussianNameGender('Миша'), 'boy');
+  assert.equal(inferRussianNameGender('Никита'), 'boy');
+  assert.equal(inferRussianNameGender('Илья'), 'boy');
+  assert.equal(inferRussianNameGender('Саша'), 'boy');
+});
+
 
 

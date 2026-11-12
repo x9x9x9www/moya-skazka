@@ -268,9 +268,11 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
       let avatarRes: any = null;
       try {
+        const trimmedName = name.trim();
+        const effectiveGender = hasUserExplicitlySetGender ? gender : (inferRussianNameGender(trimmedName) || undefined);
         avatarRes = await api.generateCharacterAvatar(photoBase64, undefined, 'image/jpeg', {
-          knownGender: hasUserExplicitlySetGender ? gender : undefined,
-          knownName: name.trim() || undefined,
+          knownGender: effectiveGender,
+          knownName: trimmedName || undefined,
           knownAge: age,
         });
       } catch (genErr) {

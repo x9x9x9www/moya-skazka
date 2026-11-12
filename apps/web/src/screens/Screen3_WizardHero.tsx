@@ -35,6 +35,7 @@ import {
   PrincessCrownIcon,
 } from '../components/FairytaleIcons';
 import { resolveChildAvatar, resolveChildAvatarKey, ALL_AVATAR_KEYS } from '../utils/avatarResolver';
+import { inferRussianNameGender } from '../utils/russianGrammar';
 import { api } from '../api/client';
 import { haptic } from '../hooks/useTelegram';
 
@@ -346,7 +347,11 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     } catch (err: any) {
       console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
       // Fallback: подбираем красивый 3D-пресет аватара, чтобы пользователь не остался без образа
-      const targetGender = (data.gender as 'boy' | 'girl') || (data.childName && (data.childName.endsWith('а') || data.childName.endsWith('я')) ? 'girl' : 'boy');
+      const inferredGender = data.childName ? inferRussianNameGender(data.childName) : null;
+      const targetGender: 'boy' | 'girl' =
+        data.gender === 'girl' || data.gender === 'boy'
+          ? (data.gender as 'boy' | 'girl')
+          : (inferredGender as 'boy' | 'girl') || 'boy';
       const fallbackAvatarId = resolveChildAvatarKey({
         gender: targetGender,
         hairColor: appearance.hairColor || 'русые',

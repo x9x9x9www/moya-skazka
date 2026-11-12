@@ -322,6 +322,10 @@ export function hasExplicitParamUrl(): boolean {
       const hashClean = window.location.hash.replace(/^#/, '');
       const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
       if (hashParams.get('api_url')) return true;
+      const startInHash = hashParams.get('tgWebAppStartParam') || hashParams.get('start_param');
+      if (startInHash && (startInHash.startsWith('http://') || startInHash.startsWith('https://'))) {
+        return true;
+      }
     }
     const startParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
     if (typeof startParam === 'string' && (startParam.startsWith('http://') || startParam.startsWith('https://'))) {
@@ -336,7 +340,7 @@ const badApiUrls = new Set<string>();
 export function markApiUrlFailed(url?: string | null) {
   if (!url) return;
   if (hasExplicitParamUrl()) return;
-  const clean = url.replace(/\/$/, '');
+  const clean = url.trim().replace(/\/$/, '');
   badApiUrls.add(clean);
   try {
     const cached = localStorage.getItem('ms_api_url');
@@ -358,6 +362,12 @@ export function getActiveApiUrl(): string {
       const hashClean = window.location.hash.replace(/^#/, '');
       const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
       paramUrl = hashParams.get('api_url');
+      if (!paramUrl) {
+        const startInHash = hashParams.get('tgWebAppStartParam') || hashParams.get('start_param');
+        if (startInHash && (startInHash.startsWith('http://') || startInHash.startsWith('https://'))) {
+          paramUrl = startInHash;
+        }
+      }
     }
     if (!paramUrl) {
       try {
@@ -368,12 +378,14 @@ export function getActiveApiUrl(): string {
       } catch {}
     }
     if (paramUrl) {
-      const clean = paramUrl.replace(/\/$/, '');
-      badApiUrls.delete(clean);
-      try {
-        localStorage.setItem('ms_api_url', clean);
-      } catch {}
-      return clean;
+      const clean = paramUrl.trim().replace(/\/$/, '');
+      if (clean) {
+        badApiUrls.delete(clean);
+        try {
+          localStorage.setItem('ms_api_url', clean);
+        } catch {}
+        return clean;
+      }
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
