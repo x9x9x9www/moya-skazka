@@ -313,10 +313,29 @@ export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
   };
 }
 
+export function hasExplicitParamUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('api_url')) return true;
+    if (window.location.hash) {
+      const hashClean = window.location.hash.replace(/^#/, '');
+      const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
+      if (hashParams.get('api_url')) return true;
+    }
+    const startParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+    if (typeof startParam === 'string' && (startParam.startsWith('http://') || startParam.startsWith('https://'))) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 const badApiUrls = new Set<string>();
 
 export function markApiUrlFailed(url?: string | null) {
   if (!url) return;
+  if (hasExplicitParamUrl()) return;
   const clean = url.replace(/\/$/, '');
   badApiUrls.add(clean);
   try {
@@ -335,37 +354,37 @@ export function getActiveApiUrl(): string {
   if (typeof window !== 'undefined') {
     const searchParams = new URLSearchParams(window.location.search);
     let paramUrl = searchParams.get('api_url');
-    if (!paramUrl && window.location.hash.includes('api_url=')) {
-      const qIndex = window.location.hash.indexOf('?');
-      if (qIndex !== -1) {
-        const hashParams = new URLSearchParams(window.location.hash.slice(qIndex + 1));
-        paramUrl = hashParams.get('api_url');
-      }
+    if (!paramUrl && window.location.hash) {
+      const hashClean = window.location.hash.replace(/^#/, '');
+      const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
+      paramUrl = hashParams.get('api_url');
+    }
+    if (!paramUrl) {
+      try {
+        const startParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+        if (typeof startParam === 'string' && (startParam.startsWith('http://') || startParam.startsWith('https://'))) {
+          paramUrl = startParam;
+        }
+      } catch {}
     }
     if (paramUrl) {
       const clean = paramUrl.replace(/\/$/, '');
-      if (!badApiUrls.has(clean)) {
-        try {
-          localStorage.setItem('ms_api_url', clean);
-        } catch {}
-        return clean;
-      }
+      badApiUrls.delete(clean);
+      try {
+        localStorage.setItem('ms_api_url', clean);
+      } catch {}
+      return clean;
     }
     try {
       const cached = localStorage.getItem('ms_api_url');
-      const isDeadTunnel =
-        !cached ||
-        cached.includes('192a1eaba3c1ee78') ||
-        cached.includes('b4e24b393c4c2c70') ||
-        cached.includes('serveousercontent.com') ||
-        cached.includes('trycloudflare.com') ||
-        cached.includes('loca.lt') ||
-        badApiUrls.has(cached.replace(/\/$/, ''));
-
-      if (isDeadTunnel && cached) {
-        localStorage.removeItem('ms_api_url');
-      } else if (cached && !isDeadTunnel) {
-        return cached.replace(/\/$/, '');
+      if (cached) {
+        const clean = cached.replace(/\/$/, '');
+        if (clean && !badApiUrls.has(clean)) {
+          return clean;
+        }
+        if (clean && badApiUrls.has(clean)) {
+          localStorage.removeItem('ms_api_url');
+        }
       }
     } catch {}
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

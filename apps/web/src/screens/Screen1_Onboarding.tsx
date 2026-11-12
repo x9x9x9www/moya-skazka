@@ -19,6 +19,7 @@ import {
   Map,
   Pencil,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BoyAvatar,
@@ -259,6 +260,81 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
     setSelectedInterests((prev) => prev.filter((i) => i.toLowerCase() !== item.toLowerCase()));
   };
 
+  const runAvatarGeneration = async (photoBase64: string) => {
+    try {
+      setIsAnalyzingPhoto(true);
+      setIsGeneratingAvatar(true);
+      setPhotoAnalysisTip('🪄 Волшебное зеркало считывает черты и создаёт 3D-аватар...');
+
+      let avatarRes: any = null;
+      try {
+        avatarRes = await api.generateCharacterAvatar(photoBase64, undefined, 'image/jpeg', {
+          knownGender: hasUserExplicitlySetGender ? gender : undefined,
+          knownName: name.trim() || undefined,
+          knownAge: age,
+        });
+      } catch (genErr) {
+        console.warn('[Screen1] generateCharacterAvatar failed:', genErr);
+      }
+
+      const isRealGeneratedAvatar =
+        avatarRes &&
+        avatarRes.status === 'ok' &&
+        avatarRes.avatarUrl &&
+        (avatarRes.avatarUrl.startsWith('http://') ||
+          avatarRes.avatarUrl.startsWith('https://') ||
+          avatarRes.avatarUrl.startsWith('/media/'));
+
+      if (isRealGeneratedAvatar) {
+        setAvatarUrl(avatarRes.avatarUrl);
+      }
+
+      const traits = avatarRes?.traits || {};
+      // ВАЖНО: обновляем внешность и пол ТОЛЬКО если статус ok!
+      // Ни в коем случае не позволяем fallback-ответу перезаписать пол на boy!
+      if (avatarRes?.status === 'ok') {
+        if (traits.hairColor) setHairColor(traits.hairColor);
+        if (traits.hairType) {
+          const rawT = String(traits.hairType).toLowerCase();
+          if (rawT.includes('длин')) setHairLength('длинные');
+          else if (rawT.includes('коротк')) setHairLength('короткие');
+          if (rawT.includes('кудр') || rawT.includes('волн')) setHairStructure('кудрявые');
+          else if (rawT.includes('прям')) setHairStructure('прямые');
+        }
+        if (traits.eyeColor) setEyeColor(traits.eyeColor);
+        if (traits.skinTone) setSkinTone(traits.skinTone);
+        if (traits.gender) {
+          setGender(traits.gender);
+          if (!traits.hairType && !traits.hairLength) {
+            setHairLength(traits.gender === 'girl' ? 'длинные' : 'короткие');
+          }
+        }
+        if (traits.distinctiveFeatures) {
+          setDistinctiveFeatures(traits.distinctiveFeatures);
+        } else if (traits.hasGlasses) {
+          setDistinctiveFeatures('милые круглые очки');
+        }
+        if (traits.approxAge && Number(traits.approxAge) >= 2 && Number(traits.approxAge) <= 6) {
+          setAge(Number(traits.approxAge));
+        }
+      }
+
+      if (isRealGeneratedAvatar) {
+        setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан нейросетью!');
+      } else if (avatarRes?.status === 'fallback') {
+        setPhotoAnalysisTip('⚠️ ИИ-мост временно недоступен. Выбран канонический образ. Можно повторить попытку.');
+      } else {
+        setPhotoAnalysisTip('Внешность малыша определена!');
+      }
+    } catch (err: any) {
+      console.warn('[Screen1] Ошибка анализа фото:', err);
+      setPhotoAnalysisTip('Не удалось распознать фото. Нажмите «Повторить» или настройте вручную.');
+    } finally {
+      setIsAnalyzingPhoto(false);
+      setIsGeneratingAvatar(false);
+    }
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -304,70 +380,13 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       });
 
       setPhotoPreview(optimizedBase64);
-
-      // Запуск серверного конвейера: Vision-анализ + генерация 3D Pixar аватара (Nano-Banana-2)
-      let avatarRes: any = null;
-      try {
-        avatarRes = await api.generateCharacterAvatar(optimizedBase64, undefined, 'image/jpeg', {
-          knownGender: hasUserExplicitlySetGender ? gender : undefined,
-          knownName: name.trim() || undefined,
-          knownAge: age,
-        });
-      } catch (genErr) {
-        console.warn('[Screen1] generateCharacterAvatar failed, fallback to analyzeChildPhoto:', genErr);
-      }
-
-      const isRealGeneratedAvatar =
-        avatarRes &&
-        avatarRes.status === 'ok' &&
-        avatarRes.avatarUrl &&
-        (avatarRes.avatarUrl.startsWith('http://') ||
-          avatarRes.avatarUrl.startsWith('https://') ||
-          avatarRes.avatarUrl.startsWith('/media/'));
-
-      if (isRealGeneratedAvatar) {
-        setAvatarUrl(avatarRes.avatarUrl);
-      }
-
-      const traits = avatarRes?.traits || {};
-      if (traits.hairColor) setHairColor(traits.hairColor);
-      if (traits.hairType) {
-        const rawT = String(traits.hairType).toLowerCase();
-        if (rawT.includes('длин')) setHairLength('длинные');
-        else if (rawT.includes('коротк')) setHairLength('короткие');
-        if (rawT.includes('кудр') || rawT.includes('волн')) setHairStructure('кудрявые');
-        else if (rawT.includes('прям')) setHairStructure('прямые');
-      }
-      if (traits.eyeColor) setEyeColor(traits.eyeColor);
-      if (traits.skinTone) setSkinTone(traits.skinTone);
-      if (traits.gender) {
-        setGender(traits.gender);
-        if (!traits.hairType && !traits.hairLength) {
-          setHairLength(traits.gender === 'girl' ? 'длинные' : 'короткие');
-        }
-      }
-      if (traits.distinctiveFeatures) {
-        setDistinctiveFeatures(traits.distinctiveFeatures);
-      } else if (traits.hasGlasses) {
-        setDistinctiveFeatures('милые круглые очки');
-      }
-      if (traits.approxAge && Number(traits.approxAge) >= 2 && Number(traits.approxAge) <= 6) {
-        setAge(Number(traits.approxAge));
-      }
-
-      if (isRealGeneratedAvatar) {
-        setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан нейросетью!');
-      } else if (avatarRes?.status === 'fallback') {
-        setPhotoAnalysisTip('⚠️ ИИ-мост недоступен. Выбран канонический образ. Откройте приложение через /start бота.');
-      } else {
-        setPhotoAnalysisTip('Внешность малыша определена!');
-      }
+      await runAvatarGeneration(optimizedBase64);
     } catch (err: any) {
-      console.warn('[Screen1] Ошибка анализа фото:', err);
-      setPhotoAnalysisTip('Не удалось распознать фото. Вы можете легко настроить параметры вручную ниже.');
-    } finally {
+      console.warn('[Screen1] Ошибка подготовки фото:', err);
+      setPhotoAnalysisTip('Не удалось загрузить фото. Вы можете настроить параметры вручную ниже.');
       setIsAnalyzingPhoto(false);
       setIsGeneratingAvatar(false);
+    } finally {
       e.target.value = '';
     }
   };
@@ -528,20 +547,33 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Внешность определена!</span>
+                      <span>{avatarUrl ? 'Внешность определена!' : 'Фото загружено'}</span>
                     </div>
                     <div className="text-[11px] text-stone-600 leading-tight mt-0.5 truncate">
                       {photoAnalysisTip || 'Параметры заполнены. Вы можете изменить любые поля ниже.'}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleClearPhoto}
-                    className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 text-xs"
-                    title="Сбросить фото"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {(!avatarUrl || photoAnalysisTip?.includes('недоступен') || photoAnalysisTip?.includes('Не удалось')) && (
+                      <button
+                        type="button"
+                        onClick={() => runAvatarGeneration(photoPreview)}
+                        className="px-2 py-1 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+                        title="Повторить генерацию аватара"
+                      >
+                        <RefreshCw className="w-3 h-3 text-amber-700" />
+                        <span className="hidden sm:inline">Повторить</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleClearPhoto}
+                      className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 text-xs"
+                      title="Сбросить фото"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

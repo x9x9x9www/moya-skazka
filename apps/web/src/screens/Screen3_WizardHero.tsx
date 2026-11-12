@@ -121,6 +121,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [visionError, setVisionError] = useState<string | null>(null);
   const [visionSuccess, setVisionSuccess] = useState<string | null>(null);
+  const [lastUploadedPhoto, setLastUploadedPhoto] = useState<string | null>(null);
   const [showManualAppearance, setShowManualAppearance] = useState(false);
   const [isPhotoBased, setIsPhotoBased] = useState<boolean>(() => {
     return Boolean(
@@ -258,6 +259,116 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     setCustomInterest('');
   };
 
+  // Запуск серверного конвейера: быстрый Vision анализ + подбор 3D Pixar аватара
+  const processHeroPhoto = async (photoBase64: string) => {
+    try {
+      setIsAnalyzing(true);
+      setVisionError(null);
+      setVisionSuccess(null);
+
+      const res = await api.generateCharacterAvatar(
+        photoBase64,
+        appearance.clothingItem,
+        'image/jpeg',
+        {
+          knownGender: data.gender,
+          knownName: data.childName,
+          knownAge: data.age,
+        }
+      );
+
+      const traits = res?.traits || {};
+      const isOk = res && res.status === 'ok';
+
+      // ВАЖНО: обновляем пол ТОЛЬКО если статус ok!
+      // Ни в коем случае не позволяем fallback-ответу перезаписать пол на boy!
+      const targetGender: 'boy' | 'girl' = isOk && traits.gender
+        ? (traits.gender as 'boy' | 'girl')
+        : (data.gender as 'boy' | 'girl') || 'boy';
+
+      const targetHair = (isOk ? traits.hairColor : undefined) || appearance.hairColor || 'русые';
+      const targetHairType = (isOk ? traits.hairType : undefined) || appearance.hairType || 'кудрявые';
+      const targetSkin = (isOk ? traits.skinTone : undefined) || appearance.skinTone || 'светлая';
+      const targetEye = (isOk ? traits.eyeColor : undefined) || appearance.eyeColor || 'голубые';
+      const targetFeatures = (isOk ? traits.distinctiveFeatures : undefined) || appearance.distinctiveFeatures || '';
+      const targetClothingItem = (isOk ? traits.clothingItem : undefined) || appearance.clothingItem || (targetGender === 'girl' ? 'платьице' : 'уютный свитер');
+      const targetClothingColor = (isOk ? traits.clothingColor : undefined) || appearance.clothingColor || (targetGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой');
+
+      const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
+        gender: targetGender,
+        hairColor: targetHair,
+        skinTone: targetSkin,
+        distinctiveFeatures: targetFeatures,
+      });
+
+      const isRealGeneratedAvatar =
+        isOk &&
+        res.avatarUrl &&
+        (res.avatarUrl.startsWith('http://') ||
+          res.avatarUrl.startsWith('https://') ||
+          res.avatarUrl.startsWith('/media/'));
+
+      const newAppearance = {
+        ...appearance,
+        avatar_url: isRealGeneratedAvatar ? res.avatarUrl : appearance.avatar_url,
+        avatar_id: targetAvatarId,
+        hairColor: targetHair,
+        hairType: targetHairType,
+        eyeColor: targetEye,
+        skinTone: targetSkin,
+        distinctiveFeatures: targetFeatures,
+        clothingItem: targetClothingItem,
+        clothingColor: targetClothingColor,
+      };
+
+      const patch: Partial<WizardHeroData> = {
+        appearance: newAppearance,
+        gender: targetGender,
+      };
+      if (isOk && traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
+        patch.age = traits.approxAge;
+      }
+
+      onChange({
+        ...data,
+        ...patch,
+      });
+
+      setIsPhotoBased(true);
+      setShowManualAppearance(false);
+      if (isRealGeneratedAvatar) {
+        setVisionSuccess('✨ 3D-образ персонажа успешно создан нейросетью по фото!');
+      } else if (res?.status === 'fallback') {
+        setVisionSuccess('⚠️ ИИ-мост временно недоступен. Выбран канонический образ. Можно повторить попытку.');
+      } else {
+        setVisionSuccess('✨ Герой ожил по фото!');
+      }
+    } catch (err: any) {
+      console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
+      // Fallback: подбираем красивый 3D-пресет аватара, чтобы пользователь не остался без образа
+      const targetGender = (data.gender as 'boy' | 'girl') || (data.childName && (data.childName.endsWith('а') || data.childName.endsWith('я')) ? 'girl' : 'boy');
+      const fallbackAvatarId = resolveChildAvatarKey({
+        gender: targetGender,
+        hairColor: appearance.hairColor || 'русые',
+        skinTone: appearance.skinTone || 'светлая',
+        distinctiveFeatures: appearance.distinctiveFeatures || '',
+      });
+      updateAppearance({
+        avatar_id: fallbackAvatarId,
+        avatar_url: undefined,
+      });
+      setShowManualAppearance(true);
+      setVisionError(
+        'Не удалось обработать фото или время ответа истекло. Мы подобрали 3D-образ, а вы можете повторить попытку или скорректировать детали вручную.'
+      );
+    } finally {
+      setIsAnalyzing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Мгновенная генерация 3D-аватарки по фото ребенка (Zero-Storage Vision + Nano-Banana-2)
   const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -312,101 +423,12 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         img.src = rawBase64;
       });
 
-      // Запуск серверного конвейера: быстрый Vision анализ + подбор 3D Pixar аватара
-      const res = await api.generateCharacterAvatar(
-        optimizedBase64,
-        appearance.clothingItem,
-        'image/jpeg',
-        {
-          knownGender: data.gender,
-          knownName: data.childName,
-          knownAge: data.age,
-        }
-      );
-
-      const traits = res.traits || {};
-      const targetGender = (traits.gender as 'boy' | 'girl') || (data.gender as 'boy' | 'girl') || 'boy';
-      const targetHair = traits.hairColor || appearance.hairColor || 'русые';
-      const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
-      const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';
-      const targetEye = traits.eyeColor || appearance.eyeColor || 'голубые';
-      const targetFeatures = traits.distinctiveFeatures || appearance.distinctiveFeatures || '';
-      const targetClothingItem = traits.clothingItem || appearance.clothingItem || (targetGender === 'girl' ? 'платьице' : 'уютный свитер');
-      const targetClothingColor = traits.clothingColor || appearance.clothingColor || (targetGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой');
-
-      const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
-        gender: targetGender,
-        hairColor: targetHair,
-        skinTone: targetSkin,
-        distinctiveFeatures: targetFeatures,
-      });
-
-      const isRealGeneratedAvatar =
-        res &&
-        res.status === 'ok' &&
-        res.avatarUrl &&
-        (res.avatarUrl.startsWith('http://') ||
-          res.avatarUrl.startsWith('https://') ||
-          res.avatarUrl.startsWith('/media/'));
-
-      const newAppearance = {
-        ...appearance,
-        avatar_url: isRealGeneratedAvatar ? res.avatarUrl : appearance.avatar_url,
-        avatar_id: targetAvatarId,
-        hairColor: targetHair,
-        hairType: targetHairType,
-        eyeColor: targetEye,
-        skinTone: targetSkin,
-        distinctiveFeatures: targetFeatures,
-        clothingItem: targetClothingItem,
-        clothingColor: targetClothingColor,
-      };
-
-      const patch: Partial<WizardHeroData> = {
-        appearance: newAppearance,
-        gender: targetGender,
-      };
-      if (traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
-        patch.age = traits.approxAge;
-      }
-
-      onChange({
-        ...data,
-        ...patch,
-      });
-
-      setIsPhotoBased(true);
-      setShowManualAppearance(false);
-      if (isRealGeneratedAvatar) {
-        setVisionSuccess('✨ 3D-образ персонажа успешно создан нейросетью по фото!');
-      } else if (res?.status === 'fallback') {
-        setVisionSuccess('⚠️ ИИ-мост недоступен. Выбран канонический образ.');
-      } else {
-        setVisionSuccess('✨ Герой ожил по фото!');
-      }
+      setLastUploadedPhoto(optimizedBase64);
+      await processHeroPhoto(optimizedBase64);
     } catch (err: any) {
-      console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
-      // Fallback: подбираем красивый 3D-пресет аватара, чтобы пользователь не остался без образа
-      const targetGender = (data.gender as 'boy' | 'girl') || (data.childName && (data.childName.endsWith('а') || data.childName.endsWith('я')) ? 'girl' : 'boy');
-      const fallbackAvatarId = resolveChildAvatarKey({
-        gender: targetGender,
-        hairColor: appearance.hairColor || 'русые',
-        skinTone: appearance.skinTone || 'светлая',
-        distinctiveFeatures: appearance.distinctiveFeatures || '',
-      });
-      updateAppearance({
-        avatar_id: fallbackAvatarId,
-        avatar_url: undefined,
-      });
-      setShowManualAppearance(true);
-      setVisionError(
-        'Не удалось обработать фото или время ответа истекло. Мы подобрали 3D-образ, а вы можете скорректировать детали!'
-      );
-    } finally {
+      console.warn('[Screen3] Ошибка чтения фото:', err);
       setIsAnalyzing(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setVisionError('Не удалось прочитать выбранный файл. Попробуйте выбрать другое фото.');
     }
   };
 
@@ -885,9 +907,47 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
 
             {/* Ошибка если была */}
             {visionError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <div className="flex-1 leading-snug">{visionError}</div>
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex flex-col gap-2 animate-in fade-in">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 leading-snug">{visionError}</div>
+                </div>
+                {lastUploadedPhoto && !isAnalyzing && (
+                  <button
+                    type="button"
+                    onClick={() => processHeroPhoto(lastUploadedPhoto)}
+                    className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Повторить попытку</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Сообщение об успехе или fallback */}
+            {visionSuccess && (
+              <div
+                className={`p-3 rounded-2xl text-xs flex flex-col gap-2 animate-in fade-in ${
+                  visionSuccess.includes('недоступен')
+                    ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                    : 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 leading-snug">{visionSuccess}</div>
+                </div>
+                {visionSuccess.includes('недоступен') && lastUploadedPhoto && !isAnalyzing && (
+                  <button
+                    type="button"
+                    onClick={() => processHeroPhoto(lastUploadedPhoto)}
+                    className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Попробовать снова</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

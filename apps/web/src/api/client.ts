@@ -6,7 +6,7 @@ import {
   UserBalanceDTO,
   UserDTO,
 } from '@moya-skazka/shared';
-import { getActiveApiUrl, markApiUrlFailed } from '../services/storyGenerator';
+import { getActiveApiUrl, markApiUrlFailed, hasExplicitParamUrl } from '../services/storyGenerator';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 
 const API_BASE = '/api/v1';
@@ -42,6 +42,7 @@ export function createTimeoutSignal(ms = 15000): AbortSignal | undefined {
 
 class ApiClient {
   private token: string | null = localStorage.getItem('auth_token');
+  private baseFailures: Record<string, number> = {};
 
   public setToken(token: string | null) {
     this.token = token;
@@ -72,13 +73,27 @@ class ApiClient {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const isGithubPages = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
     const primaryBase = getApiBaseUrl();
-    const candidates = [primaryBase].filter(Boolean);
+    const candidates: string[] = [];
+    if (primaryBase) {
+      candidates.push(primaryBase);
+    }
     if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       if (!candidates.includes('http://localhost:4040')) candidates.push('http://localhost:4040');
       if (!candidates.includes('http://127.0.0.1:4040')) candidates.push('http://127.0.0.1:4040');
     }
     if (!isGithubPages && !candidates.includes('')) {
       candidates.push('');
+    }
+    // Гарантируем, что candidates всегда содержит primaryBase, если он не пустой
+    if (primaryBase && !candidates.includes(primaryBase)) {
+      candidates.unshift(primaryBase);
+    }
+    // Если на GitHub Pages список пуст, берем сохраненный туннель из localStorage
+    if (candidates.length === 0 && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ms_api_url');
+        if (stored) candidates.push(stored.replace(/\/$/, ''));
+      } catch {}
     }
 
     let lastError: any = null;
@@ -97,7 +112,13 @@ class ApiClient {
           } catch {
             errBody = { message: `Ошибка сервера (${response.status})` };
           }
-          throw new Error(errBody.message || 'Ошибка выполнения запроса');
+          const error = new Error(errBody.message || 'Ошибка выполнения запроса');
+          (error as any).status = response.status;
+          throw error;
+        }
+
+        if (base) {
+          this.baseFailures[base] = 0;
         }
 
         if (base && base !== primaryBase) {
@@ -111,7 +132,21 @@ class ApiClient {
         lastError = err;
         console.warn(`[ApiClient] Сбой запроса к ${url}:`, err.message);
         if (base) {
-          markApiUrlFailed(base);
+          this.baseFailures[base] = (this.baseFailures[base] || 0) + 1;
+          const isAuthEndpoint = cleanEndpoint.startsWith('/auth') || cleanEndpoint.startsWith('/me');
+          const isAuthStatus = err?.status === 401 || err?.status === 403;
+          const isGenerationEndpoint =
+            cleanEndpoint.includes('/books') ||
+            cleanEndpoint.includes('/character') ||
+            cleanEndpoint.includes('/ai/') ||
+            cleanEndpoint.includes('/jobs');
+
+          // Не сбрасываем мост при сбоях авторизации и если api_url был явно передан в URL
+          if (!hasExplicitParamUrl() && !isAuthEndpoint && !isAuthStatus) {
+            if (isGenerationEndpoint || this.baseFailures[base] >= 3) {
+              markApiUrlFailed(base);
+            }
+          }
         }
       }
     }
@@ -481,7 +516,7 @@ class ApiClient {
     } catch (err: any) {
       console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, подбор канонического 3D пресета:', err.message);
       const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
-      const fbGender: 'boy' | 'girl' = isGirl ? 'girl' : 'boy';
+      const fbGender: 'boy' | 'girl' = isGirl ? 'girl' : (context?.knownGender as 'boy' | 'girl') || 'boy';
       const traits = {
         gender: fbGender,
         approxAge: context?.knownAge || 4,

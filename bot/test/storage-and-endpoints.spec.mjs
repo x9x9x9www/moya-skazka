@@ -344,3 +344,34 @@ test('saveDailyIdeaForChild сохраняет идею в закладки (SAV
   assert.ok(savedList.some((item) => item.id === idea.id));
 });
 
+test('getAppUrlWithApi корректно конструирует URL с параметром api_url и флагом admin', async () => {
+  const { getAppUrlWithApi } = await import('../bot.mjs');
+  const tunnelUrl = 'https://custom-tunnel.loca.lt';
+  const urlNormal = getAppUrlWithApi(tunnelUrl, false);
+  assert.ok(urlNormal.includes('api_url=' + encodeURIComponent(tunnelUrl)));
+  assert.ok(!urlNormal.includes('admin=1'));
+
+  const urlAdmin = getAppUrlWithApi(tunnelUrl, true);
+  assert.ok(urlAdmin.includes('api_url=' + encodeURIComponent(tunnelUrl)));
+  assert.ok(urlAdmin.includes('admin=1'));
+});
+
+test('Парсинг Telegram hash и URL параметров корректно извлекает api_url без знака вопроса', () => {
+  // 1. Формат хеша Telegram Mini App: #tgWebAppData=...&api_url=https://bridge.io
+  const hash1 = '#tgWebAppData=someData&api_url=https%3A%2F%2Fbridge.io';
+  const clean1 = hash1.replace(/^#/, '');
+  const params1 = new URLSearchParams(clean1.includes('?') ? clean1.slice(clean1.indexOf('?') + 1) : clean1);
+  assert.equal(params1.get('api_url'), 'https://bridge.io');
+
+  // 2. Формат хеша со знаком вопроса: #?api_url=https://bridge.io
+  const hash2 = '#?api_url=https%3A%2F%2Fbridge2.io';
+  const clean2 = hash2.replace(/^#/, '');
+  const params2 = new URLSearchParams(clean2.includes('?') ? clean2.slice(clean2.indexOf('?') + 1) : clean2);
+  assert.equal(params2.get('api_url'), 'https://bridge2.io');
+
+  // 3. Формат search параметров: ?api_url=https://bridge3.io
+  const searchParams = new URLSearchParams('api_url=https%3A%2F%2Fbridge3.io');
+  assert.equal(searchParams.get('api_url'), 'https://bridge3.io');
+});
+
+

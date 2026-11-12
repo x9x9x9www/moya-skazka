@@ -110,7 +110,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SKIP_TELEGRAM = process.env.SKIP_TELEGRAM === 'true';
 const SKIP_TUNNELS = process.env.SKIP_TUNNELS === 'true';
 const ADMIN_USERNAMES = ['dinar_fazlyev', 'x9x9x9ww'];
-const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.3';
+const WEB_APP_BASE_URL = process.env.WEB_APP_URL || 'https://x9x9x9www.github.io/moya-skazka/?v=4.4';
 if (!BOT_TOKEN && isMainModule) {
   console.error('[Bot] Критическая ошибка: TELEGRAM_BOT_TOKEN не найден в .env!');
   process.exit(1);
@@ -3398,7 +3398,7 @@ async function callTelegram(method, params = {}) {
   }
 }
 
-function getAppUrlWithApi(apiUrl, isAdmin = false) {
+export function getAppUrlWithApi(apiUrl, isAdmin = false) {
   const base = WEB_APP_BASE_URL;
   const target = apiUrl || publicTunnelUrl;
   let url = target ? `${base}${base.includes('?') ? '&' : '?'}api_url=${encodeURIComponent(target)}` : base;
@@ -3408,12 +3408,31 @@ function getAppUrlWithApi(apiUrl, isAdmin = false) {
   return url;
 }
 
+export async function setChatMenuButtonForUser(chatId, url) {
+  if (!chatId || !url) return;
+  try {
+    const res = await callTelegram('setChatMenuButton', {
+      chat_id: chatId,
+      menu_button: {
+        type: 'web_app',
+        text: 'Моя сказка ✨',
+        web_app: { url },
+      },
+    });
+    if (res && res.ok) {
+      console.log(`[Bot] 📱 Кнопка меню чата ${chatId} моментально обновлена: ${url}`);
+    }
+  } catch (err) {
+    console.warn(`[Bot] Не удалось обновить кнопку меню для чата ${chatId}:`, err.message);
+  }
+}
+
 let lastMenuButtonUrl = '';
 async function updateChatMenuWithApi(apiUrl) {
   const targetUrl = getAppUrlWithApi(apiUrl);
   if (targetUrl === lastMenuButtonUrl) return;
   lastMenuButtonUrl = targetUrl;
-  console.log(`[Bot] 📱 Настройка кнопки Telegram Mini App: ${targetUrl}`);
+  console.log(`[Bot] 📱 Настройка глобальной кнопки Telegram Mini App: ${targetUrl}`);
   const res = await callTelegram('setChatMenuButton', {
     menu_button: {
       type: 'web_app',
@@ -3434,6 +3453,9 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
   const isAdmin = ADMIN_USERNAMES.includes(userLower);
   const currentAppUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
   const name = firstName || 'дорогой родитель';
+
+  // Мобильные клиенты Telegram кэшируют кнопку меню чата, вызываем явно с chat_id!
+  await setChatMenuButtonForUser(chatId, currentAppUrl);
 
   let refNote = '';
   if (startParam && startParam.startsWith('ref_')) {
@@ -3587,6 +3609,7 @@ async function startPolling() {
                 continue;
               }
               const adminAppUrl = getAppUrlWithApi(publicTunnelUrl, true);
+              await setChatMenuButtonForUser(chatId, adminAppUrl);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
                 text: `👑 **Панель администратора «Моя сказка»**\n\nЗдравствуйте, @${update.message.from?.username || 'admin'}!\nВам выдан полный доступ **ADMIN**:\n• 🌟 Безлимитные кредиты на создание сказок\n• 🛠 Доступ к панели управления и повтору задач\n• ⚡️ Моментальное пополнение баланса в 1 клик\n\nНажмите кнопку ниже, чтобы открыть приложение:`,
@@ -3604,6 +3627,7 @@ async function startPolling() {
               console.log(`[Bot] Ответ на /start отправлен:`, res?.ok ? 'OK' : res?.description);
             } else if (text === '/app') {
               const appUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
+              await setChatMenuButtonForUser(chatId, appUrl);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
                 text: isAdmin
@@ -3617,6 +3641,7 @@ async function startPolling() {
               });
             } else if (text === '/reset' || text.startsWith('/start reset') || text === 'сброс' || text === '/clear') {
               const resetAppUrl = `${getAppUrlWithApi(publicTunnelUrl, isAdmin)}&reset=1`;
+              await setChatMenuButtonForUser(chatId, resetAppUrl);
               console.log(`[Bot] 🔄 Запрос сброса аккаунта от ${firstName} (${chatId})`);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
@@ -3630,6 +3655,7 @@ async function startPolling() {
               });
             } else if (text === '/link' || text === '/url' || text === '/site') {
               const directAppUrl = getAppUrlWithApi(publicTunnelUrl, isAdmin);
+              await setChatMenuButtonForUser(chatId, directAppUrl);
               await callTelegram('sendMessage', {
                 chat_id: chatId,
                 text: `🔗 **Прямая ссылка на приложение «Моя сказка»:**\n\n${directAppUrl}\n\n_Нажмите на ссылку выше или на кнопку внизу для входа с подключённым ИИ._`,
