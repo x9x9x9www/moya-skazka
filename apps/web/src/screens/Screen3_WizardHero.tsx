@@ -325,7 +325,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       );
 
       const traits = res.traits || {};
-      const targetGender = (data.gender as 'boy' | 'girl') || (traits.gender as 'boy' | 'girl') || 'boy';
+      const targetGender = (traits.gender as 'boy' | 'girl') || (data.gender as 'boy' | 'girl') || 'boy';
       const targetHair = traits.hairColor || appearance.hairColor || 'русые';
       const targetHairType = traits.hairType || appearance.hairType || 'кудрявые';
       const targetSkin = traits.skinTone || appearance.skinTone || 'светлая';

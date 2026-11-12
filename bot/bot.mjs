@@ -68,7 +68,6 @@ let currentProxyAgent = null;
 function applyProxyAgent() {
   if (!proxyUrl) {
     currentProxyAgent = null;
-    try { setGlobalDispatcher(new Agent({ connect: { timeout: 30000 } })); } catch {}
     console.log('[Proxy] ⚡️ Прокси отключен, используется прямое соединение');
     return null;
   }
@@ -81,8 +80,7 @@ function applyProxyAgent() {
       headersTimeout: 240000,
       bodyTimeout: 240000,
     });
-    try { setGlobalDispatcher(currentProxyAgent); } catch {}
-    console.log(`[Proxy] 🛡 Настроен Telegram & AI-прокси: ${proxyUrl}`);
+    console.log(`[Proxy] 🛡 Настроен Telegram-прокси: ${proxyUrl}`);
     return currentProxyAgent;
   } catch (err) {
     console.warn('[Proxy] Ошибка инициализации прокси:', err.message);
@@ -301,7 +299,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
     setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs + 1000);
   });
   const fetchOpts = { ...options, signal: controller.signal };
-  if (currentProxyAgent && !fetchOpts.dispatcher) {
+  if (currentProxyAgent && !fetchOpts.dispatcher && url.includes('api.telegram.org')) {
     fetchOpts.dispatcher = currentProxyAgent;
   }
   try {
@@ -2281,7 +2279,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         },
       ];
 
-      const raw = await callWellflowChat(messages, '[AvatarVision]', { timeoutMs: 45000 });
+      const raw = await callWellflowChat(messages, '[AvatarVision]', { timeoutMs: 60000 });
 
       let parsed = {};
       try {
@@ -2425,16 +2423,18 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       );
     } catch (err) {
       console.warn('[AvatarGen] Ошибка:', err.message);
+      const isGirl = knownGender === 'girl' || (inferredGenderFromName === 'girl');
+      const fallbackGender = isGirl ? 'girl' : (knownGender || 'boy');
       const fallbackTraits = {
-        gender: 'boy',
-        approxAge: 4,
+        gender: fallbackGender,
+        approxAge: knownAge || 4,
         hairColor: 'русые',
-        hairType: 'короткие',
+        hairType: fallbackGender === 'girl' ? 'длинные' : 'короткие',
         eyeColor: 'карие',
-        skinTone: 'персиковая',
+        skinTone: 'светлая',
         distinctiveFeatures: '',
       };
-      const fallbackId = 'boy_brown';
+      const fallbackId = resolveChildAvatarKey(fallbackTraits);
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
@@ -2852,49 +2852,37 @@ if (isMainModule) {
 // ========================================================
 // 4. ТУННЕЛИ: localtunnel важнее случайного serveo
 // ========================================================
-async function checkTunnelHealth(url, timeoutMs = 7000) {
+async function checkTunnelHealth(url, timeoutMs = 4500) {
   if (!url) return false;
   const cleanUrl = url.replace(/\/$/, '');
-  const agent = currentProxyAgent || new Agent({ connect: { timeout: timeoutMs } });
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       let res;
       try {
         res = await undiciFetch(`${cleanUrl}/health`, {
-          dispatcher: agent,
           headers: {
             'Bypass-Tunnel-Reminder': 'true',
+            'X-Pinggy-No-Screen': 'true',
             'Cache-Control': 'no-cache',
           },
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch {
-        const directAgent = new Agent({ connect: { timeout: timeoutMs } });
-        try {
-          res = await undiciFetch(`${cleanUrl}/health`, {
-            dispatcher: directAgent,
-            headers: {
-              'Bypass-Tunnel-Reminder': 'true',
-              'Cache-Control': 'no-cache',
-            },
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-        } catch {
-          res = await fetch(`${cleanUrl}/health`, {
-            headers: {
-              'Bypass-Tunnel-Reminder': 'true',
-              'Cache-Control': 'no-cache',
-            },
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-        }
+        res = await fetch(`${cleanUrl}/health`, {
+          headers: {
+            'Bypass-Tunnel-Reminder': 'true',
+            'X-Pinggy-No-Screen': 'true',
+            'Cache-Control': 'no-cache',
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
       }
       if (res && res.ok) {
         const json = await res.json().catch(() => null);
         if (json && (json.status === 'ok' || json.service)) return true;
       }
     } catch {}
-    if (attempt < 4) await new Promise((r) => setTimeout(r, 1500));
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
   }
   return false;
 }
@@ -2914,7 +2902,7 @@ async function activateTunnel(url, source) {
   }
 
   console.log(`[Tunnel] 🩺 Проверка работоспособности туннеля (${source}): ${cleanUrl}...`);
-  const isHealthy = await checkTunnelHealth(cleanUrl, 9000);
+  const isHealthy = await checkTunnelHealth(cleanUrl, 5000);
   if (!isHealthy) {
     console.warn(`[Tunnel] ❌ ${source} (${cleanUrl}) не прошёл health-check (HTTP 408/503/таймаут). Активация отклонена!`);
     if (source === 'cloudflare') {
@@ -2922,7 +2910,7 @@ async function activateTunnel(url, source) {
         try { cloudflareProc.kill(); } catch {}
         cloudflareProc = null;
       }
-      startServeoTunnel();
+      startPinggyTunnel();
     }
     return false;
   }
@@ -3008,7 +2996,12 @@ if (isMainModule) {
   setInterval(async () => {
     if (!publicTunnelUrl) {
       if (!serveoProc && !pinggyProc && !currentTunnel && !cloudflareProc) {
-        startServeoTunnel();
+        const binPath = path.resolve('bot/cloudflared');
+        if (fs.existsSync(binPath)) {
+          startCloudflareTunnel();
+        } else {
+          startPinggyTunnel();
+        }
       }
       return;
     }
@@ -3033,9 +3026,6 @@ if (isMainModule) {
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startServeoTunnel();
-    } else if (activeTunnelSource === 'serveo') {
-      stopServeoTunnel();
       startPinggyTunnel();
     } else {
       stopPinggyTunnel();
@@ -3045,7 +3035,12 @@ if (isMainModule) {
       }
       publicTunnelUrl = '';
       activeTunnelSource = '';
-      startServeoTunnel();
+      const binPath = path.resolve('bot/cloudflared');
+      if (fs.existsSync(binPath)) {
+        startCloudflareTunnel();
+      } else {
+        startPinggyTunnel();
+      }
     }
   }, 35000).unref();
 }
@@ -3342,14 +3337,13 @@ if (isMainModule) {
   if (SKIP_TUNNELS) {
     console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
   } else {
-    const preferredTunnel = (process.env.TUNNEL || '').toLowerCase();
+    const preferredTunnel = (process.env.TUNNEL || 'pinggy').toLowerCase();
     if (preferredTunnel === 'cloudflare') {
       startCloudflareTunnel();
-    } else if (preferredTunnel === 'pinggy') {
-      startPinggyTunnel();
-    } else {
-      // По умолчанию: Serveo туннель (работает мгновенно без блокировок Cloudflare)
+    } else if (preferredTunnel === 'serveo') {
       startServeoTunnel();
+    } else {
+      startPinggyTunnel();
     }
   }
 }
