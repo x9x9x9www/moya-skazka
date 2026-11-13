@@ -63,8 +63,17 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
 
     const handler = (e: any) => {
       const targetIdx = Number(e.detail?.sceneIndex);
-      if ((targetIdx === currentSceneIndex || targetIdx === currentSceneIndex - 1) && e.detail?.url) {
-        setLiveImageUrl(e.detail.url);
+      const url = e.detail?.url;
+      if (url && Array.isArray(book.scenes)) {
+        const targetScene =
+          book.scenes.find((s) => (s.scene_index ?? (s as any).index) === targetIdx) ||
+          book.scenes[targetIdx - 1];
+        if (targetScene) {
+          targetScene.image_url = url;
+        }
+      }
+      if ((targetIdx === currentSceneIndex || targetIdx === currentSceneIndex - 1) && url) {
+        setLiveImageUrl(url);
       }
     };
     window.addEventListener('ms_scene_image_updated', handler);

@@ -139,7 +139,7 @@ test('buildStoryPrompt содержит возрастной объём и ге�
   const { system, user } = buildStoryPrompt(params, { random: createSeededRandom('seed-1') });
   assert.match(system, /STRICT JSON CONTRACT/);
   assert.match(user, /Миша/);
-  assert.match(user, /300–400/);
+  assert.match(user, /(?:280|300)–400/);
   assert.match(user, /Ориентир на каждую сцену/);
   assert.match(user, /НЕ ПОВТОРЯЙ/);
 });

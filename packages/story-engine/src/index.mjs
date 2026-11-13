@@ -175,8 +175,8 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 Write EXACTLY four scenes (\`scenes\` array with length exactly 4). NEVER 3, NEVER 5. Total reading time 3–5 minutes.
 Strict word counts ensure fast reading and perfect mobile viewport fit without overflow:
 - Age 2–3: 45–65 words per scene (total 180–260 words); short musical sentences (5–8 words), sound imitation / onomatopoeia, clear comforting actions.
-- Age 4–5: 75–100 words per scene (total 300–400 words); lively simple dialogue, emotions, empathy, friendship.
-- Age 6: 105–130 words per scene (total 420–520 words); richer vocabulary, cause-and-effect and plot, gentle humor.
+- Age 4–5: 70–100 words per scene (total 280–400 words); lively simple dialogue, emotions, empathy, friendship.
+- Age 6: 100–130 words per scene (total 400–520 words); richer vocabulary, cause-and-effect and plot, gentle humor.
 Scene roles:
 1. Hook & discovery: sensory opening, child in specific clothing meets/wakes the toy companion in the themed world.
 2. Gentle problem / mystery matching theme and interests. Ends with action and natural pause for Question 1.
@@ -439,7 +439,7 @@ export function resolveExactHairPrompt(appearance = {}) {
 
   if (isLong) {
     const texture = isCurly ? 'bouncy curly' : isStraight ? 'silky straight' : 'silky';
-    return `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same hair length and tone across all scenes`;
+    return `${colorPrefix} ${texture} hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes`;
   }
   if (isCurly) {
     return `${colorPrefix} bouncy curly hair`;
@@ -578,9 +578,9 @@ function ageBand(age) {
     return { label: '2–3 года', total: [180, 260], perScene: [45, 65], sentences: 'простые фразы, звукоподражание, короткие музыкальные предложения 5–8 слов' };
   }
   if (age <= 5) {
-    return { label: '4–5 лет', total: [300, 400], perScene: [75, 100], sentences: 'живые диалоги, эмоции, средние предложения, эмпатия и взаимопомощь' };
+    return { label: '4–5 лет', total: [280, 400], perScene: [70, 100], sentences: 'живые диалоги, эмоции, средние предложения, эмпатия и взаимопомощь' };
   }
-  return { label: '6 лет', total: [420, 520], perScene: [105, 130], sentences: 'богатый словарь, причинно-следственные связи и сюжет, мягкий юмор' };
+  return { label: '6 лет', total: [400, 520], perScene: [100, 130], sentences: 'богатый словарь, причинно-следственные связи и сюжет, мягкий юмор' };
 }
 
 function getThemedWorld(params, random) {
@@ -2074,7 +2074,7 @@ export function buildCharacterAnchor(params = {}) {
     const colorPrefix = isBlond ? 'golden-blond' : isDark ? 'warm chestnut dark brown' : isRed ? 'vibrant ginger reddish-brown' : 'soft light-brown';
     const isCurly = rawHair.includes('кудр') || heroVd.includes('curly') || heroVd.includes('wavy');
     const texture = isCurly ? 'bouncy curly wavy' : 'silky straight';
-    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same long hair length flowing below shoulders across all images`;
+    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes`;
   }
 
   const hints = appearanceHints(appearance);

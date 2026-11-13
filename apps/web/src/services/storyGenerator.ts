@@ -1156,7 +1156,7 @@ export function buildFairytaleCharacterAnchor(params: GenerateStoryParams): stri
   let exactHairPrompt: string;
   if (isLong) {
     const texture = isCurly ? 'bouncy curly' : isStraight ? 'silky straight' : 'silky';
-    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing below shoulders, with a neat cute ribbon, exact same hair length and tone across all scenes`;
+    exactHairPrompt = `${colorPrefix} ${texture} hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes`;
   } else if (isCurly) {
     exactHairPrompt = `${colorPrefix} bouncy curly hair`;
   } else if (isStraight) {
