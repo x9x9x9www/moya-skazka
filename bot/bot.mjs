@@ -292,6 +292,13 @@ function parseJsonContent(content, preferredKeys = []) {
   return robustParseJson(content, preferredKeys);
 }
 
+const aiDispatcher = new Agent({
+  headersTimeout: 240000,
+  bodyTimeout: 240000,
+  connectTimeout: 45000,
+  keepAliveTimeout: 60000,
+});
+
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -301,6 +308,8 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   const fetchOpts = { ...options, signal: controller.signal };
   if (currentProxyAgent && !fetchOpts.dispatcher && url.includes('api.telegram.org')) {
     fetchOpts.dispatcher = currentProxyAgent;
+  } else if (!fetchOpts.dispatcher) {
+    fetchOpts.dispatcher = aiDispatcher;
   }
   try {
     return await Promise.race([undiciFetch(url, fetchOpts), timeout]);
