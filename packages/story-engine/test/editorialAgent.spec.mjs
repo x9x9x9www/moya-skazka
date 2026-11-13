@@ -9,6 +9,7 @@ import {
   verifyNarrativeIntegrity,
   runEditorialAgent,
   simplifyChildQuestion,
+  removeTautologiesAndDuplications,
 } from '../src/editorialAgent.mjs';
 
 test('Агент: родовое согласование глаголов для девочки', () => {
@@ -247,5 +248,19 @@ test('Агент: устранение комнатных штампов и си
   assert.ok(!s1Text.includes('форточку'), 'Штамп с форточкой должен быть удалён из уличной завязки');
   assert.ok(!s1Text.includes('пощекотал носик'), 'Штамп с пощекотал носик должен быть удалён');
   assert.ok(s1Text.includes('сапожки') || s1Text.includes('тропинке'), 'Уличный сюжет должен сохраниться');
+});
+
+test('Агент: устранение тавтологий с сохранением детского звукоподражания', () => {
+  const textTautology = 'Малыш бежал, бежал по тропинке и смотрел и смотрел на солнышко.';
+  const cleaned = removeTautologiesAndDuplications(textTautology);
+  assert.ok(!cleaned.includes('бежал, бежал'), 'Повтор бежал, бежал удален');
+  assert.ok(cleaned.includes('бежал по тропинке'));
+  assert.ok(!cleaned.includes('смотрел и смотрел'), 'Повтор смотрел и смотрел удален');
+
+  const textOnomatopoeia = 'Поезд весело мчит: чух-чух, чух-чух! Дождик капает: кап-кап, а сапожки делают топ-топ.';
+  const preserved = removeTautologiesAndDuplications(textOnomatopoeia);
+  assert.ok(preserved.includes('чух-чух'), 'Звукоподражание чух-чух сохранено');
+  assert.ok(preserved.includes('кап-кап'), 'Звукоподражание кап-кап сохранено');
+  assert.ok(preserved.includes('топ-топ'), 'Звукоподражание топ-топ сохранено');
 });
 

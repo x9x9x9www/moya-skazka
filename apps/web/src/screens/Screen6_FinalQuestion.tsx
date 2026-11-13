@@ -107,7 +107,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             {finalQuestion.parent_hint && (
               <p className="text-xs text-stone-600 dark:text-stone-300 italic pt-2 border-t border-amber-200/80 dark:border-stone-700 flex items-start gap-1.5">
                 <span className="text-amber-600 dark:text-amber-400 not-italic font-bold">💡</span>
-                <span>Подсказка для родителя: {finalQuestion.parent_hint}</span>
+                <span>Подсказка для родителя: {finalQuestion.parent_hint.replace(/^💡\s*(Подсказка для родителя:\s*)?/i, '')}</span>
               </p>
             )}
           </div>
@@ -119,13 +119,13 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-500/10 via-brand-500/15 to-purple-500/10 border-2 border-brand-500/40 shadow-sm space-y-3 text-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500 text-white text-xs font-bold shadow-xs">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Следующая сказка — с 3D-иллюстрациями!</span>
+                <span>Создать следующую сказку</span>
               </div>
               <h3 className="font-serif font-black text-lg text-stone-900 dark:text-stone-100">
                 Хотите оживить любимых героев?
               </h3>
               <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                Создайте новую сказку с персональными красочными 3D-иллюстрациями в мультяшном стиле!
+                Создайте новую сказку: Красочные 3D-иллюстрации в мультяшном стиле!
               </p>
               <button
                 onClick={() => {
@@ -135,20 +135,20 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-brand-500 to-amber-500 hover:opacity-95 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 fill-white" />
-                <span>Создать сказку с 3D-иллюстрациями</span>
+                <span>Создать следующее приключение</span>
               </button>
             </div>
           ) : (
             <div className="rounded-3xl p-5 bg-gradient-to-br from-amber-500/10 via-brand-500/15 to-purple-500/10 border-2 border-brand-500/40 shadow-sm space-y-3 text-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500 text-white text-xs font-bold shadow-xs">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Создать следующее приключение</span>
+                <span>Создать новое приключение</span>
               </div>
               <h3 className="font-serif font-black text-lg text-stone-900 dark:text-stone-100">
                 Готовы к новой истории?
               </h3>
               <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                Отправьтесь в новое увлекательное путешествие с любимыми героями и красочными 3D-иллюстрациями!
+                Отправьтесь в новое увлекательное путешествие с любимыми героями: Красочные 3D-иллюстрации в мультяшном стиле!
               </p>
               <button
                 onClick={() => {

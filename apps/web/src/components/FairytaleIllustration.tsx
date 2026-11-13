@@ -106,11 +106,14 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
         </div>
       ) : null}
 
-      {/* 2. Волшебный экран создания иллюстрации в мастерской */}
+      {/* 2. Волшебный экран создания иллюстрации в мастерской со скелетоном */}
       {(!hasValidImage || !imageLoaded) && (
         <div
           className={`absolute inset-0 bg-gradient-to-br ${getThemeGradient()} flex flex-col items-center justify-center p-6 text-center text-white overflow-hidden`}
         >
+          {/* Плавный шиммер-эффект поверх скелетона */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer pointer-events-none" />
+
           {/* Мерцающие волшебные искры и светлячки */}
           <FairyStarIcon className="absolute top-5 left-6 w-5 h-5 text-amber-200/70 animate-pulse pointer-events-none" />
           <div className="absolute top-7 right-8 text-amber-200/60 text-xs animate-ping pointer-events-none">✦</div>

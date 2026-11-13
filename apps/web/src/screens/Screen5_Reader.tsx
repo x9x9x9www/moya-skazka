@@ -54,7 +54,13 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   const [skippedScenes, setSkippedScenes] = React.useState<number[]>([]);
 
   React.useEffect(() => {
-    setLiveImageUrl(activeSceneImageUrl);
+    const updatedScene =
+      book.scenes.find((s) => (s.scene_index ?? (s as any).index) === currentSceneIndex) ||
+      book.scenes[currentSceneIndex - 1] ||
+      book.scenes[0];
+    const newActiveUrl = book.scenes[currentSceneIndex - 1]?.image_url || updatedScene?.image_url;
+    setLiveImageUrl(newActiveUrl);
+
     const handler = (e: any) => {
       const targetIdx = Number(e.detail?.sceneIndex);
       if ((targetIdx === currentSceneIndex || targetIdx === currentSceneIndex - 1) && e.detail?.url) {
@@ -65,11 +71,11 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
     return () => window.removeEventListener('ms_scene_image_updated', handler);
   }, [currentSceneIndex, activeSceneImageUrl, book.scenes]);
 
-  // Вопросы после 2-й сцены показываем в читалке, а вопрос после 4-й — на финальном экране
+  // Вопросы: ровно 1 короткий, понятный вопрос за раз после 2-й сцены в читалке (а вопрос после 4-й — на финальном экране)
   const isQuestionSkipped = skippedScenes.includes(currentSceneIndex);
   const questionForThisScene =
-    settings.showQuestions && currentSceneIndex !== 4 && !isQuestionSkipped
-      ? book.questions.find((q) => q.after_scene === currentSceneIndex)
+    settings.showQuestions && currentSceneIndex === 2 && !isQuestionSkipped
+      ? book.questions.find((q) => q.after_scene === 2)
       : null;
 
   // Применяем классы темы читалки (Экран 12)
@@ -313,7 +319,10 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
                 </span>
               </div>
               <button
-                onClick={() => setSkippedScenes((prev) => [...prev, currentSceneIndex])}
+                onClick={() => {
+                  haptic.selection();
+                  setSkippedScenes((prev) => [...prev, currentSceneIndex]);
+                }}
                 className="text-[11px] font-bold text-stone-400 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
               >
                 Пропустить ›
@@ -327,14 +336,14 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
             {questionForThisScene.parent_hint && (
               <p className="text-xs text-stone-600 dark:text-stone-300 italic pt-2 border-t border-[#EADBC8]/70 dark:border-stone-700 leading-relaxed flex items-start gap-1.5">
                 <span className="text-amber-600 dark:text-amber-400 not-italic font-bold">💡</span>
-                <span>{questionForThisScene.parent_hint}</span>
+                <span>{questionForThisScene.parent_hint.replace(/^💡\s*(Подсказка для родителя:\s*)?/i, '')}</span>
               </p>
             )}
           </div>
         )}
 
         {/* Гарантированный отступ снизу: предотвращает перекрытие текста кнопкой «Дальше» на любых экранах */}
-        <div className="h-40 shrink-0 pointer-events-none select-none" aria-hidden="true" />
+        <div className="h-32 shrink-0 pointer-events-none select-none" aria-hidden="true" />
       </div>
 
       {/* 4. Плавающая стеклянная панель управления (Floating Glass Dock) с адаптацией под безопасную зону */}

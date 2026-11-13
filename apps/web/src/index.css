@@ -496,3 +496,17 @@ body.dark {
 .spotlight-glow {
   background: radial-gradient(ellipse at center, rgba(31, 95, 78, 0.18) 0%, rgba(243, 183, 85, 0.12) 50%, transparent 75%);
 }
+
+/* Плавный шиммер-скелетон для иллюстраций */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

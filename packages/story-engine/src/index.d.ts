@@ -241,6 +241,7 @@ export interface DeclinedName {
 }
 
 export function declineRussianName(name: string, gender?: 'boy' | 'girl' | string): DeclinedName;
+export function canDeclineRussianName(name: string, gender?: 'boy' | 'girl' | string): boolean;
 export function formatSafeForWhom(name: string, gender?: 'boy' | 'girl' | string): string;
 export function formatSafeCreationHeader(name: string, gender?: 'boy' | 'girl' | string): string;
 export function getOPreposition(word: string): 'об' | 'о';

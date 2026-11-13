@@ -829,7 +829,21 @@ export const App: React.FC = () => {
       setTimeout(() => {
         setIsCreatingStory(false);
         haptic.success();
-        openReader(generatedBook);
+        const readyBook = resolveBookMedia(generatedBook);
+        if (readyBook.format !== 'TEXT') {
+          if (!readyBook.cover_url) {
+            readyBook.cover_url =
+              readyBook.scenes[0]?.image_url ||
+              getFairytaleFallbackIllustration(readyBook.title || wizardData.theme, 1);
+          }
+          readyBook.scenes = (readyBook.scenes || []).map((sc, idx) => ({
+            ...sc,
+            image_url:
+              sc.image_url ||
+              getFairytaleFallbackIllustration(readyBook.title || wizardData.theme, idx + 1),
+          }));
+        }
+        openReader(readyBook);
       }, 350);
     } catch (err: any) {
       clearInterval(countdownInterval);
@@ -959,8 +973,8 @@ export const App: React.FC = () => {
                 {formatSafeCreationHeader(wizardData.childName, wizardData.gender)}
               </h3>
               <p className="text-xs text-stone-600 font-medium min-h-[32px] flex items-center justify-center">
-                {jobProgress >= 95
-                  ? 'Ещё пара мгновений, художник заканчивает последние детали...'
+                {jobProgress >= 90
+                  ? 'Художник бережно прорисовывает детали, ещё немного...'
                   : creationMessage}
               </p>
             </div>
@@ -969,8 +983,8 @@ export const App: React.FC = () => {
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
               <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
               <span>
-                {jobProgress >= 95
-                  ? 'Ещё пара мгновений, художник заканчивает последние детали...'
+                {jobProgress >= 90
+                  ? 'Художник бережно прорисовывает детали, ещё немного...'
                   : 'Обычно сказка готова за 1–2 минуты'}
               </span>
             </div>

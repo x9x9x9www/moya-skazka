@@ -967,7 +967,8 @@ export async function generateDynamicStory(
     }
     if (!prompt.includes('CHARACTER CONSISTENCY MANDATORY')) {
       const anchor = buildFairytaleCharacterAnchor(params);
-      prompt = `${anchor} ${prompt}`.replace(/\s+/g, ' ').trim();
+      const cleanPrompt = prompt.replace(/^\[(?:SCENE ACTION|COVER COMPOSITION):\s*/i, '').replace(/\]$/, '').trim();
+      prompt = `${anchor} [SCENE ACTION: ${cleanPrompt}]`.replace(/\s+/g, ' ').trim();
     }
     const cleanedText = fixGenderAgreements(removeAgeFromText(s.text || ''), gender, child);
     return {
@@ -979,6 +980,18 @@ export async function generateDynamicStory(
       image_prompt: prompt,
     };
   });
+
+  if (typeof window !== 'undefined') {
+    scenes.forEach((s: any) => {
+      if (s.image_url) {
+        window.dispatchEvent(
+          new CustomEvent('ms_scene_image_updated', {
+            detail: { sceneIndex: s.scene_index, url: s.image_url },
+          })
+        );
+      }
+    });
+  }
 
   const book: BookDetailsDTO = {
     id: bookId,
@@ -1164,14 +1177,14 @@ export function buildFairytaleCharacterAnchor(params: GenerateStoryParams): stri
     серые: 'soft thoughtful slate-grey',
   };
 
-  const skin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'healthy peach';
-  const eyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling hazel-brown';
+  const rawSkin = skinToneMap[params.appearance?.skinTone?.toLowerCase() || 'персиковая'] || 'healthy peach';
+  const skin = rawSkin.replace(/\s*skin\s*tone/gi, '').replace(/\s*skin/gi, '').trim();
+  const rawEyes = eyeColorMap[params.appearance?.eyeColor?.toLowerCase() || 'карие'] || 'warm sparkling hazel-brown';
+  const eyes = rawEyes.replace(/\s*eyes/gi, '').trim();
   const clothing = params.appearance?.clothingItem || 'cozy outfit';
-  const continuityNote = isLong
-    ? 'IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.'
-    : 'IDENTICAL facial features and hairstyle across all images.';
+  const longHairWarning = isLong ? ' Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.' : '';
 
-  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin} skin, ${eyes} eyes, ${exactHairPrompt}, wearing ${clothing}. ${continuityNote}]`;
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute ${params.age}-year-old ${genderWord} named ${params.childName}, ${skin} skin tone, ${eyes} eyes, ${exactHairPrompt}, wearing ${clothing}. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES.${longHairWarning}]`;
 }
 
 /**

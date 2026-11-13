@@ -1125,6 +1125,12 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
       job.prompt = `${anchor} ${job.prompt}`.trim();
     }
 
+    if (job.kind !== 'cover' && !job.prompt.includes('[SCENE ACTION:')) {
+      job.prompt = job.prompt.replace(/(\[CHARACTER CONSISTENCY MANDATORY:[^\]]+\])\s*(.*)/, (m, anchor, rest) => {
+        return `${anchor} [SCENE ACTION: ${rest.trim()}]`;
+      });
+    }
+
     let url;
     let attempts = 0;
     const maxAttempts = 2;

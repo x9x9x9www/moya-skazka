@@ -679,15 +679,27 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </div>
             </div>
 
-            {/* Кнопка под портретом: [ 🔄 Сделать другое фото ] */}
-            <button
-              type="button"
-              onClick={handleRetakePhoto}
-              className="mt-3.5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
-              <span>🔄 Сделать другое фото</span>
-            </button>
+            {/* Кнопки под портретом: [ 🔄 Сделать другое фото ] и [ 🎨 Готовые 3D-образы ] */}
+            <div className="mt-3.5 flex flex-wrap gap-2 justify-center">
+              <button
+                type="button"
+                onClick={handleRetakePhoto}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+                <span>🔄 Сделать другое фото</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic.selection();
+                  setIsPhotoBased(false);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-100/70 hover:bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300/80 shadow-xs transition-all active:scale-95"
+              >
+                <span>🎨 Готовые 3D-образы</span>
+              </button>
+            </div>
           </div>
 
           {/* Информативная подсказка вместо блокировки */}
@@ -697,10 +709,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             </div>
             <div className="flex-1 text-xs">
               <div className="font-bold text-stone-900 flex items-center gap-1.5">
-                <span>✨ Черты лица подобраны по фото</span>
+                <span>✨ Черты лица определены по фото</span>
               </div>
               <p className="text-stone-700 mt-1 leading-snug">
-                ✨ Черты лица подобраны по фото. Вы можете легко изменить возраст, пол или подправить причёску вручную.
+                ✨ Черты лица определены по фото. Вы можете легко изменить возраст, пол или уточнить детали причёски.
               </p>
               {traitsSummaryText && (
                 <p className="text-[11px] text-stone-500 mt-1">

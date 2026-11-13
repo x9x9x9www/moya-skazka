@@ -120,37 +120,106 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
 }
 
 /**
+ * Проверка возможности 100% надёжного склонения русского имени.
+ * Если имя иностранное, составное или несклоняемое — возвращает false (Zero-Grammar-Risk).
+ */
+export function canDeclineRussianName(name?: string, gender: 'boy' | 'girl' | string = 'boy'): boolean {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  if (!/^[а-яёА-ЯЁ\- ]+$/.test(trimmed)) return false;
+  const lower = trimmed.toLowerCase();
+  // Несклоняемые гласные на конце
+  if (['о', 'е', 'и', 'у', 'ю', 'э'].some((v) => lower.endsWith(v))) return false;
+  const isGirl = gender === 'girl' || (gender !== 'boy' && (lower.endsWith('а') || lower.endsWith('я')));
+  // Иностранные женские имена на согласный (Николь, Кармен, Элис и др.)
+  if (isGirl && !lower.endsWith('а') && !lower.endsWith('я')) return false;
+  return true;
+}
+
+/**
  * Безопасное формирование конструкции «для кого» с Zero-Grammar-Risk фоллбэком.
- * Если имя не склоняется или иностранное, возвращает конструкцию в именительном падеже:
- * «главная героиня — Аэлита» или «для Аэлиты».
+ * Если имя не склоняется со 100% надёжностью, возвращает естественную конструкцию в именительном падеже:
+ * «героиня — Аэлита» (или «для Аэлиты»).
  */
 export function formatSafeForWhom(name?: string, gender: 'boy' | 'girl' | string = 'boy'): string {
   if (!name || typeof name !== 'string') {
     return gender === 'girl' ? 'для малышки' : 'для малыша';
   }
   const trimmed = name.trim();
-  const declined = declineRussianName(trimmed, gender);
   const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
+  const effectiveGender = isGirl ? 'girl' : 'boy';
+  if (!canDeclineRussianName(trimmed, effectiveGender)) {
+    return isGirl ? `героиня — ${trimmed}` : `герой — ${trimmed}`;
+  }
+  const declined = declineRussianName(trimmed, effectiveGender);
   if (declined.gen === trimmed) {
-    return isGirl ? `главная героиня — ${trimmed}` : `главный герой — ${trimmed}`;
+    return isGirl ? `героиня — ${trimmed}` : `герой — ${trimmed}`;
   }
   return `для ${declined.gen}`;
 }
 
 /**
- * Заголовок создания сказки с Zero-Grammar-Risk фоллбэком
+ * Заголовок создания сказки с Zero-Grammar-Risk фоллбэком:
+ * «Создаём сказку для Аэлиты» или «Создаём сказку. Главная героиня — Аэлита».
  */
 export function formatSafeCreationHeader(name?: string, gender: 'boy' | 'girl' | string = 'boy'): string {
   if (!name || typeof name !== 'string') {
     return gender === 'girl' ? 'Создаём сказку для малышки' : 'Создаём сказку для малыша';
   }
   const trimmed = name.trim();
-  const declined = declineRussianName(trimmed, gender);
   const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
+  const effectiveGender = isGirl ? 'girl' : 'boy';
+  if (!canDeclineRussianName(trimmed, effectiveGender)) {
+    return `Создаём сказку. Главн${isGirl ? 'ая героиня' : 'ый герой'} — ${trimmed}`;
+  }
+  const declined = declineRussianName(trimmed, effectiveGender);
   if (declined.gen === trimmed) {
     return `Создаём сказку. Главн${isGirl ? 'ая героиня' : 'ый герой'} — ${trimmed}`;
   }
   return `Создаём сказку для ${declined.gen}`;
+}
+
+/**
+ * Устранение неестественных тавтологий и механических повторов слов
+ * (например, «шевелились, шевелились» -> «шевелились», «бежал, бежал» -> «бежал»),
+ * с бережным сохранением детского звукоподражания («топ-топ», «тук-тук», «кап-кап», «чух-чух»).
+ */
+export function removeTautologiesAndDuplications(text?: string): string {
+  if (!text || typeof text !== 'string') return '';
+  let out = text;
+
+  const ALLOWED_ONOMATOPOEIA = new Set([
+    'топ', 'тук', 'кап', 'чух', 'ква', 'мяу', 'гав', 'буль', 'плюх', 'хрусь', 'динь', 'чик', 'хлоп', 'прыг', 'бум', 'бам', 'бип', 'цок', 'ля', 'ку'
+  ]);
+
+  // 1. Механические тройные повторы: «бежал, бежал, бежал» -> «бежал»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})([,\s—–-]+)\1([,\s—–-]+)\1(?![а-яёА-ЯЁ0-9])/giu, (match, word) => {
+    return word;
+  });
+
+  // 2. Механические двойные повторы: «бежал, бежал» -> «бежал», «шевелились, шевелились» -> «шевелились»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})([,\s—–-]+)\1(?![а-яёА-ЯЁ0-9])/giu, (match, word, sep) => {
+    const wLow = word.toLowerCase();
+    if (sep.includes('-') && ALLOWED_ONOMATOPOEIA.has(wLow)) {
+      return match;
+    }
+    return word;
+  });
+
+  // 3. Повтор через союз «и»: «бежал и бежал» -> «бежал»
+  out = out.replace(/(?<![а-яёА-ЯЁ0-9])([а-яёА-ЯЁ]{3,})\s+и\s+\1(?![а-яёА-ЯЁ0-9])/giu, (match, word) => {
+    const wLow = word.toLowerCase();
+    if (wLow === 'все' || wLow === 'всё' || wLow === 'еще' || wLow === 'ещё') return match;
+    return word;
+  });
+
+  // 4. Шаблонные тавтологии с двоеточием и предикатами:
+  out = out.replace(/:\s*([а-яёА-ЯЁ]{4,})(?:лись|лось|лась|лись)\b/giu, ' и $1');
+
+  // Устранение сдвоенных запятых или пробелов
+  out = out.replace(/,\s*,/gu, ',').replace(/\s{2,}/gu, ' ');
+
+  return out.trim();
 }
 
 /**
@@ -170,7 +239,7 @@ export function removeAgeFromText(text?: string): string {
  */
 export function fixGenderAgreements(text?: string, arg2: string = 'Герой', arg3: string = 'boy'): string {
   if (!text || typeof text !== 'string') return '';
-  let clean = removeAgeFromText(text);
+  let clean = removeTautologiesAndDuplications(removeAgeFromText(text));
 
   let childName = 'Герой';
   let gender = 'boy';

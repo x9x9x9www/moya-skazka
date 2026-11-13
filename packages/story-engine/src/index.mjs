@@ -27,10 +27,12 @@ import {
   fixGenderAgreements,
   getOPreposition,
   countWords,
+  canDeclineRussianName,
   classifyClothingNarrativeRole,
 } from './declension.mjs';
 export {
   declineRussianName,
+  canDeclineRussianName,
   formatSafeForWhom,
   formatSafeCreationHeader,
   inferRussianNameGender,
@@ -173,8 +175,8 @@ export const STORY_SYSTEM_PROMPT = `You are an award-winning Russian children's 
 Write EXACTLY four scenes (\`scenes\` array with length exactly 4). NEVER 3, NEVER 5. Total reading time 3–5 minutes.
 Strict word counts ensure fast reading and perfect mobile viewport fit without overflow:
 - Age 2–3: 45–65 words per scene (total 180–260 words); short musical sentences (5–8 words), sound imitation / onomatopoeia, clear comforting actions.
-- Age 4–5: 75–100 words per scene (total 300–400 words); lively simple dialogue, sensory details, empathy, friendship.
-- Age 6: 105–130 words per scene (total 420–520 words); richer vocabulary, expanded plot, gentle humor, cause-and-effect.
+- Age 4–5: 75–100 words per scene (total 300–400 words); lively simple dialogue, emotions, empathy, friendship.
+- Age 6: 105–130 words per scene (total 420–520 words); richer vocabulary, cause-and-effect and plot, gentle humor.
 Scene roles:
 1. Hook & discovery: sensory opening, child in specific clothing meets/wakes the toy companion in the themed world.
 2. Gentle problem / mystery matching theme and interests. Ends with action and natural pause for Question 1.
@@ -573,12 +575,12 @@ function pick(list, random) {
 
 function ageBand(age) {
   if (age <= 3) {
-    return { label: '2–3 года', total: [180, 260], perScene: [45, 65], sentences: 'короткие, музыкальные, 5–8 слов, с повторами и звукоподражанием' };
+    return { label: '2–3 года', total: [180, 260], perScene: [45, 65], sentences: 'простые фразы, звукоподражание, короткие музыкальные предложения 5–8 слов' };
   }
   if (age <= 5) {
-    return { label: '4–5 лет', total: [300, 400], perScene: [75, 100], sentences: 'живые диалоги, средние предложения, эмпатия и взаимопомощь' };
+    return { label: '4–5 лет', total: [300, 400], perScene: [75, 100], sentences: 'живые диалоги, эмоции, средние предложения, эмпатия и взаимопомощь' };
   }
-  return { label: '6 лет', total: [420, 520], perScene: [105, 130], sentences: 'богатый словарь, причинно-следственные связи, мягкий юмор' };
+  return { label: '6 лет', total: [420, 520], perScene: [105, 130], sentences: 'богатый словарь, причинно-следственные связи и сюжет, мягкий юмор' };
 }
 
 function getThemedWorld(params, random) {
@@ -2076,15 +2078,13 @@ export function buildCharacterAnchor(params = {}) {
   }
 
   const hints = appearanceHints(appearance);
-  const skinTone = hints.skin || 'healthy peach';
-  const eyeColor = hints.eyes || 'warm sparkling hazel-brown';
+  const skinTone = (hints.skin || 'healthy peach').replace(/\s*skin\s*tone/gi, '').replace(/\s*skin/gi, '').trim();
+  const eyeColor = (hints.eyes || 'warm sparkling hazel-brown').replace(/\s*eyes/gi, '').trim();
   const clothingItem = hints.clothes || 'cozy outfit';
 
-  const continuityNote = isLong
-    ? 'IDENTICAL facial features and hairstyle across all images, strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.'
-    : 'IDENTICAL facial features and hairstyle across all images.';
+  const longHairWarning = isLong ? ' Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.' : '';
 
-  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a ${age}-year-old ${genderWord} named ${child}, ${skinTone} skin, ${eyeColor} eyes, ${exactHairPrompt}, wearing ${clothingItem}. ${continuityNote}]`;
+  return `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute ${age}-year-old ${genderWord} named ${child}, ${skinTone} skin tone, ${eyeColor} eyes, ${exactHairPrompt}, wearing ${clothingItem}. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES.${longHairWarning}]`;
 }
 
 export function buildImagePrompt({ visual, characters = [], kind = 'scene', avatarUrl = null, story = null } = {}) {
@@ -2107,7 +2107,7 @@ export function buildImagePrompt({ visual, characters = [], kind = 'scene', avat
       appearance: hero.appearance,
     });
   } else {
-    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute child, healthy peach skin, warm sparkling hazel-brown eyes, wearing cozy outfit. IDENTICAL facial features across all images.]`;
+    characterAnchor = `[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute child, healthy peach skin tone, warm sparkling hazel-brown eyes, wearing cozy outfit. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES.]`;
   }
 
   const companionPart = companion ? ` Accompanied by ${companion.name} (${companion.visual_description || 'beloved toy companion'}).` : '';
@@ -2121,7 +2121,9 @@ export function buildImagePrompt({ visual, characters = [], kind = 'scene', avat
       : 'Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures.';
   const people = characters.length ? `Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): ${characterBlock(characters)}.` : '';
   const style = /3d animated|3d render|feature film|3d cartoon/i.test(base) ? '' : STYLE_3D_PIXAR;
-  return `${characterAnchor}${avatarRefNote}${companionPart} ${base}. ${composition} ${people} ${style}`.replace(/\s+/g, ' ').trim();
+  const cleanBase = base.replace(/^\[(?:SCENE ACTION|COVER COMPOSITION):\s*/i, '').replace(/\]$/, '').trim();
+  const actionPrefix = kind === 'cover' ? `[COVER COMPOSITION: ${cleanBase}]` : `[SCENE ACTION: ${cleanBase}]`;
+  return `${characterAnchor}${avatarRefNote}${companionPart} ${actionPrefix}. ${composition} ${people} ${style}`.replace(/\s+/g, ' ').trim();
 }
 
 export function buildScenePrompt(story, scene, avatarUrl = null) {
