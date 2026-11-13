@@ -72,13 +72,17 @@ export function useTelegram() {
 
   useEffect(() => {
     if (tg) {
-      tg.ready();
-      tg.expand();
       try {
+        tg.ready?.();
+        tg.expand?.();
         tg.setHeaderColor?.('#FAF6F0');
         tg.setBackgroundColor?.('#FAF6F0');
         tg.enableClosingConfirmation?.();
-      } catch {}
+      } catch (e) {
+        console.warn('[useTelegram] Telegram WebApp init safe fallback:', e);
+      }
+      setIsReady(true);
+    } else {
       setIsReady(true);
     }
   }, [tg]);

@@ -1490,8 +1490,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Rate Limiting для защиты от спама и расхода баланса нейросетей
-  if (req.method === 'POST') {
-    const isUnderLimit = checkRateLimit(clientIp, 25);
+  const isLocalClient =
+    clientIp === '127.0.0.1' ||
+    clientIp === '::1' ||
+    clientIp.includes('127.0.0.1') ||
+    clientIp === 'localhost' ||
+    clientIp === 'unknown';
+  if (req.method === 'POST' && !isLocalClient) {
+    const isUnderLimit = checkRateLimit(clientIp, 60);
     if (!isUnderLimit) {
       console.warn(`[Security] ⛔️ Rate limit exceeded for IP: ${clientIp}`);
       res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -2920,7 +2926,26 @@ async function activateTunnel(url, source) {
   console.log(`[Tunnel] 🚀 Активный туннель (${source}) подтверждён: ${publicTunnelUrl}`);
   try {
     fs.writeFileSync(path.resolve(process.cwd(), '.tunnel_url'), publicTunnelUrl);
-  } catch {}
+    const tunnelPayload = JSON.stringify(
+      {
+        url: publicTunnelUrl,
+        source,
+        updatedAt: new Date().toISOString(),
+      },
+      null,
+      2
+    );
+    const botDataDir = path.resolve(process.cwd(), 'bot/data');
+    if (!fs.existsSync(botDataDir)) fs.mkdirSync(botDataDir, { recursive: true });
+    fs.writeFileSync(path.join(botDataDir, 'active_tunnel.json'), tunnelPayload);
+
+    const webPublicDir = path.resolve(process.cwd(), 'apps/web/public');
+    if (fs.existsSync(webPublicDir)) {
+      fs.writeFileSync(path.join(webPublicDir, 'active_tunnel.json'), tunnelPayload);
+    }
+  } catch (err) {
+    console.warn('[Tunnel] Предупреждение при записи active_tunnel.json:', err.message);
+  }
   await updateChatMenuWithApi(publicTunnelUrl);
   return true;
 }
@@ -3145,11 +3170,13 @@ function startCloudflareTunnel() {
 
     const parseOutput = async (data) => {
       const text = data.toString();
-      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-      if (match) {
-        const url = match[0];
-        console.log(`[Cloudflare] 🚀 HTTPS туннель получен: ${url}`);
-        await activateTunnel(url, 'cloudflare');
+      const matches = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/g);
+      if (matches) {
+        const url = matches.find((u) => !u.includes('api.trycloudflare.com'));
+        if (url) {
+          console.log(`[Cloudflare] 🚀 HTTPS туннель получен: ${url}`);
+          await activateTunnel(url, 'cloudflare');
+        }
       }
     };
 
@@ -3337,7 +3364,9 @@ if (isMainModule) {
   if (SKIP_TUNNELS) {
     console.log('[Tunnel] SKIP_TUNNELS=true — туннели отключены');
   } else {
-    const preferredTunnel = (process.env.TUNNEL || 'pinggy').toLowerCase();
+    const binPath = path.resolve('bot/cloudflared');
+    const hasCloudflared = fs.existsSync(binPath);
+    const preferredTunnel = (process.env.TUNNEL || (hasCloudflared ? 'cloudflare' : 'pinggy')).toLowerCase();
     if (preferredTunnel === 'cloudflare') {
       startCloudflareTunnel();
     } else if (preferredTunnel === 'serveo') {

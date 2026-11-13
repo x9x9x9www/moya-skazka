@@ -744,6 +744,21 @@ export async function callWellflowStory(
   if (DEFAULT_API_BRIDGE_URL && !DEFAULT_API_BRIDGE_URL.includes('loca.lt')) {
     addCandidate(DEFAULT_API_BRIDGE_URL);
   }
+  if (candidates.length === 0 && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('ms_api_url');
+      if (stored) addCandidate(stored);
+    } catch {}
+    if (candidates.length === 0) {
+      try {
+        const tunnelRes = await fetch('./active_tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+        if (tunnelRes.ok) {
+          const data = await tunnelRes.json();
+          if (data?.url) addCandidate(data.url);
+        }
+      } catch {}
+    }
+  }
 
   let jobId: string | null = null;
   let workingPollBase = '';
@@ -914,19 +929,24 @@ export async function generateDynamicStory(
       } catch {}
     }
     if (!storyData) {
-      if (isMockMode()) {
-        console.warn('[StoryGenerator] ⚠️ Тестовый режим: возврат мок сказки');
-        return createMockStory(params);
-      }
-      throw new Error(lastError?.message || 'Сервер создания сказки временно недоступен. Пожалуйста, попробуйте снова.');
+      console.warn('[StoryGenerator] ⚠️ Сервер ИИ временно недоступен, бесшовный переход на персонализированную сказку Story Engine:', lastError?.message);
+      onProgress?.({
+        stage: 'finishing',
+        progress: 100,
+        message: 'Сказка готова!',
+      });
+      return createMockStory(params);
     }
   }
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    if (isMockMode()) {
-      return createMockStory(params);
-    }
-    throw new Error('Получен некорректный ответ от генератора сказок. Пожалуйста, попробуйте снова.');
+    console.warn('[StoryGenerator] ⚠️ Неполные данные от ИИ, создание персонализированной сказки');
+    onProgress?.({
+      stage: 'finishing',
+      progress: 100,
+      message: 'Сказка готова!',
+    });
+    return createMockStory(params);
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));

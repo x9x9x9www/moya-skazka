@@ -64,13 +64,31 @@
       "default_questions_enabled": true,
       "timezone": "UTC+3",
       "balance": {
-        "total": 2,
-        "paid": 2,
+        "total": 1,
+        "paid": 1,
         "gift": 0,
         "reserved": 0,
-        "available": 2
+        "available": 1
       },
       "createdAt": "2026-11-06T01:04:58.385Z"
+    },
+    "user_demo": {
+      "id": "user_demo",
+      "telegram_user_id": "user_demo",
+      "first_name": "Родитель",
+      "username": "parent",
+      "role": "USER",
+      "free_text_claimed_at": null,
+      "default_questions_enabled": true,
+      "timezone": "UTC+3",
+      "balance": {
+        "total": 5,
+        "paid": 5,
+        "gift": 0,
+        "reserved": 0,
+        "available": 5
+      },
+      "createdAt": "2026-11-12T13:23:31.175Z"
     }
   },
   "children": {
@@ -861,6 +879,68 @@
       ],
       "can_upgrade": false,
       "created_at": "2026-11-09T15:33:14.883Z"
+    },
+    "story_1794489784839_bfg2aa": {
+      "id": "story_1794489784839_bfg2aa",
+      "user_id": "user_default",
+      "child_id": "default",
+      "child_name": "Алиса",
+      "title": "Шишка-свисток и мастерская дружбы",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/74e89fe9-8ba6-462e-88a9-9aa4d01267cf/0?exp=1794578400&sig=422f6d1ea95aa6f8be2e66b3a16db63cce80ac22f650892dbf6535fc7fd740d3",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Под ногами мягко пружинил мох, а над поляной звенели птичьи трели. Алиса осторожно ступила на тропинку, окаймлённую росистыми папоротниками, и прислушалась: шур, тик — будто сам лес рассказывал ей секрет. Рядом стоял её плюшевый мишка и крепко прижимал лапками лист-карту, усыпанный блестящими капельками. Мишка подмигнул пуговичным глазком. «Я буду штурманом! По этой карте мы найдём коробочку-семечко», — сказал он. Алиса улыбнулась: впереди явно ждало удивительное открытие. Она наклонилась к карте, и капли росы сверкнули, показывая узкую тропинку между папоротниками.",
+          "image_url": "https://api.wellflow.dev/v1/media/ad021d8a-a1a0-45fb-9b75-3fef071231c0/0?exp=1794578400&sig=b8d9316513d24c5e6effb71f837621015a287138f37b004a71fe575e82f3fe3e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Алиса, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_brown.webp - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Мишка (A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.). A wide-to-medium establishing view of a mossy forest path bordered by dew-covered ferns, with a bright clearing and narrow trail ahead. Alice steps carefully onto the springy moss and leans in to study the glistening leaf map, while her plush bear stands beside her, holding it firmly in both paws; sparkling droplets catch soft morning light as birdsong fills the inviting scene.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Алиса (hero): A young girl with soft, neat, short light-brown hair, warm sparkling hazel-brown eyes, and a warm healthy peach complexion. She wears the same cozy knitted sweater with a soft yarn texture in every image., wearing cozy knitted sweater with soft yarn texture Мишка (companion): A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Следуя карте, друзья перебрались через ветвь-перемычку и нашли место, где для лесных жителей пряталась коробочка-семечко. Но лёгкий ветерок подхватил карту: лист захлопал, и мишке никак не удавалось удержать его мягкими лапами. — Постой, карта опять улетает! — огорчился он, стараясь прижать её к коленям. Алиса заметила, как старательно мишка пытался вести их дальше. Она не стала торопить его, а внимательно огляделась. У её ног лежала полая шишка, похожая на маленький свисток. «Кажется, я придумала, как помочь», — сказала Алиса и подняла её.",
+          "image_url": "https://api.wellflow.dev/v1/media/65b56864-f82e-431f-99da-5acd298889cd/0?exp=1794578400&sig=24a976c047eeb777424bdb3f5235ef1bebff0846a7769689d9817610b78133a7",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Алиса, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_brown.webp - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Мишка (A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.). A medium action shot at the forest crossing, where the friends have reached a branch bridge and the seed-shaped box’s hiding place. A breeze flips the leaf map as the bear struggles to pin it against his knees; Alice pauses to look around, then lifts the hollow pinecone whistle from the ground beside her feet, her attentive expression turning hopeful amid gently stirring ferns.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Алиса (hero): A young girl with soft, neat, short light-brown hair, warm sparkling hazel-brown eyes, and a warm healthy peach complexion. She wears the same cozy knitted sweater with a soft yarn texture in every image., wearing cozy knitted sweater with soft yarn texture Мишка (companion): A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "Алиса бережно подала шишку мишке. «Давай прижмём ею край карты». Вместе они закрепили лист-карту, и ветер больше не мешал штурману. Мишка повёл Алису по росистым отметкам к коробочке-семечку. Стоило друзьям открыть её, как внутри выросла крошечная лесная мастерская: полочки из коры, столик из гладкой веточки и окошко из круглого листа. Другие лесные жители принесли для сюрприза жёлуди, лепестки и тонкие ленточки травы. Алиса складывала находки на стол, а мишка сверял их с картой. Все вместе они сделали для лесных друзей подарок — венок с цветочной серединкой. Мастерская наполнилась тихим смехом и радостным шорохом.",
+          "image_url": "https://api.wellflow.dev/v1/media/60528efc-89cb-4e9b-9285-73b5608de4e9/0?exp=1794578400&sig=aaf1614dac50a0eedc23f200f347d13080b109c056268208876c7ae6a61d1c1e",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Алиса, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_brown.webp - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Мишка (A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.). An emotional close-medium view of Alice carefully placing the hollow pinecone whistle on the leaf map’s edge while the bear holds the map steady and guides her along its dewy markings. They open the seed-shaped box to reveal a tiny workshop with bark shelves, a smooth-twig table, and a round-leaf window; Alice arranges acorns, petals, and grass ribbons as the bear checks the map, while woodland neighbors help make a flower-centered wreath in warm, joyful light.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Алиса (hero): A young girl with soft, neat, short light-brown hair, warm sparkling hazel-brown eyes, and a warm healthy peach complexion. She wears the same cozy knitted sweater with a soft yarn texture in every image., wearing cozy knitted sweater with soft yarn texture Мишка (companion): A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Когда венок был готов, друзья вынесли его на поляну. Под солнцем его цветочная серединка сияла, а лесные жители радостно захлопали. Листья над поляной тихо покачивались, будто тоже радовались подарку. Мишка посмотрел на Алису и гордо сказал: «Без твоей помощи я бы не удержал карту!» Алиса обняла плюшевого мишку. Его мягкая лапа уютно легла в её ладонь, и в сердце Алисы стало тепло оттого, как здорово придумывать и делать что-то вместе. Коробочка-семечко снова тихо лежала на мху, а шишка-свисток и лист-карта напоминали друзьям об их общем открытии.",
+          "image_url": "https://api.wellflow.dev/v1/media/a9ba0366-add0-4c6d-86fe-d69c9c58fab6/0?exp=1794578400&sig=a026edbcfa94178baecabfc850c30671f884f861d1d2ec3c4cf137853f74dfb9",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a 4-year-old girl named Алиса, warm healthy peach complexion skin, warm sparkling hazel-brown eyes eyes, soft light-brown neat short playful hair, wearing cozy knitted sweater with soft yarn texture. IDENTICAL facial features and hairstyle across all images.] [Reference Avatar Image: https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/girl_brown.webp - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Мишка (A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.). A soft-focus golden-hour view of the forest clearing as Alice hugs her plush bear, their paws gently meeting, while woodland neighbors applaud the finished wreath with its shining flower center. The leaf map, hollow pinecone whistle, and seed-shaped box rest clearly on the moss nearby; softly swaying leaves and warm sunlight create a calm, reassuring celebration of friendship.. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Алиса (hero): A young girl with soft, neat, short light-brown hair, warm sparkling hazel-brown eyes, and a warm healthy peach complexion. She wears the same cozy knitted sweater with a soft yarn texture in every image., wearing cozy knitted sweater with soft yarn texture Мишка (companion): A small, soft plush teddy bear with visible fuzzy fabric, neat stitching, and kind dark button eyes. He carries a leaf map with dew drops in his soft paws and has a gentle, loyal expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Как Алиса помогла мишке удержать карту?",
+          "parent_hint": "Предложите ребёнку придумать свой способ поддержать друга.",
+          "skill_tag": "empathy"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Какой добрый момент Алисе хотелось бы запомнить?",
+          "parent_hint": "Помогите вспомнить, что друзья сделали вместе и что они чувствовали.",
+          "skill_tag": "memory"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-12T13:25:42.248Z"
     }
   },
   "daily_ideas": {
@@ -888,28 +968,28 @@
       "created_at": "2026-11-07T10:33:25.790Z"
     },
     "child_test_2_2026-11-07": {
-      "id": "idea_618136068",
+      "id": "idea_30881063",
       "child_id": "child_test_2",
       "local_date": "2026-11-07",
-      "title": "Малыш и кисточка утренней зари",
-      "blurb": "Сказка о волшебных красках: Малыш раскрашивает лесную поляну яркими цветами и дарит каждому цветку свой неповторимый узор.",
-      "theme": "Творчество",
-      "cover_url": "/illustrations/cover_star.jpg",
+      "title": "Малыш и мостик через звонкий ручей",
+      "blurb": "Лесные зверята не могли перебраться на поляну праздника, пока Малыш и добрый динозаврик не собрали прочный мостик из цветных брёвнышек.",
+      "theme": "Дружба и взаимопомощь",
+      "cover_url": "/illustrations/cover_dino.jpg",
       "status": "REFRESHED",
       "is_saved": false,
       "suggested_params": {
         "childName": "Малыш",
         "gender": "boy",
         "age": 4,
-        "theme": "Творчество",
-        "mood": "Творчество",
+        "theme": "Дружба и взаимопомощь",
+        "mood": "Дружба",
         "interests": [
           "Волшебство"
         ],
-        "customWishes": "Фантазия, свобода рисования и уверенность в своём творчестве."
+        "customWishes": "Умение делиться игрушками, командная работа и радость общего праздника."
       },
-      "created_at": "2026-11-12T11:54:10.401Z",
-      "_refreshCount": 25
+      "created_at": "2026-11-12T16:49:23.091Z",
+      "_refreshCount": 27
     },
     "child_test_3_2026-11-07": {
       "id": "idea_1981181318",
@@ -1109,7 +1189,7 @@
       "user_id": "user_test_save",
       "title": "Малыш и мостик через звонкий ручей",
       "theme": "Дружба и взаимопомощь",
-      "saved_at": "2026-11-12T11:54:10.403Z"
+      "saved_at": "2026-11-12T16:49:23.093Z"
     }
   }
 }

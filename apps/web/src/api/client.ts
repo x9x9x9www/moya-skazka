@@ -94,12 +94,27 @@ class ApiClient {
     if (primaryBase && !candidates.includes(primaryBase)) {
       candidates.unshift(primaryBase);
     }
-    // Если на GitHub Pages список пуст, берем сохраненный туннель из localStorage
+    // Если на GitHub Pages список пуст, берем сохраненный туннель из localStorage или active_tunnel.json
     if (candidates.length === 0 && typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('ms_api_url');
         if (stored) candidates.push(stored.replace(/\/$/, ''));
       } catch {}
+      if (candidates.length === 0) {
+        try {
+          const tunnelRes = await fetch('./active_tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+          if (tunnelRes.ok) {
+            const data = await tunnelRes.json();
+            if (data?.url) {
+              const clean = data.url.replace(/\/$/, '');
+              candidates.push(clean);
+              try {
+                localStorage.setItem('ms_api_url', clean);
+              } catch {}
+            }
+          }
+        } catch {}
+      }
     }
 
     let lastError: any = null;
