@@ -8,6 +8,7 @@ import {
   sanitizeToneAndPurity,
   verifyNarrativeIntegrity,
   runEditorialAgent,
+  buildLinguisticEditorialPrompt,
   simplifyChildQuestion,
   removeTautologiesAndDuplications,
 } from '../src/editorialAgent.mjs';
@@ -262,5 +263,45 @@ test('Агент: устранение тавтологий с сохранен�
   assert.ok(preserved.includes('чух-чух'), 'Звукоподражание чух-чух сохранено');
   assert.ok(preserved.includes('кап-кап'), 'Звукоподражание кап-кап сохранено');
   assert.ok(preserved.includes('топ-топ'), 'Звукоподражание топ-топ сохранено');
+});
+
+test('Агент: явно указанный и сохранённый пол имеет приоритет над эвристикой имени', () => {
+  const text = 'Саша увидел лес и улыбнулся.';
+  assert.equal(
+    proofreadRussianGrammar(text, { childName: 'Саша', gender: 'girl' }),
+    'Саша увидела лес и улыбнулась.'
+  );
+  assert.equal(
+    proofreadRussianGrammar('Алиса увидела лес и улыбнулась.', { childName: 'Алиса', gender: 'boy' }),
+    'Алиса увидел лес и улыбнулся.'
+  );
+  assert.equal(
+    proofreadRussianGrammar('Любовь увидел лес и улыбнулся.', { childName: 'Любовь' }),
+    'Любовь увидела лес и улыбнулась.'
+  );
+
+  const boyStory = {
+    title: 'Приключение Саши',
+    childName: 'Саша',
+    gender: 'boy',
+    scenes: [
+      { text: 'Саша увидел лес и улыбнулся.' },
+      { text: 'Саша пошёл дальше.' },
+      { text: 'Саша помог другу.' },
+      { text: 'Саша вернулся домой.' },
+    ],
+    questions: [{ question: 'Что увидел Саша?' }, { question: 'Кому помог Саша?' }],
+  };
+  const edited = runEditorialAgent(boyStory, {});
+  assert.ok(edited.story.scenes[0].text.includes('Саша увидел'));
+  assert.ok(edited.story.scenes[0].text.includes('улыбнулся'));
+  assert.ok(edited.story.scenes[1].text.includes('Саша пошёл'));
+
+  const promptFromParams = buildLinguisticEditorialPrompt(boyStory, { childName: 'Саша', gender: 'boy' });
+  assert.ok(promptFromParams.user.includes('Саша (мальчик, мужской род'));
+  const promptFromStory = buildLinguisticEditorialPrompt(boyStory, {});
+  assert.ok(promptFromStory.user.includes('Саша (мальчик, мужской род'));
+  const girlPromptOverridesStory = buildLinguisticEditorialPrompt(boyStory, { gender: 'girl' });
+  assert.ok(girlPromptOverridesStory.user.includes('Саша (девочка, женский род'));
 });
 

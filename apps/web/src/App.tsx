@@ -19,9 +19,9 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, DailyIdeaDTO, UserDTO } from '@moya-skazka/shared';
-import { generateDynamicStory, createMockStory, getFairytaleFallbackIllustration, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, getActiveApiUrl } from './services/storyGenerator';
+import { applyBookImageUpdates, applyCoverImageUpdate, applySceneImageUpdate, generateDynamicStory, createMockStory, getBookImageUpdates, getFairytaleFallbackIllustration, isCoverImageUpdateDetail, isSceneImageUpdateDetail, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, SCENE_IMAGE_UPDATED_EVENT, COVER_IMAGE_UPDATED_EVENT, getActiveApiUrl } from './services/storyGenerator';
 import { resolveChildAvatar } from './utils/avatarResolver';
-import { formatSafeCreationHeader } from './utils/russianGrammar';
+import { formatSafeCreationHeader, inferRussianNameGender } from './utils/russianGrammar';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
 const PARENTING_ADVICE = [
@@ -33,6 +33,16 @@ const PARENTING_ADVICE = [
 ];
 
 const ADMIN_USERNAMES = ['dinar_fazlyev', 'x9x9x9ww'];
+
+function resolveChildProfileGender(child: ChildProfileDTO): 'boy' | 'girl' {
+  const topLevelGender = (child as any).gender;
+  if (topLevelGender === 'boy' || topLevelGender === 'girl') return topLevelGender;
+
+  const appearanceGender = child.appearance?.gender;
+  if (appearanceGender === 'boy' || appearanceGender === 'girl') return appearanceGender;
+
+  return inferRussianNameGender(child.name) || 'boy';
+}
 
 export const App: React.FC = () => {
   const { initData, startParam, haptic } = useTelegram();
@@ -269,7 +279,7 @@ export const App: React.FC = () => {
           ...prev,
           childName: active.name,
           age: active.age,
-          gender: app.gender || (active.name.endsWith('а') || active.name.endsWith('я') ? 'girl' : 'boy'),
+          gender: resolveChildProfileGender(active),
           interests: (active.interests as string[]) || prev.interests,
           appearance: {
             ...prev.appearance,
@@ -530,7 +540,7 @@ export const App: React.FC = () => {
         ...prev,
         childName: child.name || prev.childName,
         age: child.age || prev.age,
-        gender: (child as any).gender || child.appearance?.gender || prev.gender,
+        gender: resolveChildProfileGender(child),
         interests: (child.interests && child.interests.length > 0) ? child.interests : prev.interests,
         appearance: {
           ...prev.appearance,
@@ -548,7 +558,7 @@ export const App: React.FC = () => {
     setWizardData((prev) => ({
       ...prev,
       childName: child?.name || prev.childName || 'Малыш',
-      gender: (child as any)?.gender || child?.appearance?.gender || prev.gender,
+      gender: child ? resolveChildProfileGender(child) : prev.gender,
       age: child?.age || prev.age || 4,
       interests: (child?.interests && child.interests.length > 0) ? child.interests : prev.interests,
       theme: idea?.suggested_params?.theme || idea?.theme || prev.theme,
@@ -615,28 +625,32 @@ export const App: React.FC = () => {
 
   // Реактивное обновление открытой книги в читалке при асинхронной генерации/догрузке картинок
   useEffect(() => {
-    const handleSceneUpdate = (e: any) => {
-      const { sceneIndex, url } = e.detail || {};
-      if (typeof sceneIndex === 'number' && url) {
-        setCurrentReadingBook((prev) => {
-          if (!prev) return prev;
-          const updatedScenes = (prev.scenes || []).map((sc, idx) => {
-            const scIdx = sc.scene_index ?? (sc as any).index ?? (idx + 1);
-            if (scIdx === sceneIndex) {
-              return { ...sc, image_url: url };
-            }
-            return sc;
-          });
-          return { ...prev, scenes: updatedScenes };
-        });
-      }
+    const handleSceneUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!isSceneImageUpdateDetail(detail)) return;
+      const imageUrl = resolveMediaUrl(detail.url) || detail.url;
+      setCurrentReadingBook((prev) => (
+        prev ? applySceneImageUpdate(prev, { ...detail, url: imageUrl }) : prev
+      ));
     };
-    window.addEventListener('ms_scene_image_updated', handleSceneUpdate);
-    return () => window.removeEventListener('ms_scene_image_updated', handleSceneUpdate);
+    const handleCoverUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!isCoverImageUpdateDetail(detail)) return;
+      const imageUrl = resolveMediaUrl(detail.url) || detail.url;
+      setCurrentReadingBook((prev) => (
+        prev ? applyCoverImageUpdate(prev, { ...detail, url: imageUrl }) : prev
+      ));
+    };
+    window.addEventListener(SCENE_IMAGE_UPDATED_EVENT, handleSceneUpdate);
+    window.addEventListener(COVER_IMAGE_UPDATED_EVENT, handleCoverUpdate);
+    return () => {
+      window.removeEventListener(SCENE_IMAGE_UPDATED_EVENT, handleSceneUpdate);
+      window.removeEventListener(COVER_IMAGE_UPDATED_EVENT, handleCoverUpdate);
+    };
   }, []);
 
   const openReader = (book: BookDetailsDTO) => {
-    const resolved = resolveBookMedia(book);
+    const resolved = resolveBookMedia(applyBookImageUpdates(book, getBookImageUpdates(book.id)));
     if (resolved.format !== 'TEXT') {
       if (!resolved.cover_url) {
         resolved.cover_url =
@@ -739,7 +753,7 @@ export const App: React.FC = () => {
     const storyFormat: 'TEXT' | 'ILLUSTRATED' = 'ILLUSTRATED';
 
     try {
-      // 1. Story Engine: генерация сказки + 5 персональных 3D-иллюстраций по аватару ребёнка
+      // 1. Story Engine: генерация сказки + 4 персональные 3D-иллюстрации сцен по аватару ребёнка
       const generatedBook = await generateDynamicStory(
         {
           userId: currentUserId,
@@ -1015,7 +1029,7 @@ export const App: React.FC = () => {
                   ) : (
                     <span className="text-emerald-500 font-bold">✓</span>
                   )}
-                  <span>2. 5 красочных 3D-иллюстраций</span>
+                  <span>2. 4 красочные 3D-иллюстрации</span>
                 </span>
                 <span className="text-[11px] text-stone-500 font-medium">
                   {creationStage === 'writing'
@@ -1429,7 +1443,7 @@ export const App: React.FC = () => {
               ...prev,
               childName: c.name,
               age: c.age,
-              gender: app.gender || (c.name.endsWith('а') || c.name.endsWith('я') ? 'girl' : 'boy'),
+              gender: resolveChildProfileGender(c),
               interests: (c.interests as string[]) || prev.interests,
               appearance: {
                 ...prev.appearance,

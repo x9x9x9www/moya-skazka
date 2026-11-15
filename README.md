@@ -171,14 +171,14 @@ npm run migrate --workspace=@moya-skazka/database
 psql -U postgres -d moya_skazka -f packages/database/prisma/migrations/0001_initial_schema.sql
 ```
 
-#### Шаг 4: Запуск бэкенда и воркера
+#### Шаг 4: Запуск Fastify API и фонового воркера
 ```bash
-# Запуск Fastify API и фонового воркера задач
 npm run dev --workspace=@moya-skazka/api
 ```
 
 #### Шаг 5: Запуск фронтенда Mini App
-В отдельном терминале:
+По умолчанию Vite направляет `/api` на Fastify (`localhost:4000`). Чтобы использовать отдельный backend, задайте `VITE_API_PROXY_TARGET` и, для прямых запросов из браузера, `VITE_API_URL` (например, `VITE_API_PROXY_TARGET=http://localhost:4040 VITE_API_URL=http://localhost:4040`).
+
 ```bash
 npm run dev --workspace=@moya-skazka/web
 ```

@@ -114,7 +114,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
             }
 
             const a = res?.traits || {};
-            if (a.gender) setGender(a.gender);
+            if (a.gender && !hasUserExplicitlySetGender) setGender(a.gender);
             if (a.approxAge && Number(a.approxAge) >= 2 && Number(a.approxAge) <= 6) {
               setAge(Number(a.approxAge));
             }
@@ -272,9 +272,11 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                       <img
                         src={resolveChildAvatar({
                           gender:
-                            (child as any).gender ||
-                            child.appearance?.gender ||
-                            (child.name.endsWith('а') || child.name.endsWith('я') ? 'girl' : 'boy'),
+                            (child as any).gender === 'boy' || (child as any).gender === 'girl'
+                              ? (child as any).gender
+                              : child.appearance?.gender === 'boy' || child.appearance?.gender === 'girl'
+                              ? child.appearance.gender
+                              : inferRussianNameGender(child.name) || 'boy',
                           hairColor: (child.appearance as any)?.hairColor,
                           hairType: (child.appearance as any)?.hairType,
                           hairStructure: (child.appearance as any)?.hairStructure,

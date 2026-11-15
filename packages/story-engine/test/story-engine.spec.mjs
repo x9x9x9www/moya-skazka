@@ -7,7 +7,11 @@ import {
   chooseStoryDna,
   createSeededRandom,
   buildStoryPrompt,
+  buildArchitectPrompt,
+  buildStoryFromBlueprintPrompt,
   normalizeStory,
+  buildCharacterAnchor,
+  formatClothingNarrativePrompt,
   buildCoverPrompt,
   buildScenePrompt,
   buildLengthRepairPrompt,
@@ -144,6 +148,44 @@ test('buildStoryPrompt содержит возрастной объём и ге�
   assert.match(user, /НЕ ПОВТОРЯЙ/);
 });
 
+test('явно выбранный пол важнее окончания имени во всех промптах и якоре', () => {
+  const boyParams = { ...params, childName: 'Миша', gender: 'boy' };
+  const girlWithMasculineName = { ...params, childName: 'Марк', gender: 'girl' };
+
+  for (const input of [boyParams, girlWithMasculineName]) {
+    const expected = input.gender === 'girl' ? /девочка|героиня|girl/ : /мальчик|герой|boy/;
+    const storyPrompt = buildStoryPrompt(input).user;
+    const architectPrompt = buildArchitectPrompt(input).user;
+    const blueprintPrompt = buildStoryFromBlueprintPrompt(input, {}).user;
+
+    assert.match(storyPrompt, expected);
+    assert.match(architectPrompt, expected);
+    assert.match(blueprintPrompt, expected);
+    assert.match(buildCharacterAnchor({ ...input, appearance: {} }), input.gender === 'girl' ? /a cute 4-year-old girl/i : /a cute 4-year-old boy/i);
+  }
+
+  const girlClothingPrompt = formatClothingNarrativePrompt({
+    childName: 'Миша',
+    gender: 'girl',
+    appearance: { clothingItem: 'костюм супергероя', clothingColor: 'красный' },
+    theme: 'Супергерои',
+  });
+  assert.match(girlClothingPrompt, /Миша уже надела/);
+});
+
+test('пол выводится из имени только при отсутствии явного значения', () => {
+  const inferredBoy = normalizeStory(fixture(), { ...params, gender: undefined });
+  const inferredGirl = normalizeStory(fixture(), { ...params, childName: 'Алиса', gender: undefined });
+  const explicitGirl = normalizeStory(fixture(), { ...params, childName: 'Марк', gender: 'girl' });
+
+  assert.equal(inferredBoy.gender, 'boy');
+  assert.equal(inferredBoy.child_gender, 'boy');
+  assert.equal(inferredGirl.gender, 'girl');
+  assert.equal(inferredGirl.child_gender, 'girl');
+  assert.equal(explicitGirl.gender, 'girl');
+  assert.equal(explicitGirl.child_gender, 'girl');
+});
+
 test('buildStoryPrompt поднимает customWishes на высший приоритет', () => {
   const customParams = { ...params, customWishes: 'Пусть Миша встретит дельфина в тёплом море' };
   const { user, dna } = buildStoryPrompt(customParams, { random: createSeededRandom('seed-custom') });
@@ -224,12 +266,22 @@ test('buildScenePrompt включает только персонажей, ук�
   assert.ok(!prompt.includes('Дино'));
 });
 
-test('buildLengthRepairPrompt содержит цель и запрет менять сюжет', () => {
+test('buildLengthRepairPrompt делит общую цель на число сцен и поддерживает возрастные диапазоны', () => {
   const story = normalizeStory(fixture(), params);
-  const prompt = buildLengthRepairPrompt(story, [500, 600]);
-  assert.match(prompt, /500–600/);
-  assert.match(prompt, /20–35%/);
-  assert.match(prompt, /не меняя сюжет/i);
+  const customTargetPrompt = buildLengthRepairPrompt(story, [500, 600]);
+  assert.match(customTargetPrompt, /500–600/);
+  assert.match(customTargetPrompt, /Сцена 1: сейчас \d+ слов, цель — примерно 125–150 слов/);
+  assert.match(customTargetPrompt, /не меняя сюжет/i);
+
+  const toddlerPrompt = buildLengthRepairPrompt({ ...story, scenes: story.scenes.slice(0, 2) }, [180, 260]);
+  assert.match(toddlerPrompt, /Сцена 1: сейчас \d+ слов, цель — примерно 90–130 слов/);
+  assert.match(toddlerPrompt, /Сцена 2: сейчас \d+ слов, цель — примерно 90–130 слов/);
+
+  const ageSixPrompt = buildLengthRepairPrompt(story, [400, 520]);
+  assert.match(ageSixPrompt, /цель — примерно 100–130 слов/);
+
+  const emptyScenePrompt = buildLengthRepairPrompt({ metrics: { total_words: 0 }, scenes: [] }, [180, 260]);
+  assert.match(emptyScenePrompt, /Восстанови 4 сцены примерно по 45–65 слов каждая/);
 });
 
 test('fallbackQuestions даёт вопросы после 2 и 4', () => {

@@ -244,6 +244,7 @@ export function declineRussianName(name: string, gender?: 'boy' | 'girl' | strin
 export function canDeclineRussianName(name: string, gender?: 'boy' | 'girl' | string): boolean;
 export function formatSafeForWhom(name: string, gender?: 'boy' | 'girl' | string): string;
 export function formatSafeCreationHeader(name: string, gender?: 'boy' | 'girl' | string): string;
+export function inferRussianNameGender(name: string): 'boy' | 'girl' | null;
 export function getOPreposition(word: string): 'об' | 'о';
 export function countWords(text: string): number;
 export function removeAgeFromText(text: string): string;

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { declineRussianName, removeAgeFromText, fixGenderAgreements } from '../src/declension.mjs';
+import {
+  canDeclineRussianName,
+  declineRussianName,
+  fixGenderAgreements,
+  formatSafeForWhom,
+  removeAgeFromText,
+} from '../src/declension.mjs';
 
 test('Склонение женских имён на -а (Аэлита)', () => {
   const d = declineRussianName('Аэлита', 'girl');
@@ -48,6 +54,31 @@ test('Склонение имён на -я и -ия (Настя, Мария)', (
   assert.equal(m.prep, 'о Марии');
 });
 
+test('Explicit gender overrides name-ending heuristics', () => {
+  assert.equal(declineRussianName('Саша', 'girl').gen, 'Саши');
+  assert.equal(formatSafeForWhom('Любовь', 'boy'), 'герой — Любовь');
+  assert.equal(declineRussianName('Любовь', 'boy').gen, 'Любовь');
+  assert.equal(declineRussianName('Лев', 'boy').gen, 'Льва');
+  assert.equal(formatSafeForWhom('Саша', 'girl'), 'для Саши');
+  assert.equal(formatSafeForWhom('Никита', 'boy'), 'для Никиты');
+});
+
+test('Feminine consonant, foreign, and compound names use safe fallback', () => {
+  for (const name of ['Любовь', 'Николь', 'Кармен', 'Элис', 'Anne', 'Анна-Мария']) {
+    assert.equal(canDeclineRussianName(name, 'girl'), false, `${name} is not safely declined`);
+    assert.deepEqual(declineRussianName(name, 'girl'), {
+      nom: name,
+      gen: name,
+      dat: name,
+      acc: name,
+      ins: name,
+      prep: `${['Элис', 'Анна-Мария'].includes(name) ? 'об' : 'о'} ${name}`,
+    });
+  }
+  assert.equal(formatSafeForWhom('Любовь', 'girl'), 'героиня — Любовь');
+  assert.equal(formatSafeForWhom('Анна-Мария', 'girl'), 'героиня — Анна-Мария');
+});
+
 test('Очистка текста от возраста в скобках', () => {
   assert.equal(removeAgeFromText('Аэлита (4 года) пошла в лес'), 'Аэлита пошла в лес');
   assert.equal(removeAgeFromText('Малыш (5 лет) улыбнулся'), 'Малыш улыбнулся');
@@ -71,4 +102,36 @@ test('Поддержка гибкого порядка аргументов в f
   const fixed2 = fixGenderAgreements(raw, 'girl', 'Аэлита');
   assert.equal(fixed1, 'Аэлита увидела свет');
   assert.equal(fixed2, 'Аэлита увидела свет');
+});
+
+test('Explicit gender wins for agreement and indeclinable feminine names stay unchanged', () => {
+  assert.equal(fixGenderAgreements('Саша пошёл гулять.', 'Саша', 'girl'), 'Саша пошла гулять.');
+  assert.equal(fixGenderAgreements('Любовь увидел лес. Сердце Любовь забилось.', 'Любовь', 'girl'), 'Любовь увидела лес. Сердце Любовь забилось.');
+});
+
+test('Gender correction does not alter verbs belonging to another character or sentence', () => {
+  const raw = 'Аэлита увидел друга. Друг улыбнулся. Потом он побежал домой.';
+  assert.equal(fixGenderAgreements(raw, 'Аэлита', 'girl'), 'Аэлита увидела друга. Друг улыбнулся. Потом он побежал домой.');
+});
+
+test('Special characters in child names are escaped when matching agreements', () => {
+  assert.equal(
+    fixGenderAgreements('A+lice увидел свет.', 'A+lice', 'girl'),
+    'A+lice увидела свет.'
+  );
+  assert.equal(
+    fixGenderAgreements('A.lice увидел свет.', 'A.lice', 'girl'),
+    'A.lice увидела свет.'
+  );
+});
+
+test('Coordinated predicates for the named child are corrected narrowly', () => {
+  assert.equal(
+    fixGenderAgreements('Аэлита очутилась на полянке и улыбнулся.', 'Аэлита', 'girl'),
+    'Аэлита очутилась на полянке и улыбнулась.'
+  );
+  assert.equal(
+    fixGenderAgreements('Аэлита увидел друга, а друг улыбнулся.', 'Аэлита', 'girl'),
+    'Аэлита увидела друга, а друг улыбнулся.'
+  );
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveChildAvatar, ALL_AVATAR_KEYS } from '../../web/src/utils/avatarResolver';
+import { resolveChildAvatar, isGeneratedChildAvatarUrl, withoutChildAvatarUrl, ALL_AVATAR_KEYS } from '../../web/src/utils/avatarResolver';
 
 describe('resolveChildAvatar (12 3D Pixar avatars resolver)', () => {
   it('возвращает 12 уникальных ключей аватаров', () => {
@@ -68,5 +68,46 @@ describe('resolveChildAvatar (12 3D Pixar avatars resolver)', () => {
     expect(resolveChildAvatar({ avatar_url: 'https://example.com/avatar.webp' })).toBe('https://example.com/avatar.webp');
     expect(resolveChildAvatar({ avatarUrl: 'data:image/webp;base64,123' })).toBe('data:image/webp;base64,123');
     expect(resolveChildAvatar({ appearance: { avatar_url: '/media/avatar.webp' } })).toBe('/media/avatar.webp');
+  });
+
+  it('отличает сгенерированный портрет от канонического пресета', () => {
+    expect(isGeneratedChildAvatarUrl('https://cdn.example.com/generated/avatar.webp')).toBe(true);
+    expect(isGeneratedChildAvatarUrl('/media/generated/avatar.webp')).toBe(true);
+    expect(isGeneratedChildAvatarUrl('https://example.com/illustrations/avatars/boy_brown.webp')).toBe(false);
+    expect(isGeneratedChildAvatarUrl('./illustrations/avatars/boy_brown.webp')).toBe(false);
+    expect(isGeneratedChildAvatarUrl(undefined)).toBe(false);
+  });
+
+  it('удаляет персональный URL при переходе с фото на пресет и сохраняет настройки фото', () => {
+    const appearance = {
+      avatar_url: 'https://cdn.example.com/generated/avatar.webp',
+      avatar_id: 'girl_brown',
+      hairColor: 'рыжие',
+      hairType: 'кудрявые',
+      eyeColor: 'зелёные',
+      skinTone: 'смуглая',
+      distinctiveFeatures: 'веснушки',
+    };
+
+    const presetAppearance = {
+      ...withoutChildAvatarUrl(appearance),
+      avatar_id: 'girl_blonde',
+      hairColor: 'светлые',
+      hairType: 'длинные',
+      skinTone: 'светлая',
+      distinctiveFeatures: '',
+    };
+
+    expect(presetAppearance).not.toHaveProperty('avatar_url');
+    expect(presetAppearance).toMatchObject({
+      avatar_id: 'girl_blonde',
+      eyeColor: 'зелёные',
+      hairColor: 'светлые',
+      hairType: 'длинные',
+      skinTone: 'светлая',
+      distinctiveFeatures: '',
+    });
+    expect(resolveChildAvatar(presetAppearance)).toContain('girl_blonde.webp');
+    expect(appearance.avatar_url).toBe('https://cdn.example.com/generated/avatar.webp');
   });
 });

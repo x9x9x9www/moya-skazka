@@ -1,8 +1,12 @@
 import { config } from '../config/index';
+import { inferRussianNameGender } from '@moya-skazka/story-engine';
 
 export interface AnalyzeCharacterPhotoInput {
   imageBase64: string;
   mimeType?: string;
+  knownGender?: 'boy' | 'girl';
+  knownName?: string;
+  knownAge?: number;
 }
 
 export interface CharacterVisionResult {
@@ -15,6 +19,7 @@ export interface CharacterVisionResult {
   distinctiveFeatures?: string;
   error?: 'FACE_NOT_DETECTED' | string;
   message?: string;
+  traitsAnalyzed?: boolean;
 }
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -25,6 +30,7 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const MAX_BASE64_LENGTH = 7 * 1024 * 1024; // ~5MB бинарных данных
+const MAX_IMAGE_DATA_URL_LENGTH = MAX_BASE64_LENGTH + 64;
 
 function normalizeHairColor(raw?: string): 'светлые' | 'русые' | 'тёмные' | 'рыжие' {
   const val = String(raw || '').toLowerCase().trim();
@@ -61,6 +67,11 @@ function normalizeGender(raw?: string): 'boy' | 'girl' {
   const val = String(raw || '').toLowerCase().trim();
   if (val === 'girl' || val.includes('девочк') || val.includes('жен') || val.includes('дочь')) return 'girl';
   return 'boy';
+}
+
+function resolveKnownGender(input: Pick<AnalyzeCharacterPhotoInput, 'knownGender' | 'knownName'>): 'boy' | 'girl' | null {
+  if (input.knownGender === 'boy' || input.knownGender === 'girl') return input.knownGender;
+  return input.knownName ? inferRussianNameGender(input.knownName) : null;
 }
 
 function normalizeAge(raw?: any): number {
@@ -110,19 +121,24 @@ export class CharacterVisionService {
 
     const isTestEnv = process.env.NODE_ENV === 'test' && process.env.RUN_LIVE_AI_TESTS !== 'true';
     const wellflowKey = config.WELLFLOW_TEXT_KEY || process.env.WELLFLOW_TEXT_KEY;
+    const knownGender = resolveKnownGender(input);
+    const parsedKnownAge = Number(input.knownAge);
+    const knownAge = Number.isInteger(parsedKnownAge) && parsedKnownAge >= 1 && parsedKnownAge <= 12 ? parsedKnownAge : undefined;
 
-    // Безопасный фоллбэк для тестов и локальной разработки без ключа
-    if (isTestEnv || !wellflowKey) {
-      console.warn('[CharacterVisionService] Режим тестирования / ключ отсутствует, возвращаем тестовый результат.');
+    if (isTestEnv) {
       return {
-        gender: 'boy',
-        approxAge: 4,
+        gender: knownGender || 'boy',
+        approxAge: knownAge || 4,
         hairColor: 'русые',
         hairType: 'короткие',
         eyeColor: 'карие',
         skinTone: 'персиковая',
         distinctiveFeatures: 'милая открытая улыбка',
+        traitsAnalyzed: true,
       };
+    }
+    if (!wellflowKey) {
+      throw new Error('WELLFLOW_TEXT_KEY не настроен');
     }
 
     try {
@@ -144,6 +160,7 @@ export class CharacterVisionService {
 
       const res = await fetch(`${config.WELLFLOW_API_URL}/chat/completions`, {
         method: 'POST',
+        signal: AbortSignal.timeout(45000),
         headers: {
           Authorization: `Bearer ${wellflowKey}`,
           'Content-Type': 'application/json',
@@ -180,14 +197,21 @@ export class CharacterVisionService {
         };
       }
 
+      const hasGender = knownGender || (parsed.gender !== undefined && parsed.gender !== null && parsed.gender !== '');
+      const hasAge = knownAge || (parsed.approxAge !== undefined && parsed.approxAge !== null && parsed.approxAge !== '');
+      const hasVisualTraits = [parsed.hairColor, parsed.hairType, parsed.eyeColor, parsed.skinTone]
+        .every((value) => value !== undefined && value !== null && value !== '');
+      const traitsAnalyzed = !!hasGender && !!hasAge && hasVisualTraits;
+
       return {
-        gender: normalizeGender(parsed.gender),
-        approxAge: normalizeAge(parsed.approxAge),
+        gender: knownGender || normalizeGender(parsed.gender),
+        approxAge: knownAge || normalizeAge(parsed.approxAge),
         hairColor: normalizeHairColor(parsed.hairColor),
         hairType: normalizeHairType(parsed.hairType),
         eyeColor: normalizeEyeColor(parsed.eyeColor),
         skinTone: normalizeSkinTone(parsed.skinTone),
         distinctiveFeatures: String(parsed.distinctiveFeatures || '').trim(),
+        traitsAnalyzed,
       };
     } catch (err: any) {
       rawBase64 = ''; // Zero-Storage
@@ -211,17 +235,32 @@ export class CharacterVisionService {
    * Шаг В: генерация 3D Pixar портрета крупным планом (Nano-Banana-2)
    */
   public async generateAvatar(input: GenerateCharacterAvatarInput): Promise<GenerateCharacterAvatarResult> {
-    const rawPhoto = input.imageBase64;
-    const traitsResult = await this.analyzePhoto({
-      imageBase64: rawPhoto,
-      mimeType: input.mimeType,
-    });
-    // Шаг Б: обнуляем буфер
-    input.imageBase64 = '';
+    let rawPhoto = input.imageBase64;
+    if (rawPhoto.length > MAX_IMAGE_DATA_URL_LENGTH) {
+      rawPhoto = '';
+      input.imageBase64 = '';
+      throw new Error('Размер фотографии превышает допустимый лимит (5 МБ).');
+    }
+    let traitsResult: CharacterVisionResult;
+    try {
+      traitsResult = await this.analyzePhoto({
+        imageBase64: rawPhoto,
+        mimeType: input.mimeType,
+        knownGender: input.knownGender,
+        knownName: input.knownName,
+        knownAge: input.knownAge,
+      });
+    } finally {
+      rawPhoto = '';
+      input.imageBase64 = '';
+    }
 
+    const traitsAnalyzed = !traitsResult.error && traitsResult.traitsAnalyzed === true;
+    const parsedKnownAge = Number(input.knownAge);
+    const knownAge = Number.isInteger(parsedKnownAge) && parsedKnownAge >= 1 && parsedKnownAge <= 12 ? parsedKnownAge : undefined;
     const traits = {
-      gender: traitsResult.gender || 'boy',
-      approxAge: traitsResult.approxAge || 4,
+      gender: resolveKnownGender(input) || traitsResult.gender || 'boy',
+      approxAge: knownAge || traitsResult.approxAge || 4,
       hairColor: traitsResult.hairColor || 'русые',
       hairType: traitsResult.hairType || 'короткие',
       eyeColor: traitsResult.eyeColor || 'карие',
@@ -287,18 +326,18 @@ export class CharacterVisionService {
     const isTestEnv = process.env.NODE_ENV === 'test' && process.env.RUN_LIVE_AI_TESTS !== 'true';
     const imageKey = config.WELLFLOW_IMAGE_KEY || process.env.WELLFLOW_IMAGE_KEY;
 
-    if (isTestEnv || !imageKey) {
-      return {
-        status: 'ok',
-        avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`,
-        avatar_id: avatarId,
-        traits,
-      };
+    const presetUrl = `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`;
+    if (isTestEnv) {
+      return { status: 'ok', traitsAnalyzed, avatarUrl: presetUrl, avatar_id: avatarId, traits };
+    }
+    if (!imageKey) {
+      return { status: 'fallback', traitsAnalyzed, avatarUrl: presetUrl, avatar_id: avatarId, traits };
     }
 
     try {
       const res = await fetch(`${config.WELLFLOW_API_URL}/images/generations`, {
         method: 'POST',
+        signal: AbortSignal.timeout(90000),
         headers: {
           Authorization: `Bearer ${imageKey}`,
           'Content-Type': 'application/json',
@@ -312,7 +351,8 @@ export class CharacterVisionService {
       });
 
       if (!res.ok) {
-        throw new Error(`Wellflow Image HTTP ${res.status}`);
+        const detail = await res.text();
+        throw new Error(`Wellflow Image HTTP ${res.status}: ${detail.slice(0, 300)}`);
       }
 
       const json = (await res.json()) as any;
@@ -321,20 +361,10 @@ export class CharacterVisionService {
         throw new Error('No image URL in response');
       }
 
-      return {
-        status: 'ok',
-        avatarUrl,
-        avatar_id: avatarId,
-        traits,
-      };
+      return { status: 'ok', traitsAnalyzed, avatarUrl, avatar_id: avatarId, traits };
     } catch (err: any) {
-      console.warn('[CharacterVisionService] Ошибка генерации аватара через Wellflow, возврат пресета:', err?.message || err);
-      return {
-        status: 'ok',
-        avatarUrl: `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${avatarId}.webp`,
-        avatar_id: avatarId,
-        traits,
-      };
+      console.warn('[CharacterVisionService] Ошибка генерации аватара через Wellflow:', err?.message || err);
+      return { status: 'fallback', traitsAnalyzed, avatarUrl: presetUrl, avatar_id: avatarId, traits };
     }
   }
 }
@@ -343,10 +373,14 @@ export interface GenerateCharacterAvatarInput {
   imageBase64: string;
   mimeType?: string;
   outfit?: string;
+  knownGender?: 'boy' | 'girl';
+  knownName?: string;
+  knownAge?: number;
 }
 
 export interface GenerateCharacterAvatarResult {
-  status: 'ok';
+  status: 'ok' | 'fallback';
+  traitsAnalyzed: boolean;
   avatarUrl: string;
   avatar_id: string;
   traits: {

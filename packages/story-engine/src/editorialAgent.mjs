@@ -15,7 +15,13 @@
  * 7. Очистка от AI-канцеляризмов, клише и пугающих слов перед сном.
  */
 
-import { declineRussianName, removeAgeFromText, fixGenderAgreements, countWords, classifyClothingNarrativeRole } from './declension.mjs';
+import { declineRussianName, removeAgeFromText, fixGenderAgreements, countWords, classifyClothingNarrativeRole, inferRussianNameGender } from './declension.mjs';
+
+function resolveEditorialGender(childName, explicitGender, storyGender) {
+  if (explicitGender === 'girl' || explicitGender === 'boy') return explicitGender;
+  if (storyGender === 'girl' || storyGender === 'boy') return storyGender;
+  return inferRussianNameGender(childName) || 'boy';
+}
 
 const CYR_PRE = '(?<![а-яёА-ЯЁ0-9a-zA-Z])';
 const CYR_POST = '(?![а-яёА-ЯЁ0-9a-zA-Z])';
@@ -281,10 +287,8 @@ export function proofreadRussianGrammar(text, params = {}) {
   if (!text || typeof text !== 'string') return '';
 
   const childName = (params.childName || 'Герой').trim();
-  const isGirl =
-    params.gender === 'girl' ||
-    (params.gender !== 'boy' && (childName.endsWith('а') || childName.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveEditorialGender(childName, params.gender);
+  const isGirl = effectiveGender === 'girl';
 
   // 1. Базовые родовые глаголы и падежи имени
   let result = fixGenderAgreements(text, childName, effectiveGender);
@@ -617,7 +621,8 @@ export function verifyNarrativeIntegrity(story, params = {}) {
     return { valid: false, issues: ['Сказка не является объектом'], story };
   }
 
-  const childName = (params.childName || 'Герой').trim();
+  const childName = (params.childName || story.childName || 'Герой').trim();
+  const effectiveGender = resolveEditorialGender(childName, params.gender, story.gender);
   const companionHint = params.appearance?.toy || params.customWishes || 'волшебный спутник';
 
   // 1. Проверка структуры сцен (должно быть ровно 4 сцены)
@@ -645,7 +650,7 @@ export function verifyNarrativeIntegrity(story, params = {}) {
 
   // 2. Проверка присутствия героя в тексте
   const fullText = scenes.map((s) => s.text).join(' ');
-  const isGirl = params.gender === 'girl' || childName.endsWith('а') || childName.endsWith('я');
+  const isGirl = effectiveGender === 'girl';
 
   if (!fullText.includes(childName)) {
     issues.push(`Имя ребёнка «${childName}» отсутствовало в тексте`);
@@ -869,16 +874,22 @@ export function verifyNarrativeIntegrity(story, params = {}) {
  */
 export function runEditorialAgent(story, params = {}) {
   const logFixes = [];
+  const childName = params.childName || story.childName || 'Герой';
+  const editorialParams = {
+    ...params,
+    childName,
+    gender: resolveEditorialGender(childName, params.gender, story.gender),
+  };
 
   // Шаг 1: Проверка и гармонизация целостности
-  const integrity = verifyNarrativeIntegrity(story, params);
+  const integrity = verifyNarrativeIntegrity(story, editorialParams);
   logFixes.push(...integrity.fixes);
 
   const edited = { ...integrity.story };
 
   // Шаг 2: Обработка заголовка
   if (edited.title) {
-    let t = proofreadRussianGrammar(edited.title, params);
+    let t = proofreadRussianGrammar(edited.title, editorialParams);
     t = applyYoification(t);
     t = formatRussianDialogues(t);
     edited.title = t;
@@ -889,7 +900,7 @@ export function runEditorialAgent(story, params = {}) {
     let text = scene.text || '';
     text = sanitizeToneAndPurity(text);
     text = removeTautologiesAndDuplications(text);
-    text = proofreadRussianGrammar(text, params);
+    text = proofreadRussianGrammar(text, editorialParams);
     text = formatRussianDialogues(text);
     text = applyYoification(text);
     text = applyTypographySpacing(text);
@@ -905,14 +916,14 @@ export function runEditorialAgent(story, params = {}) {
     let question = q.question || '';
     question = sanitizeToneAndPurity(question);
     question = simplifyChildQuestion(question);
-    question = proofreadRussianGrammar(question, params);
+    question = proofreadRussianGrammar(question, editorialParams);
     question = applyYoification(question);
     question = applyTypographySpacing(question);
 
     let hint = q.parent_hint || '';
     if (hint) {
       hint = sanitizeToneAndPurity(hint);
-      hint = proofreadRussianGrammar(hint, params);
+      hint = proofreadRussianGrammar(hint, editorialParams);
       hint = applyYoification(hint);
       hint = applyTypographySpacing(hint);
     }
@@ -984,8 +995,9 @@ Return ONLY a valid JSON object matching:
  * Сборка промпта для LLM-редактора и корректора.
  */
 export function buildLinguisticEditorialPrompt(story, params = {}) {
-  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
   const child = params.childName || story.childName || 'Малыш';
+  const effectiveGender = resolveEditorialGender(child, params.gender, story.gender);
+  const isGirl = effectiveGender === 'girl';
   const age = Number(params.age || story.age) || 4;
 
   const user = `Отредактируй и вычитай черновой текст сказки:

@@ -44,41 +44,9 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   onToggleQuestions,
   onCycleFontSize,
 }) => {
-  const currentScene =
-    book.scenes.find((s) => (s.scene_index ?? (s as any).index) === currentSceneIndex) ||
-    book.scenes[currentSceneIndex - 1] ||
-    book.scenes[0];
-
-  const activeSceneImageUrl = book.scenes[currentSceneIndex - 1]?.image_url || currentScene?.image_url;
-  const [liveImageUrl, setLiveImageUrl] = React.useState<string | null | undefined>(activeSceneImageUrl);
+  const currentScene = book.scenes.find((scene) => scene.scene_index === currentSceneIndex);
+  const activeSceneImageUrl = currentScene?.image_url;
   const [skippedScenes, setSkippedScenes] = React.useState<number[]>([]);
-
-  React.useEffect(() => {
-    const updatedScene =
-      book.scenes.find((s) => (s.scene_index ?? (s as any).index) === currentSceneIndex) ||
-      book.scenes[currentSceneIndex - 1] ||
-      book.scenes[0];
-    const newActiveUrl = book.scenes[currentSceneIndex - 1]?.image_url || updatedScene?.image_url;
-    setLiveImageUrl(newActiveUrl);
-
-    const handler = (e: any) => {
-      const targetIdx = Number(e.detail?.sceneIndex);
-      const url = e.detail?.url;
-      if (url && Array.isArray(book.scenes)) {
-        const targetScene =
-          book.scenes.find((s) => (s.scene_index ?? (s as any).index) === targetIdx) ||
-          book.scenes[targetIdx - 1];
-        if (targetScene) {
-          targetScene.image_url = url;
-        }
-      }
-      if ((targetIdx === currentSceneIndex || targetIdx === currentSceneIndex - 1) && url) {
-        setLiveImageUrl(url);
-      }
-    };
-    window.addEventListener('ms_scene_image_updated', handler);
-    return () => window.removeEventListener('ms_scene_image_updated', handler);
-  }, [currentSceneIndex, activeSceneImageUrl, book.scenes]);
 
   // Вопросы: ровно 1 короткий, понятный вопрос за раз после 2-й сцены в читалке (а вопрос после 4-й — на финальном экране)
   const isQuestionSkipped = skippedScenes.includes(currentSceneIndex);
@@ -277,7 +245,7 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
                 interest={interest || 'Волшебство'}
                 childName={childName || 'Герой'}
                 appearance={appearance}
-                imageUrl={liveImageUrl || activeSceneImageUrl}
+                imageUrl={activeSceneImageUrl}
               />
             </div>
 

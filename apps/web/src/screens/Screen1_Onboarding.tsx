@@ -292,9 +292,8 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
       }
 
       const traits = avatarRes?.traits || {};
-      // ВАЖНО: обновляем внешность и пол ТОЛЬКО если статус ok!
-      // Ни в коем случае не позволяем fallback-ответу перезаписать пол на boy!
-      if (avatarRes?.status === 'ok') {
+      // Обновляем внешность только по явно подтверждённым результатам Vision.
+      if (avatarRes?.traitsAnalyzed === true) {
         if (traits.hairColor) setHairColor(traits.hairColor);
         if (traits.hairType) {
           const rawT = String(traits.hairType).toLowerCase();

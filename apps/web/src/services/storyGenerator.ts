@@ -31,6 +31,133 @@ export interface GenerateStoryParams {
   };
 }
 
+export const SCENE_IMAGE_UPDATED_EVENT = 'ms_scene_image_updated';
+export const COVER_IMAGE_UPDATED_EVENT = 'ms_cover_image_updated';
+
+export interface SceneImageUpdateEventDetail {
+  bookId: string;
+  sceneId: string;
+  sceneIndex: number;
+  url: string;
+}
+
+export interface CoverImageUpdateEventDetail {
+  bookId: string;
+  url: string;
+}
+
+export interface BookImageUpdates {
+  cover?: CoverImageUpdateEventDetail;
+  sceneImages: Map<string, SceneImageUpdateEventDetail>;
+}
+
+const bookImageUpdatesById = new Map<string, BookImageUpdates>();
+const MAX_IMAGE_UPDATE_BOOKS = 50;
+
+function retainRecentBookImageUpdates(bookId: string, updates: BookImageUpdates): void {
+  bookImageUpdatesById.delete(bookId);
+  bookImageUpdatesById.set(bookId, updates);
+  while (bookImageUpdatesById.size > MAX_IMAGE_UPDATE_BOOKS) {
+    const oldestBookId = bookImageUpdatesById.keys().next().value;
+    if (oldestBookId === undefined) break;
+    bookImageUpdatesById.delete(oldestBookId);
+  }
+}
+
+export function isSceneImageUpdateDetail(value: unknown): value is SceneImageUpdateEventDetail {
+  if (!value || typeof value !== 'object') return false;
+  const detail = value as Partial<SceneImageUpdateEventDetail>;
+  return Boolean(
+    typeof detail.bookId === 'string' && detail.bookId.trim().length > 0 &&
+    typeof detail.sceneId === 'string' && detail.sceneId.trim().length > 0 &&
+    Number.isSafeInteger(detail.sceneIndex) && (detail.sceneIndex as number) > 0 &&
+    typeof detail.url === 'string' && detail.url.trim().length > 0
+  );
+}
+
+export function isCoverImageUpdateDetail(value: unknown): value is CoverImageUpdateEventDetail {
+  if (!value || typeof value !== 'object') return false;
+  const detail = value as Partial<CoverImageUpdateEventDetail>;
+  return Boolean(
+    typeof detail.bookId === 'string' && detail.bookId.trim().length > 0 &&
+    typeof detail.url === 'string' && detail.url.trim().length > 0
+  );
+}
+
+export function dispatchSceneImageUpdated(detail: SceneImageUpdateEventDetail): void {
+  if (!isSceneImageUpdateDetail(detail)) return;
+  const updates: BookImageUpdates = bookImageUpdatesById.get(detail.bookId) || {
+    sceneImages: new Map<string, SceneImageUpdateEventDetail>(),
+  };
+  updates.sceneImages.set(detail.sceneId, detail);
+  retainRecentBookImageUpdates(detail.bookId, updates);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SCENE_IMAGE_UPDATED_EVENT, { detail }));
+  }
+}
+
+export function dispatchCoverImageUpdated(detail: CoverImageUpdateEventDetail): void {
+  if (!isCoverImageUpdateDetail(detail)) return;
+  const updates: BookImageUpdates = bookImageUpdatesById.get(detail.bookId) || {
+    sceneImages: new Map<string, SceneImageUpdateEventDetail>(),
+  };
+  updates.cover = detail;
+  retainRecentBookImageUpdates(detail.bookId, updates);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(COVER_IMAGE_UPDATED_EVENT, { detail }));
+  }
+}
+
+export function getBookImageUpdates(bookId: string): BookImageUpdates | undefined {
+  const updates = bookImageUpdatesById.get(bookId);
+  if (!updates) return undefined;
+  retainRecentBookImageUpdates(bookId, updates);
+  return updates;
+}
+
+export function applySceneImageUpdate(
+  book: BookDetailsDTO,
+  detail: SceneImageUpdateEventDetail
+): BookDetailsDTO {
+  if (!isSceneImageUpdateDetail(detail) || book.id !== detail.bookId || book.format === 'TEXT') return book;
+
+  const matchingIndexes = book.scenes.reduce<number[]>((indexes, scene, index) => {
+    if (scene.id === detail.sceneId && scene.scene_index === detail.sceneIndex) indexes.push(index);
+    return indexes;
+  }, []);
+  if (matchingIndexes.length !== 1) return book;
+
+  const targetIndex = matchingIndexes[0];
+  if (book.scenes[targetIndex].image_url === detail.url) return book;
+
+  return {
+    ...book,
+    scenes: book.scenes.map((scene, index) =>
+      index === targetIndex ? { ...scene, image_url: detail.url } : scene
+    ),
+  };
+}
+
+export function applyCoverImageUpdate(
+  book: BookDetailsDTO,
+  detail: CoverImageUpdateEventDetail
+): BookDetailsDTO {
+  if (!isCoverImageUpdateDetail(detail) || book.id !== detail.bookId || book.cover_url === detail.url) return book;
+  return { ...book, cover_url: detail.url };
+}
+
+export function applyBookImageUpdates(book: BookDetailsDTO, updates?: BookImageUpdates): BookDetailsDTO {
+  if (!updates) return book;
+
+  let updatedBook = updates.cover ? applyCoverImageUpdate(book, updates.cover) : book;
+  if (updatedBook.format !== 'TEXT') {
+    for (const detail of updates.sceneImages.values()) {
+      updatedBook = applySceneImageUpdate(updatedBook, detail);
+    }
+  }
+  return updatedBook;
+}
+
 export const DEFAULT_API_BRIDGE_URL =
   (import.meta as any).env?.VITE_API_BRIDGE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
@@ -981,18 +1108,6 @@ export async function generateDynamicStory(
     };
   });
 
-  if (typeof window !== 'undefined') {
-    scenes.forEach((s: any) => {
-      if (s.image_url) {
-        window.dispatchEvent(
-          new CustomEvent('ms_scene_image_updated', {
-            detail: { sceneIndex: s.scene_index, url: s.image_url },
-          })
-        );
-      }
-    });
-  }
-
   const book: BookDetailsDTO = {
     id: bookId,
     title: storyData.title || `${child} и тайна «${params.theme}»`,
@@ -1029,13 +1144,27 @@ export async function generateDynamicStory(
     return book;
   }
 
+  if (book.cover_url) {
+    dispatchCoverImageUpdated({ bookId: book.id, url: book.cover_url });
+  }
+  scenes.forEach((scene: any) => {
+    if (scene.image_url) {
+      dispatchSceneImageUpdated({
+        bookId: book.id,
+        sceneId: scene.id,
+        sceneIndex: scene.scene_index,
+        url: scene.image_url,
+      });
+    }
+  });
+
   // Если какие-то сцены ещё не имеют image_url (например, при запросе в обход моста)
   const missingScenes = scenes.filter((s: any) => !s.image_url);
   if (missingScenes.length > 0) {
     onProgress?.({
       stage: 'drawing',
       progress: 45,
-      message: 'Художественная мастерская рисует 5 иллюстраций...',
+      message: 'Художественная мастерская рисует 4 иллюстрации сцен...',
     });
 
     let completedCount = scenes.length - missingScenes.length;
@@ -1046,33 +1175,31 @@ export async function generateDynamicStory(
           if (url) {
             scene.image_url = url;
             logDev(`[StoryGenerator] ✅ Иллюстрация для сцены ${scene.scene_index} готова:`, url.slice(0, 60));
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('ms_scene_image_updated', {
-                  detail: { sceneIndex: scene.scene_index, url },
-                })
-              );
-            }
+            dispatchSceneImageUpdated({
+              bookId: book.id,
+              sceneId: scene.id,
+              sceneIndex: scene.scene_index,
+              url,
+            });
           }
         } catch (e) {
           console.warn(`[StoryGenerator] ⚠️ Иллюстрация для сцены ${scene.scene_index} задержана:`, e);
         }
         if (!scene.image_url) {
           scene.image_url = getFairytaleFallbackIllustration(params.theme || params.interests?.[0], scene.scene_index);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('ms_scene_image_updated', {
-                detail: { sceneIndex: scene.scene_index, url: scene.image_url },
-              })
-            );
-          }
+          dispatchSceneImageUpdated({
+            bookId: book.id,
+            sceneId: scene.id,
+            sceneIndex: scene.scene_index,
+            url: scene.image_url,
+          });
         }
         completedCount++;
         const progressVal = 40 + Math.round((completedCount / scenes.length) * 35);
         onProgress?.({
           stage: 'drawing',
           progress: progressVal,
-          message: `Художественная мастерская рисует 5 иллюстраций (${completedCount} из ${scenes.length} готовы)...`,
+          message: `Художественная мастерская рисует 4 иллюстрации сцен (${completedCount} из ${scenes.length} готовы)...`,
         });
       })
     );

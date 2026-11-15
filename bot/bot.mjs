@@ -130,6 +130,13 @@ const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2'
 const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
 const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;
 const BRIDGE_PORT = 4040;
+
+function resolveChildGender(name, ...explicitGenders) {
+  for (const gender of explicitGenders) {
+    if (gender === 'girl' || gender === 'boy') return gender;
+  }
+  return inferRussianNameGender(name) || 'boy';
+}
 let publicTunnelUrl = '';
 let activeTunnelSource = '';
 let lastServeoUrl = '';
@@ -723,11 +730,8 @@ async function generateWellflowImageAI(prompt, retries = 2, referenceImageUrl = 
         n: 1,
         size: '1024x1024',
       };
-      if (referenceImageUrl && typeof referenceImageUrl === 'string' && (referenceImageUrl.startsWith('http://') || referenceImageUrl.startsWith('https://'))) {
-        // Консистентность персонажа: референсный 3D-аватар для Nano-Banana-2 / Wellflow (только реальные HTTPS-ссылки)
+      if (referenceImageUrl && typeof referenceImageUrl === 'string' && (/^https?:\/\//.test(referenceImageUrl) || /^data:image\/(jpeg|png|webp);base64,/.test(referenceImageUrl))) {
         bodyPayload.image_url = referenceImageUrl;
-        bodyPayload.reference_image = referenceImageUrl;
-        bodyPayload.init_image = referenceImageUrl;
       }
       const res = await fetchWithTimeout(`${WELLFLOW_API_URL}/images/generations`, {
         method: 'POST',
@@ -824,8 +828,9 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
     await new Promise((r) => setTimeout(r, 500));
 
     const child = params.childName || 'Малыш';
-    const isGirl = params.gender === 'girl' || (child.endsWith('а') || child.endsWith('я'));
-    const declined = declineRussianName(child, isGirl ? 'girl' : 'boy');
+    const gender = resolveChildGender(child, params.gender);
+    const isGirl = gender === 'girl';
+    const declined = declineRussianName(child, gender);
     const theme = params.theme || 'Дружба и светлячок';
     const interest = params.interests?.[0] || 'волшебные звёзды';
     const wishes = params.customWishes ? ` Рядом был любимый спутник — ${params.customWishes}.` : '';
@@ -1050,7 +1055,7 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   story.avatar_url = avatarReferenceUrl;
   story.childName = params.childName || story.childName || 'Малыш';
   story.child_name = story.childName;
-  story.gender = params.gender || story.gender || (story.childName.endsWith('а') || story.childName.endsWith('я') ? 'girl' : 'boy');
+  story.gender = resolveChildGender(story.childName, params.gender, story.gender);
   story.child_gender = story.gender;
   story.age = params.age || story.age || 4;
   story.child_age = story.age;
@@ -1108,7 +1113,8 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   let completedImages = 0;
   const executeImageJob = async (job) => {
     // Image QA Gate: гарантия префикса консистентности персонажа и очистка устаревших дефолтных заглушек
-    const isGirl = story.gender === 'girl' || (story.childName && (story.childName.endsWith('а') || story.childName.endsWith('я')));
+    const imageGender = resolveChildGender(story.childName, params.gender, story.gender);
+    const isGirl = imageGender === 'girl';
     const rawHair = `${story.appearance?.hairLength || ''} ${story.appearance?.hairType || ''} ${story.appearance?.hairStructure || ''}`.toLowerCase();
     const isLongHair = rawHair.includes('длинн') || rawHair.includes('long');
 
@@ -2212,16 +2218,37 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     req.method === 'POST';
 
   if (isGenerateAvatar) {
+    let parsedBody = {};
+    let imageBase64 = '';
+    let knownGender = null;
+    let knownName = null;
+    let knownAge = null;
+    let inferredGenderFromName = null;
     try {
+      console.info('[AvatarGen] Запрос получен');
       let bodyStr = '';
-      for await (const chunk of req) bodyStr += chunk;
-      const parsedBody = JSON.parse(bodyStr || '{}');
-      let imageBase64 = parsedBody.imageBase64 || parsedBody.image;
+      let bodyBytes = 0;
+      let tooLarge = false;
+      for await (const chunk of req) {
+        bodyBytes += Buffer.byteLength(chunk);
+        if (bodyBytes > 8 * 1024 * 1024) {
+          tooLarge = true;
+          continue;
+        }
+        if (!tooLarge) bodyStr += chunk;
+      }
+      if (tooLarge) {
+        res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE', message: 'Размер фото превышает допустимый лимит.' }));
+        return;
+      }
+      parsedBody = JSON.parse(bodyStr || '{}');
+      imageBase64 = parsedBody.imageBase64 || parsedBody.image || '';
       const outfit = parsedBody.outfit || '';
-      const knownGender = parsedBody.knownGender || parsedBody.gender || null;
-      const knownName = parsedBody.knownName || parsedBody.name || null;
-      const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
-      const inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
+      knownGender = parsedBody.knownGender || parsedBody.gender || null;
+      knownName = parsedBody.knownName || parsedBody.name || null;
+      knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
+      inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
       const genderInstruction = knownGender
         ? `Пол ребёнка уже точно подтверждён родителем: ${knownGender === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}.`
         : (inferredGenderFromName
@@ -2239,7 +2266,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       if (AI_MOCK_MODE) {
         console.log('[AvatarGen] ⚡️ Режим тестирования (AI_MOCK_MODE): возврат мок 3D аватара');
-        const mockGender = knownGender || inferredGenderFromName || 'boy';
+        const mockGender = resolveChildGender(knownName, knownGender, inferredGenderFromName);
         const mockTraits = {
           gender: mockGender,
           approxAge: knownAge || 4,
@@ -2411,10 +2438,12 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       console.log(`[AvatarGen] 🎨 Запуск генерации 3D аватара: ${avatarPrompt.slice(0, 100)}...`);
 
       let avatarUrl = '';
+      let generatedImage = false;
       try {
-        const remoteUrl = await generateWellflowImageAI(avatarPrompt, 1, null);
+        const remoteUrl = await generateWellflowImageAI(avatarPrompt, 1);
         if (remoteUrl) {
           avatarUrl = await saveGeneratedImage(remoteUrl, 'avatars', 'avatar_' + Date.now());
+          generatedImage = true;
         }
       } catch (genErr) {
         console.warn('[AvatarGen] ⚠️ Ошибка генерации Nano-Banana-2, fallback к локальному пресету:', genErr.message);
@@ -2436,7 +2465,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       });
       res.end(
         JSON.stringify({
-          status: 'ok',
+          status: generatedImage ? 'ok' : 'fallback',
           avatarUrl,
           avatar_id: avatarId,
           traits,
@@ -2491,6 +2520,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const imageBase64 = parsedBody.imageBase64 || parsedBody.image;
       const knownGender = parsedBody.knownGender || parsedBody.gender || null;
       const knownName = parsedBody.knownName || parsedBody.name || null;
+      const inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
       const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
 
       if (!imageBase64) {
@@ -2504,7 +2534,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       if (AI_MOCK_MODE) {
         console.log('[PhotoVision] ⚡️ Режим тестирования (AI_MOCK_MODE): мгновенный возврат тестового профиля');
-        const mockGender = knownGender || 'boy';
+        const mockGender = resolveChildGender(knownName, knownGender, inferredGenderFromName);
         const mockAnalysis = {
           gender: mockGender,
           approxAge: knownAge || 4,
@@ -2537,7 +2567,6 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         return;
       }
 
-      const inferredGenderFromName = knownName ? inferRussianNameGender(knownName) : null;
       const genderHint = knownGender
         ? `Пол ребёнка уже точно известен: ${knownGender === 'girl' ? 'девочка (girl)' : 'мальчик (boy)'}.`
         : (inferredGenderFromName
@@ -2689,7 +2718,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const knownGender = parsedBody.knownGender || parsedBody.gender || null;
       const knownName = parsedBody.knownName || parsedBody.name || null;
       const knownAge = Number(parsedBody.knownAge || parsedBody.age) || null;
-      const fbGender = knownGender || (knownName && (knownName.endsWith('а') || knownName.endsWith('я')) ? 'girl' : 'boy');
+      const fbGender = knownGender || (knownName ? inferRussianNameGender(knownName) : null) || 'boy';
       const fbAge = knownAge && knownAge >= 2 && knownAge <= 6 ? knownAge : 4;
 
       const fallbackResult = {

@@ -99,4 +99,17 @@ export function resolveChildAvatar(params?: ChildAvatarParams | null): string {
   return `${prefix}illustrations/avatars/${resolveChildAvatarKey(params)}.webp`;
 }
 
+export function isGeneratedChildAvatarUrl(url?: string | null): boolean {
+  return Boolean(
+    url &&
+    (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/media/')) &&
+    !url.includes('/illustrations/avatars/')
+  );
+}
+
+export function withoutChildAvatarUrl<T extends { avatar_url?: string }>(appearance: T): Omit<T, 'avatar_url'> {
+  const appearanceWithoutAvatarUrl = { ...appearance };
+  delete appearanceWithoutAvatarUrl.avatar_url;
+  return appearanceWithoutAvatarUrl;
+}
 

@@ -34,7 +34,7 @@ import {
   SportBallIcon,
   PrincessCrownIcon,
 } from '../components/FairytaleIcons';
-import { resolveChildAvatar, resolveChildAvatarKey, ALL_AVATAR_KEYS } from '../utils/avatarResolver';
+import { resolveChildAvatar, resolveChildAvatarKey, isGeneratedChildAvatarUrl, withoutChildAvatarUrl, ALL_AVATAR_KEYS } from '../utils/avatarResolver';
 import { inferRussianNameGender } from '../utils/russianGrammar';
 import { api } from '../api/client';
 import { haptic } from '../hooks/useTelegram';
@@ -123,6 +123,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   const [visionError, setVisionError] = useState<string | null>(null);
   const [visionSuccess, setVisionSuccess] = useState<string | null>(null);
   const [lastUploadedPhoto, setLastUploadedPhoto] = useState<string | null>(null);
+  const [lastUploadedPhotoMime, setLastUploadedPhotoMime] = useState('image/jpeg');
   const [showManualAppearance, setShowManualAppearance] = useState(false);
   const [isPhotoBased, setIsPhotoBased] = useState<boolean>(() => {
     return Boolean(
@@ -227,6 +228,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     eyeColor: 'карие',
     skinTone: 'светлая',
   };
+  const isGeneratedPhotoAvatar = isGeneratedChildAvatarUrl(appearance.avatar_url);
 
   const updateAppearance = (patch: Partial<typeof appearance> & { hairLength?: string }) => {
     const updated = {
@@ -261,7 +263,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   };
 
   // Запуск серверного конвейера: быстрый Vision анализ + подбор 3D Pixar аватара
-  const processHeroPhoto = async (photoBase64: string) => {
+  const processHeroPhoto = async (photoBase64: string, mimeType = 'image/jpeg') => {
     try {
       setIsAnalyzing(true);
       setVisionError(null);
@@ -270,7 +272,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       const res = await api.generateCharacterAvatar(
         photoBase64,
         appearance.clothingItem,
-        'image/jpeg',
+        mimeType,
         {
           knownGender: data.gender,
           knownName: data.childName,
@@ -279,21 +281,21 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       );
 
       const traits = res?.traits || {};
-      const isOk = res && res.status === 'ok';
+      const hasVisionTraits = res?.traitsAnalyzed === true && !!traits.gender && !!traits.approxAge;
 
-      // ВАЖНО: обновляем пол ТОЛЬКО если статус ok!
-      // Ни в коем случае не позволяем fallback-ответу перезаписать пол на boy!
-      const targetGender: 'boy' | 'girl' = isOk && traits.gender
-        ? (traits.gender as 'boy' | 'girl')
-        : (data.gender as 'boy' | 'girl') || 'boy';
+      const targetGender: 'boy' | 'girl' = data.gender === 'boy' || data.gender === 'girl'
+        ? data.gender
+        : hasVisionTraits && traits.gender
+          ? (traits.gender as 'boy' | 'girl')
+          : 'boy';
 
-      const targetHair = (isOk ? traits.hairColor : undefined) || appearance.hairColor || 'русые';
-      const targetHairType = (isOk ? traits.hairType : undefined) || appearance.hairType || 'кудрявые';
-      const targetSkin = (isOk ? traits.skinTone : undefined) || appearance.skinTone || 'светлая';
-      const targetEye = (isOk ? traits.eyeColor : undefined) || appearance.eyeColor || 'голубые';
-      const targetFeatures = (isOk ? traits.distinctiveFeatures : undefined) || appearance.distinctiveFeatures || '';
-      const targetClothingItem = (isOk ? traits.clothingItem : undefined) || appearance.clothingItem || (targetGender === 'girl' ? 'платьице' : 'уютный свитер');
-      const targetClothingColor = (isOk ? traits.clothingColor : undefined) || appearance.clothingColor || (targetGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой');
+      const targetHair = (hasVisionTraits ? traits.hairColor : undefined) || appearance.hairColor || 'русые';
+      const targetHairType = (hasVisionTraits ? traits.hairType : undefined) || appearance.hairType || 'кудрявые';
+      const targetSkin = (hasVisionTraits ? traits.skinTone : undefined) || appearance.skinTone || 'светлая';
+      const targetEye = (hasVisionTraits ? traits.eyeColor : undefined) || appearance.eyeColor || 'голубые';
+      const targetFeatures = (hasVisionTraits ? traits.distinctiveFeatures : undefined) || appearance.distinctiveFeatures || '';
+      const targetClothingItem = (hasVisionTraits ? traits.clothingItem : undefined) || appearance.clothingItem || (targetGender === 'girl' ? 'платьице' : 'уютный свитер');
+      const targetClothingColor = (hasVisionTraits ? traits.clothingColor : undefined) || appearance.clothingColor || (targetGender === 'girl' ? 'нежно-розовый' : 'небесно-голубой');
 
       const targetAvatarId = res.avatar_id || resolveChildAvatarKey({
         gender: targetGender,
@@ -302,16 +304,11 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         distinctiveFeatures: targetFeatures,
       });
 
-      const isRealGeneratedAvatar =
-        isOk &&
-        res.avatarUrl &&
-        (res.avatarUrl.startsWith('http://') ||
-          res.avatarUrl.startsWith('https://') ||
-          res.avatarUrl.startsWith('/media/'));
+      const isRealGeneratedAvatar = res?.status === 'ok' && isGeneratedChildAvatarUrl(res.avatarUrl);
 
       const newAppearance = {
         ...appearance,
-        avatar_url: isRealGeneratedAvatar ? res.avatarUrl : appearance.avatar_url,
+        avatar_url: isRealGeneratedAvatar ? res.avatarUrl : undefined,
         avatar_id: targetAvatarId,
         hairColor: targetHair,
         hairType: targetHairType,
@@ -326,7 +323,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
         appearance: newAppearance,
         gender: targetGender,
       };
-      if (isOk && traits.approxAge && traits.approxAge >= 1 && traits.approxAge <= 12) {
+      if (hasVisionTraits && typeof traits.approxAge === 'number' && traits.approxAge >= 1 && traits.approxAge <= 12) {
         patch.age = traits.approxAge;
       }
 
@@ -339,10 +336,10 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
       setShowManualAppearance(false);
       if (isRealGeneratedAvatar) {
         setVisionSuccess('✨ 3D-образ персонажа успешно создан нейросетью по фото!');
-      } else if (res?.status === 'fallback') {
-        setVisionSuccess('⚠️ ИИ-мост временно недоступен. Выбран канонический образ. Можно повторить попытку.');
+      } else if (res?.status === 'fallback' || (res?.status === 'ok' && !isRealGeneratedAvatar)) {
+        setVisionError('Не удалось создать персональный портрет. Пока выбран канонический образ. Можно повторить попытку.');
       } else {
-        setVisionSuccess('✨ Герой ожил по фото!');
+        setVisionSuccess('✨ Черты героя определены по фото; выбран канонический образ.');
       }
     } catch (err: any) {
       console.warn('[Screen3] Ошибка генерации аватара по фото:', err);
@@ -379,13 +376,17 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type && !file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
-      setVisionError('Пожалуйста, выберите файл фотографии (JPG, PNG, WEBP).');
+    const supportedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
+    if (!supportedMimeTypes.includes(file.type) && !isHeic) {
+      setVisionError('Поддерживаются фотографии JPG, PNG, WEBP и HEIC/HEIF (если браузер может их открыть).');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     if (file.size > 30 * 1024 * 1024) {
       setVisionError('Размер фото слишком большой (более 30 МБ). Попробуйте другой снимок.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -403,7 +404,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
 
       // Оптимизируем размер через canvas до max 800px для мгновенной передачи в AI Vision
       const img = new Image();
-      const optimizedBase64 = await new Promise<string>((resolve) => {
+      const optimizedBase64 = await new Promise<string>((resolve, reject) => {
         img.onload = () => {
           const maxDim = 800;
           let w = img.width;
@@ -424,16 +425,30 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
           ctx?.drawImage(img, 0, 0, w, h);
           resolve(canvas.toDataURL('image/jpeg', 0.85));
         };
-        img.onerror = () => resolve(rawBase64);
+        img.onerror = () => {
+          if (isHeic || !supportedMimeTypes.includes(file.type)) {
+            reject(new Error('Браузер не смог открыть это фото HEIC/HEIF. Сохраните его в JPG или PNG и попробуйте ещё раз.'));
+          } else {
+            resolve(rawBase64);
+          }
+        };
         img.src = rawBase64;
       });
 
+      if (optimizedBase64.length > 7 * 1024 * 1024) {
+        throw new Error('Оптимизированное фото превышает допустимый размер. Выберите снимок поменьше.');
+      }
+
+      const optimizedMime = optimizedBase64.match(/^data:([^;]+);base64,/i)?.[1] || file.type || 'image/jpeg';
       setLastUploadedPhoto(optimizedBase64);
-      await processHeroPhoto(optimizedBase64);
+      setLastUploadedPhotoMime(optimizedMime);
+      await processHeroPhoto(optimizedBase64, optimizedMime);
     } catch (err: any) {
       console.warn('[Screen3] Ошибка чтения фото:', err);
       setIsAnalyzing(false);
-      setVisionError('Не удалось прочитать выбранный файл. Попробуйте выбрать другое фото.');
+      setVisionError(err?.message || 'Не удалось прочитать выбранный файл. Попробуйте выбрать другое фото.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -454,9 +469,8 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
   // Переключение на готовые 3D-пресеты
   const handleApplyPreset = (preset: AvatarPresetItem) => {
     const updatedAppearance = {
-      ...appearance,
+      ...withoutChildAvatarUrl(appearance),
       avatar_id: preset.id,
-      avatar_url: undefined, // сбрасываем AI URL для отображения локального 3D аватара
       hairColor: preset.hairColor,
       hairType: preset.hairType,
       skinTone: preset.skinTone,
@@ -582,7 +596,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
             {/* Бейдж: ✨ Герой ожил по фото! */}
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white text-xs font-bold shadow-sm mb-3.5">
               <Sparkles className="w-3.5 h-3.5 fill-amber-200 text-white animate-spin-slow" />
-              <span>✨ Герой ожил по фото!</span>
+              <span>{isGeneratedPhotoAvatar ? '✨ Персональный 3D-портрет по фото' : '✨ Черты героя определены по фото'}</span>
             </div>
 
             {/* Сияющая золотая рамка вокруг портрета крупным планом */}
@@ -701,6 +715,25 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </button>
             </div>
           </div>
+
+          {visionError && (
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col gap-2 animate-in fade-in">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">{visionError}</div>
+              </div>
+              {lastUploadedPhoto && !isAnalyzing && (
+                <button
+                  type="button"
+                  onClick={() => processHeroPhoto(lastUploadedPhoto, lastUploadedPhotoMime)}
+                  className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Повторить генерацию</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Информативная подсказка вместо блокировки */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/70 border border-amber-200 shadow-xs flex items-start gap-2.5">
@@ -932,7 +965,7 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
                 {lastUploadedPhoto && !isAnalyzing && (
                   <button
                     type="button"
-                    onClick={() => processHeroPhoto(lastUploadedPhoto)}
+                    onClick={() => processHeroPhoto(lastUploadedPhoto, lastUploadedPhotoMime)}
                     className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -942,29 +975,11 @@ export const Screen3_WizardHero: React.FC<Screen3WizardHeroProps> = ({
               </div>
             )}
 
-            {/* Сообщение об успехе или fallback */}
+            {/* Сообщение об успехе */}
             {visionSuccess && (
-              <div
-                className={`p-3 rounded-2xl text-xs flex flex-col gap-2 animate-in fade-in ${
-                  visionSuccess.includes('недоступен')
-                    ? 'bg-amber-50 border border-amber-200 text-amber-900'
-                    : 'bg-emerald-50 border border-emerald-200 text-emerald-900'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-snug">{visionSuccess}</div>
-                </div>
-                {visionSuccess.includes('недоступен') && lastUploadedPhoto && !isAnalyzing && (
-                  <button
-                    type="button"
-                    onClick={() => processHeroPhoto(lastUploadedPhoto)}
-                    className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Попробовать снова</span>
-                  </button>
-                )}
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2 animate-in fade-in">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">{visionSuccess}</div>
               </div>
             )}
           </div>

@@ -504,7 +504,9 @@ export function appearanceHints(appearance = {}) {
 /**
  * Формирует детальные правила интеграции одежды/костюма в промпты генерации сказки
  */
-export function formatClothingNarrativePrompt({ appearance = {}, theme = '', storyMood = '', customWishes = '', childName = 'Малыш' } = {}) {
+export function formatClothingNarrativePrompt({ appearance = {}, theme = '', storyMood = '', customWishes = '', childName = 'Малыш', gender } = {}) {
+  const effectiveGender = resolveChildGender({ gender, appearance }, childName);
+  const isGirl = effectiveGender === 'girl';
   const fullClothingRus = formatFullClothingRus(appearance);
   const hints = appearanceHints(appearance);
   const classification = classifyClothingNarrativeRole({ appearance, theme, storyMood, customWishes });
@@ -516,7 +518,7 @@ export function formatClothingNarrativePrompt({ appearance = {}, theme = '', sto
 - ОДЕЖДА И КОСТЮМ ГЕРОЯ («${fullClothingRus}») — СЮЖЕТНЫЙ ЭЛЕМЕНТ:
   * В этой сказке одежда героя играет активную роль: это специальный ${isSuper ? 'супергеройский костюм' : 'сказочный костюм'} для приключений и добрых дел!
   * СЮЖЕТНЫЙ ХОД (выбери самый органичный для фабулы):
-    ${isSuper ? `1) ВАРИАНТ «ВРУЧЕНИЕ КОСТЮМА»: в Сцене 1 или 2 спутник/волшебные друзья торжественно дарят или вручают ${childName} этот супергеройский костюм («${fullClothingRus}») для важной миссии по спасению друзей! Герой с гордостью надевает его и обретает уверенность.\n    2) ВАРИАНТ «СНАРЯЖЕНИЕ ГОТОВО»: ${childName} уже надел${childName.endsWith('а') || childName.endsWith('я') ? 'а' : ''} свой любимый костюм для игры в супергероя и отправляется на подвиг.` : `1) Герой уже одет в свой любимый ${fullClothingRus} для сказочного похода.\n    2) Герою вручают или помогают примерить ${fullClothingRus} как символ дружбы и посвящения в тайну.`}
+    ${isSuper ? `1) ВАРИАНТ «ВРУЧЕНИЕ КОСТЮМА»: в Сцене 1 или 2 спутник/волшебные друзья торжественно дарят или вручают ${childName} этот супергеройский костюм («${fullClothingRus}») для важной миссии по спасению друзей! Герой с гордостью надевает его и обретает уверенность.\n    2) ВАРИАНТ «СНАРЯЖЕНИЕ ГОТОВО»: ${childName} уже надел${isGirl ? 'а' : ''} свой любимый костюм для игры в супергероя и отправляется на подвиг.` : `1) Герой уже одет в свой любимый ${fullClothingRus} для сказочного похода.\n    2) Герою вручают или помогают примерить ${fullClothingRus} как символ дружбы и посвящения в тайну.`}
   * Костюм должен служить действию (развеваться на ветру, согревать, помогать в полете или преодолении испытания), а НЕ быть сухим каталожным описанием ткани.
   * В 3D-иллюстрациях (visual-поля) строго сохраняй: ${hints.clothes}.
 `.trim();
@@ -581,6 +583,14 @@ function ageBand(age) {
     return { label: '4–5 лет', total: [280, 400], perScene: [70, 100], sentences: 'живые диалоги, эмоции, средние предложения, эмпатия и взаимопомощь' };
   }
   return { label: '6 лет', total: [400, 520], perScene: [100, 130], sentences: 'богатый словарь, причинно-следственные связи и сюжет, мягкий юмор' };
+}
+
+function resolveChildGender(params = {}, childName = params.childName || params.child_name || params.name || '', fallbackGender) {
+  const explicitGender = [params.gender, params.child_gender, params.appearance?.gender]
+    .find((gender) => gender === 'boy' || gender === 'girl');
+  if (explicitGender) return explicitGender;
+  return inferRussianNameGender(childName) ||
+    (fallbackGender === 'boy' || fallbackGender === 'girl' ? fallbackGender : 'boy');
 }
 
 function getThemedWorld(params, random) {
@@ -1336,8 +1346,8 @@ export function buildStoryPrompt(params = {}, options = {}) {
   const hints = appearanceHints(params.appearance);
   const band = ageBand(Number(params.age) || 4);
   const recent = (params.recentOutlines || []).filter(Boolean).slice(0, 5);
-  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveChildGender(params);
+  const isGirl = effectiveGender === 'girl';
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
@@ -1373,6 +1383,7 @@ ${formatClothingNarrativePrompt({
   storyMood: mood,
   customWishes: params.customWishes,
   childName: params.childName,
+  gender: effectiveGender,
 })}
 - Волосы, глаза и кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}.
 - Любимая игрушка-спутник: ${toy}.
@@ -1515,8 +1526,8 @@ export function buildArchitectPrompt(params = {}, options = {}) {
   const dna = options.dna || chooseStoryDna(params, random);
   const band = ageBand(Number(params.age) || 4);
   const recent = (params.recentOutlines || []).filter(Boolean).slice(0, 5);
-  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveChildGender(params);
+  const isGirl = effectiveGender === 'girl';
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
   const fullClothingRus = formatFullClothingRus(params.appearance);
@@ -1617,8 +1628,8 @@ export function buildStoryFromBlueprintPrompt(params = {}, blueprint = {}, optio
   const dna = options.dna || chooseStoryDna(params, random);
   const hints = appearanceHints(params.appearance);
   const band = ageBand(Number(params.age) || 4);
-  const isGirl = params.gender === 'girl' || (params.childName && (params.childName.endsWith('а') || params.childName.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveChildGender(params);
+  const isGirl = effectiveGender === 'girl';
   const declinedName = declineRussianName(params.childName, effectiveGender);
   const genderRus = isGirl ? 'девочка (женский род: увидела, почувствовала, улыбнулась)' : 'мальчик (мужской род: увидел, почувствовал, улыбнулся)';
   const toy = params.appearance?.toy || params.toy || 'плюшевый медвежонок';
@@ -1676,6 +1687,7 @@ ${formatClothingNarrativePrompt({
   storyMood: mood,
   customWishes: params.customWishes,
   childName: params.childName,
+  gender: effectiveGender,
 })}
 - Любимая игрушка-спутник: ${toy} (рядом от первой фразы до ${isBedtime ? 'засыпания' : 'победного финала'})
 - Волосы, глаза, кожа: ${params.appearance?.hairColor || 'русые'} ${params.appearance?.hairType || 'мягкие'} волосы, ${params.appearance?.eyeColor || 'карие'} глаза, ${params.appearance?.skinTone || 'персиковая'} кожа${hints.hasGlasses ? ', милые круглые очки' : ''}
@@ -1755,12 +1767,13 @@ function uniqueBy(items, keyFn) {
 function defaultCharacterFromInput(params, role = 'companion') {
   const hints = appearanceHints(params.appearance);
   if (role === 'hero') {
+    const effectiveGender = resolveChildGender(params);
     return {
       id: 'hero',
       name: params.childName || 'Малыш',
       role: 'hero',
       visual_description:
-        `A ${Number(params.age) || 4}-year-old ${params.gender === 'girl' ? 'girl' : 'boy'} with ` +
+        `A ${Number(params.age) || 4}-year-old ${effectiveGender === 'girl' ? 'girl' : 'boy'} with ` +
         `${hints.hairColor} ${hints.hairType} hair, ${hints.eyes}, ${hints.skin}, wearing ${hints.clothes}${hints.glasses}.`,
     };
   }
@@ -1943,8 +1956,8 @@ export function normalizeStory(raw, params = {}, dna = null) {
 
   // Пост-промпт валидация: очистка от технических скобок возраста и исправление согласования рода
   const childName = params.childName || 'Герой';
-  const isGirl = params.gender === 'girl' || (childName.endsWith('а') || childName.endsWith('я'));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveChildGender(params, childName);
+  const isGirl = effectiveGender === 'girl';
 
   for (const scene of scenes) {
     scene.text = fixGenderAgreements(scene.text, childName, effectiveGender);
@@ -1979,8 +1992,8 @@ export function normalizeStory(raw, params = {}, dna = null) {
     age,
     childName: params.childName || 'Малыш',
     child_name: params.childName || 'Малыш',
-    gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
-    child_gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    gender: effectiveGender,
+    child_gender: effectiveGender,
     appearance: params.appearance || {},
     theme: params.theme || 'Дружба',
     story_dna: storyDna,
@@ -2003,8 +2016,8 @@ export function normalizeStory(raw, params = {}, dna = null) {
     ...editorial.story,
     childName: params.childName || 'Малыш',
     child_name: params.childName || 'Малыш',
-    gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
-    child_gender: params.gender || (params.childName?.endsWith('а') || params.childName?.endsWith('я') ? 'girl' : 'boy'),
+    gender: effectiveGender,
+    child_gender: effectiveGender,
     appearance: params.appearance || editorial.story.appearance || {},
     warnings: finalWarnings,
     metrics: {
@@ -2046,11 +2059,14 @@ export function buildCharacterAnchor(params = {}) {
   const child = params.child_name || params.childName || params.name || hero?.name || 'Малыш';
   const age = Number(params.child_age || params.age) || 4;
 
-  let isGirl = (params.child_gender || params.gender) === 'girl';
-  if (!isGirl && (params.child_gender || params.gender) !== 'boy') {
-    isGirl = String(child).endsWith('а') || String(child).endsWith('я') || hero?.gender === 'girl' || (hero?.visual_description || '').toLowerCase().includes('girl');
-  }
-  const genderWord = isGirl ? 'girl' : 'boy';
+  const heroDescription = (hero?.visual_description || '').toLowerCase();
+  const fallbackGender = hero?.gender === 'girl' || heroDescription.includes('girl')
+    ? 'girl'
+    : hero?.gender === 'boy' || heroDescription.includes('boy')
+      ? 'boy'
+      : undefined;
+  const effectiveGender = resolveChildGender(params, child, fallbackGender);
+  const genderWord = effectiveGender === 'girl' ? 'girl' : 'boy';
 
   let appearance = params.appearance || {};
   if (typeof appearance !== 'object' || Object.keys(appearance).length === 0) {
@@ -2216,13 +2232,24 @@ ${JSON.stringify(raw)}`;
  * Модель иногда пишет 300 слов вместо 400 — это ломает «3–5 минут чтения».
  */
 export function buildLengthRepairPrompt(story, target) {
-  const [min, max] = target || [380, 540];
-  const sceneHint = (story.scenes || [])
-    .map((scene) => `- Сцена ${scene.index}: сейчас ${countWords(scene.text)} слов, нужно примерно ${Math.max(85, Math.round((min + max) / 8))}–${Math.round((min + max) / 5)} слов`)
-    .join('\n');
+  const requested = Array.isArray(target) && target.length >= 2 ? target : [380, 540];
+  const first = typeof requested[0] === 'number' && Number.isFinite(requested[0]) ? Math.max(0, Math.floor(requested[0])) : 380;
+  const second = typeof requested[1] === 'number' && Number.isFinite(requested[1]) ? Math.max(0, Math.ceil(requested[1])) : 540;
+  const min = Math.min(first, second);
+  const max = Math.max(first, second);
+  const scenes = Array.isArray(story?.scenes) ? story.scenes : [];
+  const sceneCount = scenes.length || 4;
+  const perSceneMin = Math.floor(min / sceneCount);
+  const perSceneMax = Math.ceil(max / sceneCount);
+  const sceneHint = scenes.length
+    ? scenes.map((scene, index) => {
+      const sceneNumber = Number(scene.index) || index + 1;
+      return `- Сцена ${sceneNumber}: сейчас ${countWords(scene.text)} слов, цель — примерно ${perSceneMin}–${perSceneMax} слов`;
+    }).join('\n')
+    : `- Восстанови 4 сцены примерно по ${perSceneMin}–${perSceneMax} слов каждая.`;
   return `Сказка получилась короче целевого объёма: ${story.metrics?.total_words || 0} слов вместо ${min}–${max}.
 
-Расширь каждую сцену на 20–35%, не меняя сюжет, персонажей, их внешность, вопросы и финал:
+Расширь каждую сцену по необходимости до указанного ориентира, не меняя сюжет, персонажей, их внешность, вопросы и финал:
 ${sceneHint}
 - Добавь сенсорные детали (звук, запах, текстура), короткие живые диалоги и одно маленькое действие.
 - Не добавляй новых персонажей, новых мест и новых поворотов сюжета.

@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { BoyAvatar, GirlAvatar, FairyStarIcon } from './FairytaleIcons';
 import { ChildProfileDTO } from '@moya-skazka/shared';
 import { resolveChildAvatar } from '../utils/avatarResolver';
+import { inferRussianNameGender } from '../utils/russianGrammar';
 
 interface HeaderProps {
   currentScreen: string;
@@ -44,9 +45,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <img
                   src={resolveChildAvatar({
                     gender:
-                      (activeChild as any).gender ||
-                      activeChild.appearance?.gender ||
-                      (activeChild.name.endsWith('а') || activeChild.name.endsWith('я') ? 'girl' : 'boy'),
+                      ((activeChild as any).gender === 'boy' || (activeChild as any).gender === 'girl'
+                        ? (activeChild as any).gender
+                        : activeChild.appearance?.gender === 'boy' || activeChild.appearance?.gender === 'girl'
+                        ? activeChild.appearance.gender
+                        : inferRussianNameGender(activeChild.name) || 'boy'),
                     hairColor: activeChild.appearance?.hairColor,
                     hairType: (activeChild.appearance as any)?.hairType,
                     hairStructure: (activeChild.appearance as any)?.hairStructure,

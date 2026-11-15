@@ -12,6 +12,26 @@ export interface DeclinedName {
   prep: string;
 }
 
+const FEMININE_CONSONANT_NAMES = new Set([
+  'любовь', 'николь', 'кармен', 'рахиль', 'руфь', 'адель', 'элис', 'эстер', 'эдит',
+  'инес', 'жизель', 'шанталь', 'мишель', 'сесиль', 'нинель', 'жаклин', 'жанетт',
+  'изабель', 'кэтрин', 'хелен', 'элен', 'кристин', 'моник', 'флоренс',
+]);
+
+function unchangedDeclension(name: string): DeclinedName {
+  const prep = getOPreposition(name);
+  return { nom: name, gen: name, dat: name, acc: name, ins: name, prep: `${prep} ${name}` };
+}
+
+function resolveNameGender(name: string, gender: string): 'boy' | 'girl' {
+  if (gender === 'boy' || gender === 'girl') return gender;
+  return inferRussianNameGender(name) || 'boy';
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function getOPreposition(word?: string): 'об' | 'о' {
   const first = (word || '').trim().charAt(0).toLowerCase();
   return ['а', 'и', 'о', 'у', 'э'].includes(first) ? 'об' : 'о';
@@ -23,23 +43,10 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
   }
 
   const trimmed = name.trim();
-  // Поддержка составных дефисных имён (например, «Анна-Мария», «Жан-Поль»)
-  if (trimmed.includes('-')) {
-    const parts = trimmed.split('-');
-    if (parts.length === 2 && parts[0] && parts[1]) {
-      const d1 = declineRussianName(parts[0], gender);
-      const d2 = declineRussianName(parts[1], gender);
-      const prep = getOPreposition(trimmed);
-      return {
-        nom: `${d1.nom}-${d2.nom}`,
-        gen: `${d1.gen}-${d2.gen}`,
-        dat: `${d1.dat}-${d2.dat}`,
-        acc: `${d1.acc}-${d2.acc}`,
-        ins: `${d1.ins}-${d2.ins}`,
-        prep: `${prep} ${d1.prep.replace(/^(о|об|обо)\s+/i, '')}-${d2.prep.replace(/^(о|об|обо)\s+/i, '')}`,
-      };
-    }
+  if (!trimmed) {
+    return { nom: 'Малыш', gen: 'Малыша', dat: 'Малышу', acc: 'Малыша', ins: 'Малышом', prep: 'о Малыше' };
   }
+  if (!canDeclineRussianName(trimmed, gender)) return unchangedDeclension(trimmed);
 
   const lower = trimmed.toLowerCase();
   const lastChar = lower.slice(-1);
@@ -47,6 +54,7 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
   const stem = trimmed.slice(0, -1);
   const stemTwo = trimmed.slice(0, -2);
   const prep = getOPreposition(trimmed);
+  const effectiveGender = resolveNameGender(trimmed, gender);
 
   // 1. Имена на -ия (София, Мария, Амелия...)
   if (lastTwo === 'ия') {
@@ -88,7 +96,7 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
   }
 
   // 4. Мужские имена на согласный (Марк, Лев, Артём, Роман...)
-  if (gender === 'boy' || (!lower.endsWith('а') && !lower.endsWith('я') && !lower.endsWith('и') && !lower.endsWith('е') && !lower.endsWith('о'))) {
+  if (effectiveGender === 'boy') {
     if (lastChar === 'й' || lastChar === 'ь') {
       return {
         nom: trimmed,
@@ -126,14 +134,16 @@ export function declineRussianName(name?: string, gender: 'boy' | 'girl' | strin
 export function canDeclineRussianName(name?: string, gender: 'boy' | 'girl' | string = 'boy'): boolean {
   if (!name || typeof name !== 'string') return false;
   const trimmed = name.trim();
-  if (!/^[а-яёА-ЯЁ\- ]+$/.test(trimmed)) return false;
+  if (!trimmed) return false;
+  // Склоняем только одно кириллическое имя с предсказуемым окончанием.
+  if (!/^[а-яёА-ЯЁ]+$/u.test(trimmed)) return false;
   const lower = trimmed.toLowerCase();
-  // Несклоняемые гласные на конце
-  if (['о', 'е', 'и', 'у', 'ю', 'э'].some((v) => lower.endsWith(v))) return false;
-  const isGirl = gender === 'girl' || (gender !== 'boy' && (lower.endsWith('а') || lower.endsWith('я')));
-  // Иностранные женские имена на согласный (Николь, Кармен, Элис и др.)
-  if (isGirl && !lower.endsWith('а') && !lower.endsWith('я')) return false;
-  return true;
+  const lastChar = lower.slice(-1);
+  if (lower === 'лев' && resolveNameGender(trimmed, gender) === 'boy') return true;
+  if (FEMININE_CONSONANT_NAMES.has(lower)) return false;
+  if (['о', 'е', 'и', 'у', 'ю', 'э', 'ы'].includes(lastChar)) return false;
+  if (resolveNameGender(trimmed, gender) === 'girl' && !['а', 'я'].includes(lastChar)) return false;
+  return ['а', 'я', 'й', 'ь'].includes(lastChar) || /[бвгджзклмнпрстфхцчшщ]$/u.test(lower);
 }
 
 /**
@@ -146,8 +156,8 @@ export function formatSafeForWhom(name?: string, gender: 'boy' | 'girl' | string
     return gender === 'girl' ? 'для малышки' : 'для малыша';
   }
   const trimmed = name.trim();
-  const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveNameGender(trimmed, gender);
+  const isGirl = effectiveGender === 'girl';
   if (!canDeclineRussianName(trimmed, effectiveGender)) {
     return isGirl ? `героиня — ${trimmed}` : `герой — ${trimmed}`;
   }
@@ -167,8 +177,8 @@ export function formatSafeCreationHeader(name?: string, gender: 'boy' | 'girl' |
     return gender === 'girl' ? 'Создаём сказку для малышки' : 'Создаём сказку для малыша';
   }
   const trimmed = name.trim();
-  const isGirl = gender === 'girl' || (gender !== 'boy' && (trimmed.endsWith('а') || trimmed.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveNameGender(trimmed, gender);
+  const isGirl = effectiveGender === 'girl';
   if (!canDeclineRussianName(trimmed, effectiveGender)) {
     return `Создаём сказку. Главн${isGirl ? 'ая героиня' : 'ый герой'} — ${trimmed}`;
   }
@@ -251,18 +261,21 @@ export function fixGenderAgreements(text?: string, arg2: string = 'Герой', 
     gender = arg3 === 'girl' ? 'girl' : 'boy';
   }
 
-  const isGirl = gender === 'girl' || (childName && (childName.endsWith('а') || childName.endsWith('я')));
-  const effectiveGender = isGirl ? 'girl' : 'boy';
+  const effectiveGender = resolveNameGender(childName, gender);
+  const isGirl = effectiveGender === 'girl';
   const declined = declineRussianName(childName, effectiveGender);
+  const escapedChildName = escapeRegExp(childName);
 
   const CYR_PRE = '(?<![а-яёА-ЯЁ])';
   const CYR_POST = '(?![а-яёА-ЯЁ])';
 
-  // Исправляем несклонённое имя после предлогов и существительных:
-  clean = clean.replace(new RegExp(`${CYR_PRE}(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.gen}`);
-  clean = clean.replace(new RegExp(`${CYR_PRE}(вместе с|рядом с|вслед за)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.ins}`);
-  clean = clean.replace(new RegExp(`${CYR_PRE}(навстречу|к)\\s+${childName}${CYR_POST}`, 'g'), `$1 ${declined.dat}`);
-  clean = clean.replace(new RegExp(`${CYR_PRE}(о|об|обо)\\s+${childName}${CYR_POST}`, 'gi'), declined.prep);
+  // Склоняем только уверенно распознанные имена; остальные оставляем без изменений.
+  if (canDeclineRussianName(childName, effectiveGender)) {
+    clean = clean.replace(new RegExp(`${CYR_PRE}(Сердце|сердце|ладошка|ладошки|глаза|улыбка|рука|ручки|голос|взгляд)\\s+${escapedChildName}${CYR_POST}`, 'g'), `$1 ${declined.gen}`);
+    clean = clean.replace(new RegExp(`${CYR_PRE}(вместе с|рядом с|вслед за)\\s+${escapedChildName}${CYR_POST}`, 'g'), `$1 ${declined.ins}`);
+    clean = clean.replace(new RegExp(`${CYR_PRE}(навстречу|к)\\s+${escapedChildName}${CYR_POST}`, 'g'), `$1 ${declined.dat}`);
+    clean = clean.replace(new RegExp(`${CYR_PRE}(о|об|обо)\\s+${escapedChildName}${CYR_POST}`, 'gi'), declined.prep);
+  }
 
   if (isGirl) {
     const verbReplacements: [string, string][] = [
@@ -326,16 +339,21 @@ export function fixGenderAgreements(text?: string, arg2: string = 'Герой', 
     ];
 
     for (const [masc, fem] of verbReplacements) {
-      clean = clean.replace(new RegExp(`(${childName}\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(${CYR_PRE}девочка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(${CYR_PRE}малышка\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(${CYR_PRE}героиня\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
-      clean = clean.replace(new RegExp(`(${CYR_PRE}она\\s+)(${masc})${CYR_POST}`, 'gi'), `$1${fem}`);
+      // Исправляем только глагол, непосредственно согласованный с именем ребёнка.
+      clean = clean.replace(new RegExp(`(${CYR_PRE}${escapedChildName}\\s+)(${masc})${CYR_POST}`, 'giu'), `$1${fem}`);
     }
 
-    const verbsPattern = verbReplacements.map((v) => v[0]).join('|');
-    clean = clean.replace(new RegExp(`(${childName}[^.!?—–]+?)${CYR_PRE}(${verbsPattern})${CYR_POST}`, 'gi'), (match, prefix, verb) => {
-      const pair = verbReplacements.find((p) => p[0].toLowerCase() === verb.toLowerCase());
+    // При однородных сказуемых субъект сохраняется: «Аэлита очутилась ... и улыбнулся».
+    // Не переходим через запятые и границы частей предложения, где может появиться другой персонаж.
+    const masculineForms = verbReplacements.map(([masc]) => escapeRegExp(masc)).join('|');
+    const feminineForms = verbReplacements.map(([, fem]) => escapeRegExp(fem));
+    const firstPredicate = `(?:${masculineForms}|${feminineForms.join('|')})`;
+    const coordinatedPredicate = new RegExp(
+      `(${escapedChildName}\\s+${firstPredicate}[^,;.!?…—–]{0,80}?\\s+и\\s+)(${masculineForms})${CYR_POST}`,
+      'giu'
+    );
+    clean = clean.replace(coordinatedPredicate, (match, prefix, verb) => {
+      const pair = verbReplacements.find(([masc]) => masc.toLowerCase() === verb.toLowerCase());
       return pair ? `${prefix}${pair[1]}` : match;
     });
   }
@@ -363,7 +381,10 @@ export function inferRussianNameGender(name?: string): 'boy' | 'girl' | null {
     return 'boy';
   }
 
-  const femaleExceptions = new Set(['любовь', 'николь', 'кармен', 'рахиль', 'руфь', 'адель', 'алиса']);
+  const femaleExceptions = new Set([
+    ...FEMININE_CONSONANT_NAMES,
+    'алиса',
+  ]);
 
   const maleConsonants = new Set([
     'б', 'в', 'г', 'д', 'ж', 'з', 'к', 'л', 'м', 'н', 'п', 'р', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'й'

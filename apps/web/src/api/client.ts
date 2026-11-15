@@ -12,6 +12,18 @@ import { inferRussianNameGender } from '../utils/russianGrammar';
 
 const API_BASE = '/api/v1';
 
+type ChildGender = 'boy' | 'girl';
+
+type PhotoAnalysisContext = { knownGender?: string; knownName?: string };
+
+function resolvePhotoAnalysisGender(providerGender: unknown, context?: PhotoAnalysisContext): ChildGender {
+  if (context?.knownGender === 'boy' || context?.knownGender === 'girl') {
+    return context.knownGender;
+  }
+  if (providerGender === 'boy' || providerGender === 'girl') return providerGender;
+  return inferRussianNameGender(context?.knownName) || 'boy';
+}
+
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     // Если явно передан api_url в query или hash — абсолютный приоритет везде, включая localhost
@@ -82,10 +94,6 @@ class ApiClient {
     const candidates: string[] = [];
     if (primaryBase) {
       candidates.push(primaryBase);
-    }
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      if (!candidates.includes('http://localhost:4040')) candidates.push('http://localhost:4040');
-      if (!candidates.includes('http://127.0.0.1:4040')) candidates.push('http://127.0.0.1:4040');
     }
     if (!isGithubPages && !candidates.includes('')) {
       candidates.push('');
@@ -366,12 +374,26 @@ class ApiClient {
           knownAge: context?.knownAge,
         }),
       });
-      if (res && res.analysis) return res;
-      return { status: 'ok', analysis: res };
+      if (res && res.analysis) {
+        return {
+          ...res,
+          analysis: {
+            ...res.analysis,
+            gender: resolvePhotoAnalysisGender(res.analysis.gender, context),
+          },
+        };
+      }
+      return {
+        status: 'ok',
+        analysis: {
+          ...res,
+          gender: resolvePhotoAnalysisGender(res?.gender, context),
+        },
+      };
     } catch (err: any) {
       console.warn('[ApiClient] Ошибка analyzeChildPhoto, возврат фоллбэка:', err.message);
-      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
-      const fbGender = isGirl ? 'girl' : 'boy';
+      const fbGender = resolvePhotoAnalysisGender(undefined, context);
+      const isGirl = fbGender === 'girl';
       return {
         status: 'fallback',
         analysis: {
@@ -430,7 +452,7 @@ class ApiClient {
       });
       const data = res?.analysis || res;
       return {
-        gender: data.gender || context?.knownGender || 'boy',
+        gender: resolvePhotoAnalysisGender(data.gender, context),
         approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
         hairColor: data.hairColor || 'русые',
         hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
@@ -456,7 +478,7 @@ class ApiClient {
           });
           const data = alt?.analysis || alt;
           return {
-            gender: data.gender || context?.knownGender || 'boy',
+            gender: resolvePhotoAnalysisGender(data.gender, context),
             approxAge: data.approxAge || data.estimatedAge || context?.knownAge || 4,
             hairColor: data.hairColor || 'русые',
             hairType: data.hairType || (data.hairStructure === 'кудрявые' ? 'кудрявые' : data.hairLength || 'короткие'),
@@ -473,8 +495,8 @@ class ApiClient {
         } catch {}
       }
       console.warn('[ApiClient] analyzeCharacterPhoto не ответил вовремя, мгновенный фоллбэк:', err.message);
-      const isGirl = context?.knownGender === 'girl' || (context?.knownName && (context.knownName.endsWith('а') || context.knownName.endsWith('я')));
-      const fbGender = isGirl ? 'girl' : 'boy';
+      const fbGender = resolvePhotoAnalysisGender(undefined, context);
+      const isGirl = fbGender === 'girl';
       return {
         gender: fbGender,
         approxAge: context?.knownAge || 4,
@@ -497,6 +519,7 @@ class ApiClient {
     context?: { knownGender?: string; knownName?: string; knownAge?: number }
   ): Promise<{
     status: 'ok' | 'fallback';
+    traitsAnalyzed?: boolean;
     avatarUrl: string;
     avatar_id?: string;
     traits: {
@@ -527,7 +550,8 @@ class ApiClient {
       });
       if (res && res.avatarUrl) {
         return {
-          status: 'ok',
+          status: res.status === 'fallback' ? 'fallback' : 'ok',
+          traitsAnalyzed: res.traitsAnalyzed,
           avatarUrl: res.avatarUrl,
           avatar_id: res.avatar_id,
           traits: res.traits || {},
@@ -556,6 +580,7 @@ class ApiClient {
       const avatarId = resolveChildAvatarKey(traits);
       return {
         status: 'fallback',
+        traitsAnalyzed: false,
         avatarUrl: resolveChildAvatar({ avatar_id: avatarId }),
         avatar_id: avatarId,
         traits,

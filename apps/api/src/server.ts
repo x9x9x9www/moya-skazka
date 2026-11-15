@@ -23,9 +23,27 @@ import fs from 'fs';
 import { WellflowAIProvider } from './services/ai/wellflow.ai.provider';
 import { CharacterVisionService } from './services/characterVision.service';
 import { storageService, LocalStorageService } from './services/storage';
+import { inferRussianNameGender } from '@moya-skazka/story-engine';
 
 export const app = fastify({
   logger: config.NODE_ENV === 'development',
+  bodyLimit: 8 * 1024 * 1024,
+});
+
+app.setErrorHandler((error, request, reply) => {
+  if (error.statusCode === 413) {
+    request.log.warn({ url: request.url, bodyLimit: 8 * 1024 * 1024 }, 'Request body exceeded the configured limit');
+    return reply.status(413).send({
+      error: 'PAYLOAD_TOO_LARGE',
+      message: 'Размер фотографии превышает допустимый лимит (5 МБ).',
+    });
+  }
+
+  request.log.error({ err: error, url: request.url }, 'Unhandled API request error');
+  return reply.status(error.statusCode || 500).send({
+    error: error.statusCode === 400 ? 'BAD_REQUEST' : 'INTERNAL_SERVER_ERROR',
+    message: error.statusCode === 400 ? error.message : 'Внутренняя ошибка сервера',
+  });
 });
 
 // Регистрация CORS
@@ -878,22 +896,34 @@ app.register(
 
     api.post('/ai/analyze-photo', async (req: FastifyRequest, reply: FastifyReply) => {
       const wellflow = new WellflowAIProvider();
-      const { imageBase64 } = (req.body as any) || {};
+      const { imageBase64, knownGender, knownName, knownAge } = (req.body as any) || {};
       if (!imageBase64) {
         return reply.status(400).send({
           code: 'VALIDATION_ERROR',
           message: 'imageBase64 обязателен',
         });
       }
+      const resolvedGender = knownGender === 'boy' || knownGender === 'girl'
+        ? knownGender
+        : knownName ? inferRussianNameGender(knownName) : null;
+      const parsedAge = Number(knownAge);
+      const resolvedAge = Number.isInteger(parsedAge) && parsedAge >= 1 && parsedAge <= 12 ? parsedAge : undefined;
       try {
         const analysis = await wellflow.analyzePhoto(imageBase64);
-        return { status: 'ok', analysis };
+        return {
+          status: 'ok',
+          analysis: {
+            ...analysis,
+            gender: resolvedGender || analysis.gender || 'boy',
+            estimatedAge: resolvedAge || analysis.estimatedAge || 4,
+          },
+        };
       } catch (err: any) {
         return reply.status(200).send({
           status: 'fallback',
           analysis: {
-            gender: 'boy',
-            estimatedAge: 4,
+            gender: resolvedGender || 'boy',
+            estimatedAge: resolvedAge || 4,
             hairColor: 'русые',
             hairLength: 'короткие',
             hairStructure: 'прямые',
@@ -912,7 +942,7 @@ app.register(
     // ----------------------------------------------------
     const characterVision = new CharacterVisionService();
     const handleCharacterAnalyzePhoto = async (req: FastifyRequest, reply: FastifyReply) => {
-      const { imageBase64, mimeType } = (req.body as any) || {};
+      const { imageBase64, mimeType, knownGender, knownName, knownAge } = (req.body as any) || {};
       if (!imageBase64) {
         return reply.status(400).send({
           error: 'VALIDATION_ERROR',
@@ -920,7 +950,7 @@ app.register(
         });
       }
       try {
-        const result = await characterVision.analyzePhoto({ imageBase64, mimeType });
+        const result = await characterVision.analyzePhoto({ imageBase64, mimeType, knownGender, knownName, knownAge });
         return reply.status(200).send(result);
       } catch (err: any) {
         return reply.status(400).send({
@@ -931,7 +961,7 @@ app.register(
     };
 
     const handleCharacterGenerateAvatar = async (req: FastifyRequest, reply: FastifyReply) => {
-      const { imageBase64, mimeType, outfit } = (req.body as any) || {};
+      const { imageBase64, mimeType, outfit, knownGender, knownName, knownAge } = (req.body as any) || {};
       if (!imageBase64) {
         return reply.status(400).send({
           error: 'VALIDATION_ERROR',
@@ -939,7 +969,7 @@ app.register(
         });
       }
       try {
-        const result = await characterVision.generateAvatar({ imageBase64, mimeType, outfit });
+        const result = await characterVision.generateAvatar({ imageBase64, mimeType, outfit, knownGender, knownName, knownAge });
         return reply.status(200).send(result);
       } catch (err: any) {
         return reply.status(400).send({
@@ -958,7 +988,7 @@ app.register(
 // Прямой роут /api/character/analyze-photo и /api/character/generate-avatar без префикса /v1
 const rootCharacterVision = new CharacterVisionService();
 app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: FastifyReply) => {
-  const { imageBase64, mimeType } = (req.body as any) || {};
+  const { imageBase64, mimeType, knownGender, knownName, knownAge } = (req.body as any) || {};
   if (!imageBase64) {
     return reply.status(400).send({
       error: 'VALIDATION_ERROR',
@@ -966,7 +996,7 @@ app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: Fast
     });
   }
   try {
-    const result = await rootCharacterVision.analyzePhoto({ imageBase64, mimeType });
+    const result = await rootCharacterVision.analyzePhoto({ imageBase64, mimeType, knownGender, knownName, knownAge });
     return reply.status(200).send(result);
   } catch (err: any) {
     return reply.status(400).send({
@@ -977,7 +1007,7 @@ app.post('/api/character/analyze-photo', async (req: FastifyRequest, reply: Fast
 });
 
 app.post('/api/character/generate-avatar', async (req: FastifyRequest, reply: FastifyReply) => {
-  const { imageBase64, mimeType, outfit } = (req.body as any) || {};
+  const { imageBase64, mimeType, outfit, knownGender, knownName, knownAge } = (req.body as any) || {};
   if (!imageBase64) {
     return reply.status(400).send({
       error: 'VALIDATION_ERROR',
@@ -985,7 +1015,7 @@ app.post('/api/character/generate-avatar', async (req: FastifyRequest, reply: Fa
     });
   }
   try {
-    const result = await rootCharacterVision.generateAvatar({ imageBase64, mimeType, outfit });
+    const result = await rootCharacterVision.generateAvatar({ imageBase64, mimeType, outfit, knownGender, knownName, knownAge });
     return reply.status(200).send(result);
   } catch (err: any) {
     return reply.status(400).send({

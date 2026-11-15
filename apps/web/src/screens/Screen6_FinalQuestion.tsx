@@ -34,8 +34,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
       ? 'bg-stone-900 text-stone-100'
       : 'bg-cream-100 text-stone-900';
 
-  const hasIllustrations = Boolean(book.cover_url || book.scenes?.some((s) => Boolean(s.image_url)));
-  const isTextOnly = book.format === 'TEXT' && !hasIllustrations;
+  const isTextOnly = book.format === 'TEXT';
 
   React.useEffect(() => {
     haptic.success();
@@ -77,7 +76,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             Чудесное путешествие завершилось
           </h2>
           <p className="text-xs text-stone-600 dark:text-stone-300 max-w-xs mx-auto leading-relaxed">
-            Герои сладко засыпают под мерцающим звёздным небом, а впереди вас ждут самые добрые и волшебные сны.
+            Герои завершили удивительное путешествие, а впереди вас ждут новые добрые и волшебные истории.
           </p>
         </div>
 
@@ -87,7 +86,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-300">
                 <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-                <span>Вопрос для тёплой беседы перед сном</span>
+                <span>Вопрос для тёплой беседы</span>
               </div>
               <button
                 onClick={() => {
@@ -125,7 +124,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 Хотите оживить любимых героев?
               </h3>
               <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                Создайте новую сказку: Красочные 3D-иллюстрации в мультяшном стиле!
+                Создайте новую сказку и оживите любимых героев. Красочные 3D-иллюстрации в мультяшном стиле.
               </p>
               <button
                 onClick={() => {
@@ -148,7 +147,7 @@ export const Screen6_FinalQuestion: React.FC<Screen6FinalQuestionProps> = ({
                 Готовы к новой истории?
               </h3>
               <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                Отправьтесь в новое увлекательное путешествие с любимыми героями: Красочные 3D-иллюстрации в мультяшном стиле!
+                Отправьтесь в новое увлекательное путешествие с любимыми героями. Красочные 3D-иллюстрации в мультяшном стиле!
               </p>
               <button
                 onClick={() => {
