@@ -6,6 +6,9 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { shouldActivateTunnel } from './tunnelPriority.mjs';
+import { buildAppUrlWithApi } from './appUrls.mjs';
+import { resolveRuntimeConfig, getAllowedOrigins, buildCorsHeaders } from './runtimeConfig.mjs';
+import { createPollingController, createShutdownController } from './lifecycle.mjs';
 import {
   buildStoryPrompt,
   buildArchitectPrompt,
@@ -48,8 +51,9 @@ function loadEnv() {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
           const [key, ...vals] = trimmed.split('=');
+          const name = key.trim();
           const val = vals.join('=').trim().replace(/^['"]|['"]$/g, '');
-          process.env[key.trim()] = val;
+          if (process.env[name] === undefined) process.env[name] = val;
         }
       }
       break;
@@ -129,7 +133,11 @@ const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2'
 
 const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
 const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;
-const BRIDGE_PORT = 4040;
+const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const runtimeConfig = resolveRuntimeConfig({ env: process.env, botDir: BOT_DIR });
+const BRIDGE_PORT = runtimeConfig.port;
+const allowedOrigins = getAllowedOrigins(process.env);
+const pollingController = createPollingController();
 
 function resolveChildGender(name, ...explicitGenders) {
   for (const gender of explicitGenders) {
@@ -142,15 +150,14 @@ let activeTunnelSource = '';
 let lastServeoUrl = '';
 let lastLocalTunnelUrl = '';
 
-const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const GENERATED_DIR = path.join(BOT_DIR, 'generated');
+const GENERATED_DIR = runtimeConfig.generatedDir;
 fs.mkdirSync(GENERATED_DIR, { recursive: true });
 
 // ========================================================
 // 1.1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (bot/data/db.json)
 // ========================================================
-const DATA_DIR = path.join(BOT_DIR, 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+const DATA_DIR = runtimeConfig.dataDir;
+const DB_FILE = runtimeConfig.dbFile;
 
 function initDb() {
   try {
@@ -696,7 +703,10 @@ export function resolveAvatarReferenceUrl(params) {
     return `https://x9x9x9www.github.io/moya-skazka/${clean}`;
   }
   if (direct && direct.startsWith('/media/')) {
-    const base = publicTunnelUrl || (process.env.PUBLIC_BRIDGE_URL || '').replace(/\/+$/, '') || 'http://localhost:4040';
+    const configuredBridge = (process.env.PUBLIC_BRIDGE_URL || '').replace(/\/+$/, '');
+    const base = SKIP_TUNNELS
+      ? configuredBridge || 'http://localhost:4040'
+      : publicTunnelUrl || configuredBridge || 'http://localhost:4040';
     return `${base}${direct}`;
   }
   const app = params?.appearance || {};
@@ -1489,20 +1499,11 @@ export function getSavedDailyIdeas(childId, userId) {
 const server = http.createServer(async (req, res) => {
   const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
   const origin = req.headers['origin'] || '';
-  const allowedOrigins = [
-    'https://x9x9x9www.github.io',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:4000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-  ];
-
-  // Защита CORS: доверенные домены Telegram WebApp + локальная разработка
-  const isAllowedOrigin = allowedOrigins.includes(origin) || origin.endsWith('.loca.lt');
-  res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin ? origin : (origin ? origin : '*'));
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, X-User-Id, x-user-id, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *');
+  const isAllowedOrigin = allowedOrigins.has(origin);
+  const corsHeaders = (requestOrigin = origin) => buildCorsHeaders(requestOrigin, allowedOrigins);
+  if (isAllowedOrigin) {
+    for (const [name, value] of Object.entries(corsHeaders(origin))) res.setHeader(name, value);
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -1550,7 +1551,7 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': contentType,
         'Content-Length': data.length,
         'Cache-Control': 'public, max-age=86400',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(data);
     });
@@ -1559,7 +1560,6 @@ const server = http.createServer(async (req, res) => {
 
 function sendJsonResponse(res, statusCode, data, origin = '') {
   const jsonStr = typeof data === 'string' ? data : JSON.stringify(data);
-  const isAllowed = origin && (origin.includes('github.io') || origin.includes('localhost') || origin.includes('127.0.0.1'));
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(jsonStr),
@@ -1567,9 +1567,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
     'Pragma': 'no-cache',
     'Expires': '0',
     'Surrogate-Control': 'no-store',
-    'Access-Control-Allow-Origin': isAllowed ? origin : '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, X-User-Id, x-user-id, Bypass-Tunnel-Reminder, bypass-tunnel-reminder, X-Pinggy-No-Screen, x-pinggy-no-screen, ngrok-skip-browser-warning, *',
+    ...corsHeaders(origin),
   });
   res.end(jsonStr);
 }
@@ -2238,7 +2236,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         if (!tooLarge) bodyStr += chunk;
       }
       if (tooLarge) {
-        res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(origin) });
         res.end(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE', message: 'Размер фото превышает допустимый лимит.' }));
         return;
       }
@@ -2258,7 +2256,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       if (!imageBase64) {
         res.writeHead(400, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         });
         res.end(JSON.stringify({ error: 'imageBase64 is required' }));
         return;
@@ -2280,7 +2278,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         const mockUrl = `https://x9x9x9www.github.io/moya-skazka/illustrations/avatars/${mockKey}.webp`;
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         });
         res.end(
           JSON.stringify({
@@ -2461,7 +2459,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(
         JSON.stringify({
@@ -2487,7 +2485,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       const fallbackId = resolveChildAvatarKey(fallbackTraits);
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(
         JSON.stringify({
@@ -2526,7 +2524,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       if (!imageBase64) {
         res.writeHead(400, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         });
         res.end(JSON.stringify({ error: 'imageBase64 is required' }));
         return;
@@ -2555,7 +2553,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
         };
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         });
         res.end(
           JSON.stringify({
@@ -2710,7 +2708,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
 
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(JSON.stringify({ status: 'ok', analysis: result, ...result }));
     } catch (err) {
@@ -2741,7 +2739,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       };
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(
         JSON.stringify({
@@ -2873,7 +2871,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       res.writeHead(202, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(jsonStr),
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(jsonStr);
     } catch (err) {
@@ -2882,7 +2880,7 @@ function sendJsonResponse(res, statusCode, data, origin = '') {
       res.writeHead(500, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(errStr),
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(origin),
       });
       res.end(errStr);
     }
@@ -2998,7 +2996,7 @@ let currentTunnel = null;
 let sshTunnelProc = null;
 
 async function startLocalTunnel() {
-  if (currentTunnel) return;
+  if (pollingController.isStopping() || currentTunnel) return;
   if (!shouldActivateTunnel('localtunnel', activeTunnelSource) && activeTunnelSource) {
     return;
   }
@@ -3134,7 +3132,7 @@ function stopServeoTunnel() {
 }
 
 function startServeoTunnel() {
-  if (serveoProc) return;
+  if (pollingController.isStopping() || serveoProc) return;
   if (serveoReconnectTimer) {
     clearTimeout(serveoReconnectTimer);
     serveoReconnectTimer = null;
@@ -3194,7 +3192,7 @@ function startServeoTunnel() {
 let cloudflareProc = null;
 
 function startCloudflareTunnel() {
-  if (cloudflareProc) return;
+  if (pollingController.isStopping() || cloudflareProc) return;
   const binPath = path.resolve('bot/cloudflared');
   if (!fs.existsSync(binPath)) {
     console.warn('[Cloudflare] Бинарник cloudflared не найден, пробуем резервные туннели...');
@@ -3275,7 +3273,7 @@ function stopPinggyTunnel() {
 }
 
 function startPinggyTunnel() {
-  if (pinggyProc) return;
+  if (pollingController.isStopping() || pinggyProc) return;
   if (pinggyReconnectTimer) {
     clearTimeout(pinggyReconnectTimer);
     pinggyReconnectTimer = null;
@@ -3333,7 +3331,7 @@ function startPinggyTunnel() {
 }
 
 function startSshTunnel() {
-  if (sshTunnelProc) return;
+  if (pollingController.isStopping() || sshTunnelProc) return;
   console.log('[SshTunnel] 🌐 Запуск туннеля через localhost.run...');
   try {
     const sshArgs = [
@@ -3386,23 +3384,31 @@ function startSshTunnel() {
   }
 }
 
-// Завершение процессов туннелей при остановке приложения
-process.on('SIGINT', () => {
-  if (serveoProc) try { serveoProc.kill(); } catch {}
-  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
-  if (pinggyProc) try { pinggyProc.kill(); } catch {}
-  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
-  if (currentTunnel) try { currentTunnel.close(); } catch {}
-  process.exit(0);
+// Graceful shutdown for container restarts and local Ctrl-C.
+function stopTunnels() {
+  stopServeoTunnel();
+  stopPinggyTunnel();
+  if (cloudflareProc) {
+    try { cloudflareProc.kill('SIGTERM'); } catch {}
+    cloudflareProc = null;
+  }
+  if (sshTunnelProc) {
+    try { sshTunnelProc.kill('SIGTERM'); } catch {}
+    sshTunnelProc = null;
+  }
+  if (currentTunnel) {
+    try { currentTunnel.close(); } catch {}
+    currentTunnel = null;
+  }
+}
+
+const shutdownController = createShutdownController({
+  server,
+  abortPolling: () => pollingController.stop(),
+  stopTunnels,
+  log: (message) => console.log(message),
 });
-process.on('SIGTERM', () => {
-  if (serveoProc) try { serveoProc.kill(); } catch {}
-  if (cloudflareProc) try { cloudflareProc.kill(); } catch {}
-  if (pinggyProc) try { pinggyProc.kill(); } catch {}
-  if (sshTunnelProc) try { sshTunnelProc.kill(); } catch {}
-  if (currentTunnel) try { currentTunnel.close(); } catch {}
-  process.exit(0);
-});
+if (isMainModule) shutdownController.install();
 
 if (isMainModule) {
   if (SKIP_TUNNELS) {
@@ -3424,14 +3430,16 @@ if (isMainModule) {
 // ========================================================
 // 5. ВЗАИМОДЕЙСТВИЕ С TELEGRAM API
 // ========================================================
-async function callTelegram(method, params = {}) {
+async function callTelegram(method, params = {}, options = {}) {
   try {
     const isLongPoll = method === 'getUpdates';
     const fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
-      signal: AbortSignal.timeout(isLongPoll ? 45000 : 15000),
+      signal: options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(isLongPoll ? 45000 : 15000)])
+        : AbortSignal.timeout(isLongPoll ? 45000 : 15000),
     };
     if (currentProxyAgent) {
       fetchOptions.dispatcher = currentProxyAgent;
@@ -3472,13 +3480,14 @@ async function callTelegram(method, params = {}) {
 }
 
 export function getAppUrlWithApi(apiUrl, isAdmin = false) {
-  const base = WEB_APP_BASE_URL;
-  const target = apiUrl || publicTunnelUrl;
-  let url = target ? `${base}${base.includes('?') ? '&' : '?'}api_url=${encodeURIComponent(target)}` : base;
-  if (isAdmin) {
-    url += `${url.includes('?') ? '&' : '?'}admin=1`;
-  }
-  return url;
+  return buildAppUrlWithApi({
+    webAppBaseUrl: WEB_APP_BASE_URL,
+    apiUrl,
+    isAdmin,
+    skipTunnels: SKIP_TUNNELS,
+    publicBridgeUrl: process.env.PUBLIC_BRIDGE_URL,
+    publicTunnelUrl,
+  });
 }
 
 export async function setChatMenuButtonForUser(chatId, url) {
@@ -3618,8 +3627,8 @@ async function sendWelcome(chatId, firstName, startParam, username = '') {
 async function startPolling() {
   console.log(`[Bot] Инициализация подключения к Telegram...`);
 
-  // Восстановление последнего подтверждённого URL туннеля из файла при старте
-  if (!publicTunnelUrl) {
+  // Восстанавливаем сохранённый tunnel URL только в dev-режиме с включёнными туннелями.
+  if (!SKIP_TUNNELS && !publicTunnelUrl) {
     try {
       const savedTunnel = fs.readFileSync(path.resolve(process.cwd(), '.tunnel_url'), 'utf-8').trim();
       if (savedTunnel && savedTunnel.startsWith('http')) {
@@ -3630,28 +3639,40 @@ async function startPolling() {
   }
 
   let me = null;
-  while (!me || !me.ok) {
-    me = await callTelegram('getMe');
+  while (!pollingController.isStopping() && (!me || !me.ok)) {
+    const authRequest = pollingController.startRequest();
+    if (!authRequest) return;
+    try {
+      me = await callTelegram('getMe', {}, { signal: authRequest.signal });
+    } finally {
+      pollingController.finishRequest(authRequest);
+    }
     if (!me || !me.ok) {
       console.warn('[Bot] Ожидание связи с Telegram API... (повтор через 5 сек)');
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
+  if (pollingController.isStopping()) return;
 
   console.log(`[Bot] ✅ Успешно авторизован: @${me.result.username} (${me.result.first_name}, ID: ${me.result.id})`);
-  if (publicTunnelUrl) {
-    await updateChatMenuWithApi(publicTunnelUrl);
+  if (SKIP_TUNNELS || publicTunnelUrl) {
+    await updateChatMenuWithApi(SKIP_TUNNELS ? process.env.PUBLIC_BRIDGE_URL : publicTunnelUrl);
   }
 
   let offset = 0;
 
-  while (true) {
+  while (!pollingController.isStopping()) {
+    let pollRequest = null;
     try {
+      pollRequest = pollingController.startRequest();
+      if (!pollRequest) break;
       const updates = await callTelegram('getUpdates', {
         offset,
         timeout: 25,
         allowed_updates: ['message', 'callback_query'],
-      });
+      }, { signal: pollRequest.signal });
+      pollingController.finishRequest(pollRequest);
+      if (pollingController.isStopping()) break;
 
       if (!updates || !updates.ok) {
         console.error('[Bot Error getUpdates]:', updates?.description || updates);
@@ -3751,8 +3772,11 @@ async function startPolling() {
         }
       }
     } catch (err) {
+      if (pollingController.isStopping() || err.name === 'AbortError') break;
       console.error('[Bot Polling Error]:', err.message);
       await new Promise((resolve) => setTimeout(resolve, 3000));
+    } finally {
+      pollingController.finishRequest(pollRequest);
     }
   }
 }
