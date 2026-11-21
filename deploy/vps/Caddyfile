@@ -1,0 +1,7 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    @backend path /api/* /media/* /health
+    reverse_proxy @backend bot:4040
+    reverse_proxy web:80
+}

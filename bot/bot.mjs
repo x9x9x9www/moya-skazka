@@ -65,7 +65,8 @@ loadEnv();
 // Настройка прокси для стабильного доступа к Telegram API и AI провайдерам
 const explicitProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
 const isProxyDisabled = process.env.DISABLE_PROXY === 'true' || process.env.NO_PROXY === '*';
-const proxyUrl = isProxyDisabled ? null : (explicitProxy || 'http://127.0.0.1:10809');
+const isProd = process.env.NODE_ENV === 'production';
+const proxyUrl = isProxyDisabled ? null : (explicitProxy || (isProd ? null : 'http://127.0.0.1:10809'));
 
 let currentProxyAgent = null;
 
@@ -120,16 +121,21 @@ if (!BOT_TOKEN && isMainModule) {
   process.exit(1);
 }
 
+const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || process.env.AI_API_URL || process.env.OPENAI_BASE_URL || 'https://api.wellflow.dev/v1';
+const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || process.env.AI_TEXT_KEY || process.env.OPENAI_API_KEY || '';
+const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || process.env.AI_TEXT_MODEL || process.env.OPENAI_MODEL || 'gpt-6-luna';
+const WELLFLOW_IMAGE_KEY = process.env.WELLFLOW_IMAGE_KEY || process.env.AI_IMAGE_KEY || '';
+const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || process.env.AI_IMAGE_MODEL || 'nano-banana-2';
+
 const AI_MOCK_MODE =
   process.env.AI_MOCK_MODE === 'true' ||
   process.env.AI_DISABLED === 'true' ||
-  !process.env.WELLFLOW_TEXT_KEY;
-const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || 'wellflow';
-const WELLFLOW_API_URL = process.env.WELLFLOW_API_URL || 'https://api.wellflow.dev/v1';
-const WELLFLOW_TEXT_KEY = process.env.WELLFLOW_TEXT_KEY || '';
-const WELLFLOW_TEXT_MODEL = process.env.WELLFLOW_TEXT_MODEL || 'gpt-6-luna';
-const WELLFLOW_IMAGE_KEY = process.env.WELLFLOW_IMAGE_KEY || '';
-const WELLFLOW_IMAGE_MODEL = process.env.WELLFLOW_IMAGE_MODEL || 'nano-banana-2';
+  !WELLFLOW_TEXT_KEY;
+const AI_TEXT_PROVIDER = process.env.AI_TEXT_PROVIDER || (WELLFLOW_TEXT_KEY ? 'wellflow' : 'mock');
+
+console.log(
+  `[AI Config] 🧠 Режим генерации: ${AI_MOCK_MODE ? '🎭 MOCK (заглушка)' : `⚡️ LIVE нейросеть (${WELLFLOW_TEXT_MODEL} / ${WELLFLOW_IMAGE_MODEL})`} | URL: ${WELLFLOW_API_URL}`
+);
 
 const TELEGRAM_API_BASE = (process.env.TELEGRAM_API_BASE_URL || 'https://api.telegram.org').replace(/\/+$/, '');
 const TELEGRAM_API = `${TELEGRAM_API_BASE}/bot${BOT_TOKEN}`;

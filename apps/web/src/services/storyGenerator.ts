@@ -1,5 +1,19 @@
 import { BookDetailsDTO } from '@moya-skazka/shared';
 import { declineRussianName, removeAgeFromText, fixGenderAgreements } from '../utils/russianGrammar';
+import { isSameOriginApi } from './runtimeConfig';
+import {
+  buildApiUrlCandidates,
+  extractExplicitApiUrl,
+  getApiUrlCandidates,
+  getLatestManifestApiUrl,
+  isRetryableApiFailure,
+  resolveConfiguredApiUrl,
+  markApiUrlFailed,
+  rememberApiUrl,
+  resetBadApiUrls,
+} from './apiUrlResolver';
+
+export { markApiUrlFailed, resetBadApiUrls } from './apiUrlResolver';
 
 export interface GenerateStoryParams {
   userId?: string;
@@ -158,10 +172,10 @@ export function applyBookImageUpdates(book: BookDetailsDTO, updates?: BookImageU
   return updatedBook;
 }
 
-export const DEFAULT_API_BRIDGE_URL =
-  (import.meta as any).env?.VITE_API_BRIDGE_URL ||
-  (import.meta as any).env?.VITE_API_URL ||
-  '';
+export const DEFAULT_API_BRIDGE_URL = resolveConfiguredApiUrl(
+  (import.meta as any).env?.VITE_API_BRIDGE_URL,
+  (import.meta as any).env?.VITE_API_URL,
+);
 
 const logDev = (...args: unknown[]) => {
   if ((import.meta as any).env?.DEV) {
@@ -443,94 +457,36 @@ export function resolveBookMedia(book: BookDetailsDTO): BookDetailsDTO {
 export function hasExplicitParamUrl(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('api_url')) return true;
-    if (window.location.hash) {
-      const hashClean = window.location.hash.replace(/^#/, '');
-      const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
-      if (hashParams.get('api_url')) return true;
-      const startInHash = hashParams.get('tgWebAppStartParam') || hashParams.get('start_param');
-      if (startInHash && (startInHash.startsWith('http://') || startInHash.startsWith('https://'))) {
-        return true;
-      }
-    }
     const startParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if (typeof startParam === 'string' && (startParam.startsWith('http://') || startParam.startsWith('https://'))) {
-      return true;
-    }
-  } catch {}
-  return false;
-}
-
-const badApiUrls = new Set<string>();
-
-export function markApiUrlFailed(url?: string | null) {
-  if (!url) return;
-  if (hasExplicitParamUrl()) return;
-  const clean = url.trim().replace(/\/$/, '');
-  badApiUrls.add(clean);
-  try {
-    const cached = localStorage.getItem('ms_api_url');
-    if (cached && (cached.replace(/\/$/, '') === clean || clean.includes(cached))) {
-      localStorage.removeItem('ms_api_url');
-    }
-  } catch {}
-}
-
-export function resetBadApiUrls() {
-  badApiUrls.clear();
+    return Boolean(extractExplicitApiUrl(window.location.search, window.location.hash, startParam));
+  } catch {
+    return false;
+  }
 }
 
 export function getActiveApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    const searchParams = new URLSearchParams(window.location.search);
-    let paramUrl = searchParams.get('api_url');
-    if (!paramUrl && window.location.hash) {
-      const hashClean = window.location.hash.replace(/^#/, '');
-      const hashParams = new URLSearchParams(hashClean.includes('?') ? hashClean.slice(hashClean.indexOf('?') + 1) : hashClean);
-      paramUrl = hashParams.get('api_url');
-      if (!paramUrl) {
-        const startInHash = hashParams.get('tgWebAppStartParam') || hashParams.get('start_param');
-        if (startInHash && (startInHash.startsWith('http://') || startInHash.startsWith('https://'))) {
-          paramUrl = startInHash;
-        }
-      }
-    }
-    if (!paramUrl) {
-      try {
-        const startParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
-        if (typeof startParam === 'string' && (startParam.startsWith('http://') || startParam.startsWith('https://'))) {
-          paramUrl = startParam;
-        }
-      } catch {}
-    }
-    if (paramUrl) {
-      const clean = paramUrl.trim().replace(/\/$/, '');
-      if (clean) {
-        badApiUrls.delete(clean);
-        try {
-          localStorage.setItem('ms_api_url', clean);
-        } catch {}
-        return clean;
-      }
-    }
-    try {
-      const cached = localStorage.getItem('ms_api_url');
-      if (cached) {
-        const clean = cached.replace(/\/$/, '');
-        if (clean && !badApiUrls.has(clean)) {
-          return clean;
-        }
-        if (clean && badApiUrls.has(clean)) {
-          localStorage.removeItem('ms_api_url');
-        }
-      }
-    } catch {}
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:4040';
-    }
-  }
-  return DEFAULT_API_BRIDGE_URL;
+  if (typeof window === 'undefined') return DEFAULT_API_BRIDGE_URL;
+  let startParam: string | null = null;
+  try {
+    const value = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+    if (typeof value === 'string') startParam = value;
+  } catch {}
+  if (isSameOriginApi()) return '';
+  const explicitUrl = extractExplicitApiUrl(window.location.search, window.location.hash, startParam);
+  let cachedUrl = '';
+  try {
+    cachedUrl = localStorage.getItem('ms_api_url') || '';
+  } catch {}
+  const localUrls = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? ['http://localhost:4040', 'http://127.0.0.1:4040']
+    : [];
+  return buildApiUrlCandidates({
+    localUrls,
+    manifestUrl: getLatestManifestApiUrl(),
+    explicitUrl,
+    cachedUrl,
+    defaultUrl: DEFAULT_API_BRIDGE_URL,
+  })[0] || '';
 }
 
 /**
@@ -540,41 +496,60 @@ async function pollJob<T>(
   activeApi: string,
   jobId: string,
   maxWaitMs = 240000,
-  onProgress?: (update: StoryProgressUpdate) => void,
-  childName?: string,
-  userId?: string
+  onProgress?: (update: StoryProgressUpdate) => void
 ): Promise<T> {
   const start = Date.now();
+  const deadline = start + maxWaitMs;
+  const fetchWithinDeadline = async (url: string, init: RequestInit): Promise<Response> => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      const error = new Error('Polling deadline exceeded');
+      error.name = 'AbortError';
+      throw error;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.min(3500, remainingMs));
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
   let consecutiveErrors = 0;
   let currentBase = activeApi;
+  let canRefreshEndpoint = false;
 
-  while (Date.now() - start < maxWaitMs) {
-    await new Promise((r) => setTimeout(r, 1200));
+  while (Date.now() < deadline) {
+    const remainingBeforePoll = deadline - Date.now();
+    await new Promise((r) => setTimeout(r, Math.min(1200, remainingBeforePoll)));
+    if (Date.now() >= deadline) break;
     try {
-      // Если было несколько сетевых сбоев, пробуем обновить базовый URL из хранилища
-      if (consecutiveErrors >= 5) {
-        const fresh = getActiveApiUrl();
-        if (fresh && fresh !== currentBase) {
-          currentBase = fresh;
+      // Refresh the manifest after repeated polling errors; never reuse an endpoint already marked failed.
+      if (canRefreshEndpoint && consecutiveErrors >= 5) {
+        const fresh = await getApiUrlCandidates(DEFAULT_API_BRIDGE_URL);
+        const nextBase = fresh.find((base) => base !== currentBase);
+        if (nextBase !== undefined) {
+          currentBase = nextBase;
+          consecutiveErrors = 0;
+          canRefreshEndpoint = false;
         }
       }
 
       // Всегда опрашиваем с меткой времени _t и cache: 'no-store', чтобы Safari/WebKit не кэшировал статус
       const pollUrl = `${currentBase}/api/v1/ai/job-status?id=${encodeURIComponent(jobId)}&_t=${Date.now()}`;
-      const res = await fetch(pollUrl, {
+      const res = await fetchWithinDeadline(pollUrl, {
         method: 'GET',
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Bypass-Tunnel-Reminder': 'true',
-          'X-Pinggy-No-Screen': 'true',
-          'ngrok-skip-browser-warning': 'true',
         },
       });
 
       if (res.ok) {
         consecutiveErrors = 0;
+        canRefreshEndpoint = false;
+        if (currentBase) rememberApiUrl(currentBase);
         const data = await res.json();
         if (data.stage && data.message && onProgress) {
           onProgress({
@@ -594,29 +569,38 @@ async function pollJob<T>(
         if (data.status === 'error' || data.status === 'FAILED_FINAL') {
           throw new Error(`JOB_FAILED: ${data.error || 'Job failed'}`);
         }
+        if (data.status === 'not_found' || data.status === 'NOT_FOUND') {
+          const error = new Error('Задача генерации не найдена на сервере');
+          (error as any).status = 404;
+          throw error;
+        }
       } else if (res.status === 404) {
         consecutiveErrors++;
-        // Пробуем альтернативный маршрут /api/v1/ai/job/:id
-        try {
-          const altPollUrl = `${currentBase}/api/v1/ai/job/${encodeURIComponent(jobId)}?_t=${Date.now()}`;
-          const altRes = await fetch(altPollUrl, {
-            method: 'GET',
-            cache: 'no-store',
-            headers: { 'Cache-Control': 'no-cache, no-store' },
-          });
-          if (altRes.ok) {
-            const altData = await altRes.json();
-            if (altData.status === 'ready' || altData.status === 'COMPLETED' || altData.state === 'COMPLETED') {
-              return (altData.story || altData.book || altData.imageUrl || altData) as T;
-            }
+        const altPollUrl = `${currentBase}/api/v1/ai/job/${encodeURIComponent(jobId)}?_t=${Date.now()}`;
+        const altRes = await fetchWithinDeadline(altPollUrl, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store' },
+        });
+        if (altRes.ok) {
+          const altData = await altRes.json();
+          if (altData.status === 'ready' || altData.status === 'COMPLETED' || altData.state === 'COMPLETED') {
+            return (altData.story || altData.book || altData.imageUrl || altData) as T;
           }
-        } catch {}
-
-        if (consecutiveErrors > 50) {
+          if (altData.status === 'error' || altData.status === 'FAILED_FINAL') {
+            throw new Error(`JOB_FAILED: ${altData.error || 'Job failed'}`);
+          }
+        } else if (altRes.status === 404) {
           throw new Error('Задача генерации не найдена на сервере');
+        } else {
+          const error = new Error(`HTTP ${altRes.status}`);
+          (error as any).status = altRes.status;
+          throw error;
         }
       } else {
-        consecutiveErrors++;
+        const error = new Error(`HTTP ${res.status}`);
+        (error as any).status = res.status;
+        throw error;
       }
     } catch (err: any) {
       if (
@@ -628,6 +612,10 @@ async function pollJob<T>(
         const cleanMsg = err.message.replace(/^JOB_FAILED:\s*/, '');
         throw new Error(cleanMsg);
       }
+      const status = typeof err?.status === 'number' ? err.status : undefined;
+      if (!isRetryableApiFailure(status, err)) throw err;
+      markApiUrlFailed(currentBase);
+      canRefreshEndpoint = true;
       consecutiveErrors++;
       if (consecutiveErrors % 5 === 0 && onProgress) {
         onProgress({
@@ -637,60 +625,9 @@ async function pollJob<T>(
         });
       }
       if (consecutiveErrors > 40) {
-        // Пробуем аварийный запрос последней готовой сказки перед падением
-        if (childName) {
-          try {
-            const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
-            const fallbackRes = await fetch(
-              `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}${userParam}&_t=${Date.now()}`,
-              {
-                method: 'GET',
-                cache: 'no-store',
-                headers: {
-                  'Cache-Control': 'no-cache, no-store, must-revalidate',
-                  'Pragma': 'no-cache',
-                  'Bypass-Tunnel-Reminder': 'true',
-                },
-              }
-            );
-            if (fallbackRes.ok) {
-              const fallbackData = await fallbackRes.json();
-              if (fallbackData.status === 'ready' && fallbackData.story) {
-                logDev('[StoryGenerator] 🔄 Найдена готовая сказка через latest-story!');
-                return fallbackData.story as T;
-              }
-            }
-          } catch {}
-        }
         throw new Error('Потеряно соединение с сервером генерации сказок');
       }
     }
-  }
-
-  // Перед таймаутом проверяем, не завершилась ли сказка на сервере
-  if (childName) {
-    try {
-      const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : '';
-      const fallbackRes = await fetch(
-        `${currentBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(childName)}${userParam}&_t=${Date.now()}`,
-        {
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Bypass-Tunnel-Reminder': 'true',
-          },
-        }
-      );
-      if (fallbackRes.ok) {
-        const fallbackData = await fallbackRes.json();
-        if (fallbackData.status === 'ready' && fallbackData.story) {
-          logDev('[StoryGenerator] 🔄 Готовая сказка получена перед таймаутом!');
-          return fallbackData.story as T;
-        }
-      }
-    } catch {}
   }
 
   throw new Error('Превышено время ожидания генерации сказки (таймаут)');
@@ -703,88 +640,65 @@ async function pollJob<T>(
  * Промпт уже содержит 3D-мультяшный стиль и character bible от Story Engine.
  */
 export async function generateWellflowImage(prompt: string, timeoutMs = 120000): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  const activeApi = getActiveApiUrl();
+  const deadline = Date.now() + timeoutMs;
+  const bases = await getApiUrlCandidates(DEFAULT_API_BRIDGE_URL);
   const candidates: Array<{
     url: string;
     headers: Record<string, string>;
     body: any;
     pollBase: string;
-  }> = [];
-
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    candidates.push({
-      url: 'http://localhost:4040/api/v1/ai/generate-image',
-      headers: { 'Content-Type': 'application/json' },
-      body: { prompt, type: 'scene' },
-      pollBase: 'http://localhost:4040',
-    });
-    candidates.push({
-      url: 'http://127.0.0.1:4040/api/v1/ai/generate-image',
-      headers: { 'Content-Type': 'application/json' },
-      body: { prompt, type: 'scene' },
-      pollBase: 'http://127.0.0.1:4040',
-    });
-  }
-
-  if (activeApi) {
-    candidates.push({
-      url: `${activeApi}/api/v1/ai/generate-image`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Bypass-Tunnel-Reminder': 'true',
-      },
-      body: { prompt, type: 'scene' },
-      pollBase: activeApi,
-    });
-  }
-
-  candidates.push({
-    url: '/api/v1/ai/generate-image',
+  }> = bases.map((base) => ({
+    url: `${base}/api/v1/ai/generate-image`,
     headers: { 'Content-Type': 'application/json' },
     body: { prompt, type: 'scene' },
-    pollBase: '',
-  });
+    pollBase: base,
+  }));
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('github.io') && !bases.includes('')) {
+    candidates.push({
+      url: '/api/v1/ai/generate-image',
+      headers: { 'Content-Type': 'application/json' },
+      body: { prompt, type: 'scene' },
+      pollBase: '',
+    });
+  }
 
-  try {
-    for (const candidate of candidates) {
-      const initCtrl = new AbortController();
-      const initTimer = setTimeout(() => initCtrl.abort(), 3500);
+  for (const candidate of candidates) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) break;
+    const initCtrl = new AbortController();
+    const initTimer = setTimeout(() => initCtrl.abort(), Math.min(3500, remainingMs));
 
-      try {
-        const res = await fetch(candidate.url, {
-          method: 'POST',
-          headers: candidate.headers,
-          body: JSON.stringify(candidate.body),
-          signal: initCtrl.signal,
-        });
-        clearTimeout(initTimer);
+    try {
+      const res = await fetch(candidate.url, {
+        method: 'POST',
+        headers: candidate.headers,
+        body: JSON.stringify(candidate.body),
+        signal: initCtrl.signal,
+      });
 
-        if (res.ok || res.status === 202) {
-          const data = await res.json();
-          if (data.jobId) {
-            const polled = await pollJob<{ imageUrl?: string }>(candidate.pollBase, data.jobId, timeoutMs);
-            const img = polled?.imageUrl || (typeof polled === 'string' ? polled : null);
-            if (img) {
-              clearTimeout(timer);
-              return img;
-            }
-          }
-          const imageUrl = data.imageUrl || data.data?.[0]?.url;
-          if (imageUrl) {
-            clearTimeout(timer);
-            return imageUrl;
-          }
-        }
-      } catch {
-        clearTimeout(initTimer);
-        // try next candidate
+      if (!res.ok && res.status !== 202) {
+        const error = new Error(`HTTP ${res.status}`);
+        (error as any).status = res.status;
+        throw error;
       }
+
+      const data = await res.json();
+      if (candidate.pollBase) rememberApiUrl(candidate.pollBase);
+      if (data.jobId) {
+        const polled = await pollJob<{ imageUrl?: string }>(candidate.pollBase, data.jobId, Math.max(0, deadline - Date.now()));
+        const img = polled?.imageUrl || (typeof polled === 'string' ? polled : null);
+        if (img) return img;
+      }
+      const imageUrl = data.imageUrl || data.data?.[0]?.url;
+      if (imageUrl) return imageUrl;
+    } catch (err: any) {
+      const status = typeof err?.status === 'number' ? err.status : undefined;
+      if (!isRetryableApiFailure(status, err)) throw err;
+      markApiUrlFailed(candidate.pollBase);
+      // try next candidate
+    } finally {
+      clearTimeout(initTimer);
     }
-  } finally {
-    clearTimeout(timer);
   }
 
   return null;
@@ -847,48 +761,18 @@ export async function callWellflowStory(
     recentBlacklist,
   };
 
-  const activeApi = getActiveApiUrl();
-  const candidates: Array<{ url: string; pollBase: string }> = [];
-
-  const addCandidate = (base: string) => {
-    const clean = (base || '').replace(/\/$/, '');
-    if (!clean) return;
-    const full = `${clean}/api/v1/ai/generate-story`;
-    if (!candidates.some((c) => c.url === full)) {
-      candidates.push({ url: full, pollBase: clean });
-    }
-  };
-
-  // 1. Immediately prioritize local port or current origin to avoid stale tunnel delays
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    addCandidate('http://localhost:4040');
-    addCandidate('http://127.0.0.1:4040');
-  }
+  const bases = (await getApiUrlCandidates(DEFAULT_API_BRIDGE_URL)).filter(Boolean);
+  const candidates: Array<{ url: string; pollBase: string }> = bases.map((base) => ({
+    url: `${base}/api/v1/ai/generate-story`,
+    pollBase: base,
+  }));
   if (typeof window !== 'undefined' && !window.location.hostname.includes('github.io')) {
     candidates.push({ url: '/api/v1/ai/generate-story', pollBase: '' });
-  }
-  if (activeApi) addCandidate(activeApi);
-  if (DEFAULT_API_BRIDGE_URL && !DEFAULT_API_BRIDGE_URL.includes('loca.lt')) {
-    addCandidate(DEFAULT_API_BRIDGE_URL);
-  }
-  if (candidates.length === 0 && typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('ms_api_url');
-      if (stored) addCandidate(stored);
-    } catch {}
-    if (candidates.length === 0) {
-      try {
-        const tunnelRes = await fetch('./active_tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-        if (tunnelRes.ok) {
-          const data = await tunnelRes.json();
-          if (data?.url) addCandidate(data.url);
-        }
-      } catch {}
-    }
   }
 
   let jobId: string | null = null;
   let workingPollBase = '';
+  let lastRequestError: any = null;
 
   for (const candidate of candidates) {
     const initCtrl = new AbortController();
@@ -901,56 +785,54 @@ export async function callWellflowStory(
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store',
-          'Bypass-Tunnel-Reminder': 'true',
-          'X-Pinggy-No-Screen': 'true',
-          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(body),
         signal: initCtrl.signal,
       });
       clearTimeout(initTimer);
 
-      if (response.ok || response.status === 202) {
-        const data = await response.json();
-        if ((data.status === 'ready' || data.status === 'COMPLETED') && data.story && Array.isArray(data.story.scenes)) {
-          logDev('[StoryGenerator] ✅ Сказка готова сразу из ответа:', data.story.title);
-          return data.story;
-        } else if (data.story && Array.isArray(data.story.scenes)) {
-          logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.story.title);
-          return data.story;
-        } else if (data.scenes && Array.isArray(data.scenes)) {
-          logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
-          return data;
-        } else if (data.jobId || data.job_id) {
-          jobId = data.jobId || data.job_id;
-          workingPollBase = candidate.pollBase;
-          if (candidate.pollBase) {
-            try {
-              localStorage.setItem('ms_api_url', candidate.pollBase);
-            } catch {}
-          }
-          break;
-        }
-      } else {
-        markApiUrlFailed(candidate.pollBase);
+      if (!response.ok && response.status !== 202) {
+        const error = new Error(`Сервер генерации ответил с кодом ${response.status}`);
+        (error as any).status = response.status;
+        throw error;
+      }
+      const data = await response.json();
+      if (candidate.pollBase) rememberApiUrl(candidate.pollBase);
+      if ((data.status === 'ready' || data.status === 'COMPLETED') && data.story && Array.isArray(data.story.scenes)) {
+        logDev('[StoryGenerator] ✅ Сказка готова сразу из ответа:', data.story.title);
+        return data.story;
+      } else if (data.story && Array.isArray(data.story.scenes)) {
+        logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.story.title);
+        return data.story;
+      } else if (data.scenes && Array.isArray(data.scenes)) {
+        logDev('[StoryGenerator] ✅ Сказка получена напрямую:', data.title);
+        return data;
+      } else if (data.jobId || data.job_id) {
+        jobId = data.jobId || data.job_id;
+        workingPollBase = candidate.pollBase;
+        break;
       }
     } catch (err: any) {
       clearTimeout(initTimer);
+      lastRequestError = err;
+      const status = typeof err?.status === 'number' ? err.status : undefined;
+      if (!isRetryableApiFailure(status, err)) throw err;
       markApiUrlFailed(candidate.pollBase);
-      console.warn(`[StoryGenerator] Не удалось начать генерацию через ${candidate.url}:`, err.message);
+      console.warn('[StoryGenerator] Не удалось связаться с сервером генерации:', status ? `HTTP ${status}` : (err?.name === 'AbortError' ? 'timeout' : 'network error'));
     }
   }
 
   if (jobId) {
     logDev(`[StoryGenerator] ⏳ Ожидание генерации сюжета через мост ${workingPollBase} (jobId: ${jobId})...`);
     const remainingMs = Math.max(30000, timeoutMs - (Date.now() - overallStart));
-    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress, params.childName, effectiveUserId);
+    const polled = await pollJob<any>(workingPollBase, jobId, remainingMs, onProgress);
     if (polled && polled.scenes) {
       logDev('[StoryGenerator] ✅ Сказка получена через Story Engine:', polled.title);
       return polled;
     }
   }
 
+  if (lastRequestError && !isRetryableApiFailure(lastRequestError.status, lastRequestError)) throw lastRequestError;
   throw new Error('Не удалось связаться с сервером генерации сказок ни по одному из адресов');
 }
 
@@ -972,11 +854,9 @@ export interface StoryProgressUpdate {
 
 /**
  * Основная функция генерации сказки:
- * 1. Запрашивает серверный Story Engine с таймаутом (мост или тот же origin).
- * 2. Генерирует уникальную сказку на лету под ребёнка через Story DNA Engine.
- * 3. Мост на сервере генерирует параллельно все 4 иллюстрации через Nano Banana 2.
- * 4. Если связь с мостом прервана или туннель устарел — АВТОМАТИЧЕСКИ И БЕСШОВНО
- *    создаёт полноценную персонализированную сказку через Story Engine без показа ошибок пользователю!
+ * 1. В явном mock-режиме создаёт локальную тестовую сказку без API-вызовов.
+ * 2. В обычном режиме запрашивает серверный Story Engine и передаёт ошибки сети/UI.
+ * 3. Проверяет полноту полученной сказки перед возвратом результата.
  */
 export async function generateDynamicStory(
   params: GenerateStoryParams,
@@ -1021,59 +901,10 @@ export async function generateDynamicStory(
     message: 'Сочиняем неповторимый сюжет и диалоги...',
   });
 
-  let storyData: any = null;
-  let lastError: any = null;
-  try {
-    storyData = await callWellflowStory(params, 240000, onProgress);
-  } catch (err: any) {
-    lastError = err;
-    console.warn('[StoryGenerator] Ошибка вызова callWellflowStory:', err.message);
-    // Пробуем восстановить готовую сказку через latest-story, если связь оборвалась
-    const apiBase = getActiveApiUrl();
-    const effectiveUserId =
-      params.userId ||
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('ms_user_id') : '') ||
-      '';
-    const userParam = effectiveUserId ? `&userId=${encodeURIComponent(effectiveUserId)}` : '';
-    if (apiBase && params.childName) {
-      try {
-        let checkRes = await fetch(
-          `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}${userParam}&_t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!checkRes.ok && effectiveUserId) {
-          checkRes = await fetch(
-            `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(params.childName.trim())}&_t=${Date.now()}`,
-            { cache: 'no-store' }
-          );
-        }
-        if (checkRes.ok) {
-          const data = await checkRes.json();
-          if (data?.status === 'ready' && data?.story?.scenes?.length >= 4) {
-            storyData = data.story;
-          }
-        }
-      } catch {}
-    }
-    if (!storyData) {
-      console.warn('[StoryGenerator] ⚠️ Сервер ИИ временно недоступен, бесшовный переход на персонализированную сказку Story Engine:', lastError?.message);
-      onProgress?.({
-        stage: 'finishing',
-        progress: 100,
-        message: 'Сказка готова!',
-      });
-      return createMockStory(params);
-    }
-  }
+  const storyData = await callWellflowStory(params, 240000, onProgress);
 
   if (!storyData || !Array.isArray(storyData.scenes) || storyData.scenes.length < 4) {
-    console.warn('[StoryGenerator] ⚠️ Неполные данные от ИИ, создание персонализированной сказки');
-    onProgress?.({
-      stage: 'finishing',
-      progress: 100,
-      message: 'Сказка готова!',
-    });
-    return createMockStory(params);
+    throw new Error('Сервер генерации вернул неполную сказку. Попробуйте ещё раз.');
   }
 
   const isGirl = params.gender === 'girl' || (params.gender !== 'boy' && (params.childName?.endsWith('а') || params.childName?.endsWith('я')));

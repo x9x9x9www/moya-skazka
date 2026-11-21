@@ -19,7 +19,7 @@ import { Screen10_PaymentSheet } from './screens/Screen10_PaymentSheet';
 import { Screen11_Referrals } from './screens/Screen11_Referrals';
 import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, DailyIdeaDTO, UserDTO } from '@moya-skazka/shared';
-import { applyBookImageUpdates, applyCoverImageUpdate, applySceneImageUpdate, generateDynamicStory, createMockStory, getBookImageUpdates, getFairytaleFallbackIllustration, isCoverImageUpdateDetail, isSceneImageUpdateDetail, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, SCENE_IMAGE_UPDATED_EVENT, COVER_IMAGE_UPDATED_EVENT, getActiveApiUrl } from './services/storyGenerator';
+import { applyBookImageUpdates, applyCoverImageUpdate, applySceneImageUpdate, generateDynamicStory, createMockStory, getBookImageUpdates, getFairytaleFallbackIllustration, isCoverImageUpdateDetail, isSceneImageUpdateDetail, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, SCENE_IMAGE_UPDATED_EVENT, COVER_IMAGE_UPDATED_EVENT } from './services/storyGenerator';
 import { resolveChildAvatar } from './utils/avatarResolver';
 import { formatSafeCreationHeader, inferRussianNameGender } from './utils/russianGrammar';
 import { FairyStarIcon } from './components/FairytaleIcons';
@@ -862,71 +862,6 @@ export const App: React.FC = () => {
     } catch (err: any) {
       clearInterval(countdownInterval);
       console.error('[App] ❌ Ошибка генерации сказки:', err);
-
-      // Аварийное восстановление: проверяем, возможно сказка уже готова на сервере
-      let restoredBook: BookDetailsDTO | null = null;
-      if (wizardData.childName) {
-        try {
-          const apiBase = getActiveApiUrl();
-          if (apiBase) {
-            const userParam = currentUserId ? `&userId=${encodeURIComponent(currentUserId)}` : '';
-            const checkRes = await fetch(
-              `${apiBase}/api/v1/ai/latest-story?childName=${encodeURIComponent(wizardData.childName.trim())}${userParam}&_t=${Date.now()}`,
-              {
-                method: 'GET',
-                cache: 'no-store',
-                headers: {
-                  'Cache-Control': 'no-cache, no-store, must-revalidate',
-                  'Pragma': 'no-cache',
-                  'Bypass-Tunnel-Reminder': 'true',
-                },
-                signal: AbortSignal.timeout(6000),
-              }
-            );
-            if (checkRes.ok) {
-              const data = await checkRes.json();
-              if (data?.status === 'ready' && data?.story?.scenes) {
-                restoredBook = data.story;
-              }
-            }
-          }
-        } catch {}
-      }
-
-      if (restoredBook) {
-        if ((import.meta as any).env?.DEV) {
-          console.log('[App] 🎉 Сказка успешно восстановлена из серверного кэша!');
-        }
-        updateCreationStage('finishing');
-        setJobProgress(100);
-        const newSummary: BookSummaryDTO = {
-          id: restoredBook.id,
-          child_id: activeChildId || 'default',
-          child_name: wizardData.childName,
-          title: restoredBook.title,
-          status: 'ILLUSTRATED',
-          format: 'ILLUSTRATED',
-          cover_url: resolveMediaUrl(restoredBook.cover_url || restoredBook.scenes[0]?.image_url) || getFairytaleFallbackIllustration(wizardData.theme || restoredBook.title),
-          created_at: new Date().toISOString(),
-        };
-        setBooks((prev) => {
-          const updated = [newSummary, ...prev];
-          try {
-            localStorage.setItem('ms_books', JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-        try {
-          localStorage.setItem(`ms_story_${restoredBook.id}`, JSON.stringify(restoredBook));
-        } catch {}
-
-        setTimeout(() => {
-          setIsCreatingStory(false);
-          haptic.success();
-          openReader(restoredBook!);
-        }, 350);
-        return;
-      }
 
       setIsCreatingStory(false);
       setGenerationError(

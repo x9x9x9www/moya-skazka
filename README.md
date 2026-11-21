@@ -125,6 +125,10 @@ npm run dev:web
 
 Ключи `WELLFLOW_TEXT_KEY` и `WELLFLOW_IMAGE_KEY` должны быть в корневом `.env` и не попадать в git.
 
+### Закрытая бета на VPS
+
+Для отдельного VPS-развёртывания текущего Telegram-моста и Mini App (без Fastify/PostgreSQL Compose) см. [инструкцию VPS](deploy/vps/README.md). Она использует Docker Compose, Caddy/HTTPS и same-origin маршруты API/media; существующий корневой Compose не меняется. Публикация, DNS и Telegram Web App URL настраиваются вручную после проверок.
+
 ## 🚀 Быстрый старт
 
 ### Вариант 1: Запуск через Docker Compose (Рекомендуемый)

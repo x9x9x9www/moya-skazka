@@ -47,8 +47,13 @@ jobs:
       - name: Test API
         run: npm run test --workspace=@moya-skazka/api
 
+      - name: Test Web App
+        run: npm run test --workspace=@moya-skazka/web
+
       - name: Build Web App
         run: npm run build --workspace=@moya-skazka/web
+        env:
+          VITE_API_BRIDGE_URL: ${{ vars.VITE_API_BRIDGE_URL }}
 
       - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3

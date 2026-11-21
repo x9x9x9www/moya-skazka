@@ -6,7 +6,9 @@ import {
   UserBalanceDTO,
   UserDTO,
 } from '@moya-skazka/shared';
-import { getActiveApiUrl, markApiUrlFailed, hasExplicitParamUrl } from '../services/storyGenerator';
+import { getActiveApiUrl } from '../services/storyGenerator';
+import { getApiUrlCandidates, isRetryableApiFailure, markApiUrlFailed, rememberApiUrl, resolveConfiguredApiUrl } from '../services/apiUrlResolver';
+import { isSameOriginApi } from '../services/runtimeConfig';
 import { resolveChildAvatar, resolveChildAvatarKey } from '../utils/avatarResolver';
 import { inferRussianNameGender } from '../utils/russianGrammar';
 
@@ -26,20 +28,15 @@ function resolvePhotoAnalysisGender(providerGender: unknown, context?: PhotoAnal
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    // Если явно передан api_url в query или hash — абсолютный приоритет везде, включая localhost
-    if (hasExplicitParamUrl()) {
-      const active = getActiveApiUrl();
-      if (active) return active.replace(/\/$/, '');
-    }
     const host = window.location.hostname;
-    // Локальная разработка через Vite dev server
     if (host === 'localhost' || host === '127.0.0.1') {
-      const viteApi = (import.meta as any).env?.VITE_API_URL;
+      const viteApi = resolveConfiguredApiUrl(
+        (import.meta as any).env?.VITE_API_BRIDGE_URL,
+        (import.meta as any).env?.VITE_API_URL,
+      );
       return viteApi ? viteApi.replace(/\/$/, '') : '';
     }
-    // На продакшене (GitHub Pages, Telegram WebApp): используем переданный api_url или активный мост
-    const active = getActiveApiUrl();
-    if (active) return active.replace(/\/$/, '');
+    return getActiveApiUrl();
   }
   return '';
 }
@@ -78,62 +75,25 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Bypass-Tunnel-Reminder': 'true',
-      'X-Pinggy-No-Screen': 'true',
-      'ngrok-skip-browser-warning': 'true',
       ...(options.headers as Record<string, string>),
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
 
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
-    const primaryBase = getApiBaseUrl();
-    const candidates: string[] = [];
-    if (primaryBase) {
-      candidates.push(primaryBase);
-    }
-    if (!isGithubPages && !candidates.includes('')) {
-      candidates.push('');
-    }
-    // Гарантируем, что candidates всегда содержит primaryBase, если он не пустой
-    if (primaryBase && !candidates.includes(primaryBase)) {
-      candidates.unshift(primaryBase);
-    }
-    // Если на GitHub Pages список пуст, берем сохраненный туннель из localStorage или active_tunnel.json
-    if (candidates.length === 0 && typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('ms_api_url');
-        if (stored) candidates.push(stored.replace(/\/$/, ''));
-      } catch {}
-      if (candidates.length === 0) {
-        try {
-          const tunnelRes = await fetch('./active_tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-          if (tunnelRes.ok) {
-            const data = await tunnelRes.json();
-            if (data?.url) {
-              const clean = data.url.replace(/\/$/, '');
-              candidates.push(clean);
-              try {
-                localStorage.setItem('ms_api_url', clean);
-              } catch {}
-            }
-          }
-        } catch {}
-      }
-    }
-
+    const isLocalDev = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const viteApi = resolveConfiguredApiUrl(
+      (import.meta as any).env?.VITE_API_BRIDGE_URL,
+      (import.meta as any).env?.VITE_API_URL,
+    );
+    const apiBases = await getApiUrlCandidates(viteApi);
+    const candidates = apiBases.length ? apiBases : (isLocalDev || isSameOriginApi() ? [''] : []);
     let lastError: any = null;
-    for (const base of candidates) {
-      const url = base ? `${base}${API_BASE}${cleanEndpoint}` : `${API_BASE}${cleanEndpoint}`;
-      try {
-        const response = await fetch(url, {
-          ...options,
-          headers,
-        });
 
+    for (const base of candidates) {
+      const url = `${base}${API_BASE}${cleanEndpoint}`;
+      try {
+        const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
           let errBody: any;
           try {
@@ -148,35 +108,20 @@ class ApiClient {
 
         if (base) {
           this.baseFailures[base] = 0;
+          rememberApiUrl(base);
         }
-
-        if (base && base !== primaryBase) {
-          try {
-            localStorage.setItem('ms_api_url', base);
-          } catch {}
-        }
-
         return await response.json();
       } catch (err: any) {
         lastError = err;
-        console.warn(`[ApiClient] Сбой запроса к ${url}:`, err.message);
-        if (base) {
+        const status = Number(err?.status);
+        const isTransportFailure = isRetryableApiFailure(status || undefined, err);
+        console.warn('[ApiClient] Запрос не выполнен:', status ? `HTTP ${status}` : (err?.name === 'AbortError' ? 'timeout' : 'network error'));
+        if (base && isTransportFailure) {
           this.baseFailures[base] = (this.baseFailures[base] || 0) + 1;
-          const isAuthEndpoint = cleanEndpoint.startsWith('/auth') || cleanEndpoint.startsWith('/me');
-          const isAuthStatus = err?.status === 401 || err?.status === 403;
-          const isGenerationEndpoint =
-            cleanEndpoint.includes('/books') ||
-            cleanEndpoint.includes('/character') ||
-            cleanEndpoint.includes('/ai/') ||
-            cleanEndpoint.includes('/jobs');
-
-          // Не сбрасываем мост при сбоях авторизации и если api_url был явно передан в URL
-          if (!hasExplicitParamUrl() && !isAuthEndpoint && !isAuthStatus) {
-            if (isGenerationEndpoint || this.baseFailures[base] >= 3) {
-              markApiUrlFailed(base);
-            }
-          }
+          markApiUrlFailed(base);
+          continue;
         }
+        throw err;
       }
     }
 
@@ -467,8 +412,9 @@ class ApiClient {
         message: data.message,
       };
     } catch (err: any) {
-      const isTimeout = err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('aborted');
-      if (!isTimeout) {
+      const status = typeof err?.status === 'number' ? err.status : undefined;
+      const hasRouteFallback = status === 404;
+      if (hasRouteFallback) {
         // 2. Если первый маршрут дал 404 (например, в мосте зарегистрирован только /ai/analyze-photo)
         try {
           const alt: any = await this.request('/ai/analyze-photo', {
@@ -492,9 +438,14 @@ class ApiClient {
             error: data.error,
             message: data.message,
           };
-        } catch {}
+        } catch (altError: any) {
+          const altStatus = typeof altError?.status === 'number' ? altError.status : undefined;
+          if (!isRetryableApiFailure(altStatus, altError)) throw altError;
+        }
+      } else if (!isRetryableApiFailure(status, err)) {
+        throw err;
       }
-      console.warn('[ApiClient] analyzeCharacterPhoto не ответил вовремя, мгновенный фоллбэк:', err.message);
+      console.warn('[ApiClient] analyzeCharacterPhoto использует ручной фоллбэк:', status ? `HTTP ${status}` : (err?.name === 'AbortError' ? 'timeout' : 'network error'));
       const fbGender = resolvePhotoAnalysisGender(undefined, context);
       const isGirl = fbGender === 'girl';
       return {
@@ -519,6 +470,7 @@ class ApiClient {
     context?: { knownGender?: string; knownName?: string; knownAge?: number }
   ): Promise<{
     status: 'ok' | 'fallback';
+    failureReason?: 'network' | 'generation';
     traitsAnalyzed?: boolean;
     avatarUrl: string;
     avatar_id?: string;
@@ -551,6 +503,7 @@ class ApiClient {
       if (res && res.avatarUrl) {
         return {
           status: res.status === 'fallback' ? 'fallback' : 'ok',
+          failureReason: res.status === 'fallback' ? 'generation' : undefined,
           traitsAnalyzed: res.traitsAnalyzed,
           avatarUrl: res.avatarUrl,
           avatar_id: res.avatar_id,
@@ -559,7 +512,10 @@ class ApiClient {
       }
       throw new Error('Ответ сервера не содержит avatarUrl');
     } catch (err: any) {
-      console.warn('[ApiClient] generateCharacterAvatar сетевая ошибка/таймаут, подбор канонического 3D пресета:', err.message);
+      const status = Number(err?.status);
+      const isTransportError = !status && (err?.name === 'AbortError' || err instanceof TypeError);
+      const failureReason = isTransportError ? 'network' : 'generation';
+      console.warn('[ApiClient] generateCharacterAvatar использует канонический аватар после ошибки запроса:', status ? `HTTP ${status}` : (err?.name === 'AbortError' ? 'timeout' : 'network error'));
       const inferredGender = context?.knownName ? inferRussianNameGender(context.knownName) : null;
       const fbGender: 'boy' | 'girl' =
         context?.knownGender === 'girl' || context?.knownGender === 'boy'
@@ -580,6 +536,7 @@ class ApiClient {
       const avatarId = resolveChildAvatarKey(traits);
       return {
         status: 'fallback',
+        failureReason,
         traitsAnalyzed: false,
         avatarUrl: resolveChildAvatar({ avatar_id: avatarId }),
         avatar_id: avatarId,

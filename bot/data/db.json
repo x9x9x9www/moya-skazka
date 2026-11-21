@@ -257,6 +257,37 @@
       },
       "is_active": true,
       "updatedAt": "2026-11-11T09:08:15.311Z"
+    },
+    "child_1794721382199_ldtq": {
+      "id": "child_1794721382199_ldtq",
+      "user_id": "1212593604",
+      "name": "Аэлита",
+      "age": 3,
+      "gender": "girl",
+      "interests": [
+        "Мода и стиль"
+      ],
+      "appearance": {
+        "avatar_id": "girl_brown",
+        "avatar_url": "https://api.wellflow.dev/v1/media/75d83f1a-83ef-479d-8e11-f3d0bdbb764d/0?exp=1794808800&sig=843e2f269964be7412f6b8a3d7b33ca75abe0089c515a68f8186cf6796c46482",
+        "gender": "girl",
+        "hair": "русые волосы",
+        "clothing": "платьице",
+        "personality": "Мечтатель и фантазёр",
+        "hairColor": "русые",
+        "hairType": "длинные прямые",
+        "hairLength": "длинные",
+        "hairStructure": "прямые",
+        "clothingItem": "платьице",
+        "clothingColor": "изумрудный",
+        "toy": "Персик",
+        "eyeColor": "карие",
+        "skinTone": "персиковая",
+        "storyPreference": "Смешные и озорные моменты",
+        "bedtimeRitual": "Чтение в тёплых объятиях"
+      },
+      "is_active": true,
+      "updatedAt": "2026-11-15T05:43:02.199Z"
     }
   },
   "books": {
@@ -941,6 +972,68 @@
       ],
       "can_upgrade": false,
       "created_at": "2026-11-12T13:25:42.248Z"
+    },
+    "story_1794721462073_s26kbz": {
+      "id": "story_1794721462073_s26kbz",
+      "user_id": "1212593604",
+      "child_id": "child_1794721381485",
+      "child_name": "Аэлита",
+      "title": "Золотая дорожка Аэлиты",
+      "status": "ILLUSTRATED",
+      "format": "ILLUSTRATED",
+      "cover_url": "https://api.wellflow.dev/v1/media/f0a8d404-d166-445c-ae50-d9ae2b2754cf/0?exp=1794808800&sig=5219ab7ca573ea6bd7c4dd82154e63731f7c05d0f736e50255d83b8848651c37",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "scene_index": 1,
+          "index": 1,
+          "text": "Пахло деревянными карандашами и акварелью, а ножницы тихонько звякали о блюдце. В солнечной парижской мастерской ткани лежали разноцветными холмами. Аэлита пришила к изумрудному платью красную отделку и золотую ленту. Наряд стал похож на костюм юной исследовательницы. Из кармашка выглянул Персик, ласково подмигнул пуговичным глазком и тёплой лапкой коснулся старинной карты. Рядом лежал деревянный компас в мягком чехле. На карте светился золотой пунктир, ведущий прямо к Парижу.",
+          "image_url": "https://api.wellflow.dev/v1/media/715892f1-2a01-4ae5-9b5d-4a60a409fcf7/0?exp=1794808800&sig=d03b929346bec5e83f25dc7f93c98c9609dbdd6af5795e66335aa1103289e481",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute 3-year-old girl named Аэлита, warm healthy peach complexion skin tone, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes, wearing cozy emerald green charming fairytale dress with gentle ruffles. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES. Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/75d83f1a-83ef-479d-8e11-f3d0bdbb764d/0?exp=1794808800&sig=843e2f269964be7412f6b8a3d7b33ca75abe0089c515a68f8186cf6796c46482 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Персик (A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.). [SCENE ACTION: Atmospheric wide-to-medium establishing shot of a sunny Parisian sewing studio filled with colorful fabric hills, wooden pencils, watercolor supplies, scissors resting on a small saucer, and an emerald dress with red trim and a gold ribbon. Aelita carefully stitches the trim onto the dress while Peach peeks from a pocket, winks with one button eye, and gently touches the antique map beside a wooden compass in its soft case; a glowing golden dotted path leads toward Paris.]. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown long flowing hair reaching below her shoulders, neat smooth straight silky hair with a small ribbon, warm sparkling hazel-brown eyes, warm healthy peach complexion, wearing a cozy emerald green charming fairytale dress with gentle ruffles., with long flowing hair reaching below shoulders, neat hairstyle, consistent length Персик (companion): A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_2",
+          "scene_index": 2,
+          "index": 2,
+          "text": "Золотая линия на карте дрогнула и показала дорогу к праздничной крыше. Аэлита удивлённо наклонилась к маленькому манекену. На нём были разные ленты, но не было ни одной удобной застёжки. Манекен смутился и спрятал руки за спину. Персик крепко держал компас, а Аэлита внимательно рассматривала бархат, шёлк и звёздные пуговицы. Она заметила, что другу не хватает маленькой детали для уверенного образа, и достала сияющую пуговицу-звёздочку.",
+          "image_url": "https://api.wellflow.dev/v1/media/c0c7f31d-5ad0-4c3a-9c3e-2c57a75c2dde/0?exp=1794808800&sig=7c3cc5a60cc7f5e5f5f9bf149f2c471bc3d5627e60e38a70b3ac43e6c7a2af82",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute 3-year-old girl named Аэлита, warm healthy peach complexion skin tone, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes, wearing cozy emerald green charming fairytale dress with gentle ruffles. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES. Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/75d83f1a-83ef-479d-8e11-f3d0bdbb764d/0?exp=1794808800&sig=843e2f269964be7412f6b8a3d7b33ca75abe0089c515a68f8186cf6796c46482 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Персик (A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.). [SCENE ACTION: Medium action shot as the golden line on the antique map trembles toward a festive rooftop, while Aelita bends close to inspect a small mannequin wearing mismatched ribbons but no comfortable fastening. Peach grips the wooden compass beside her, and Aelita studies velvet, silk, and star-shaped buttons before lifting a glowing star button to solve the mannequin’s gentle fashion problem.]. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown long flowing hair reaching below her shoulders, neat smooth straight silky hair with a small ribbon, warm sparkling hazel-brown eyes, warm healthy peach complexion, wearing a cozy emerald green charming fairytale dress with gentle ruffles., with long flowing hair reaching below shoulders, neat hairstyle, consistent length Персик (companion): A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_3",
+          "scene_index": 3,
+          "index": 3,
+          "text": "«Эта звёздочка тебе подойдёт», — сказала Аэлита и поделилась пуговицей. Она соединила мягкие ленты, добавила удобную застёжку и расправила шёлковый воротник. Манекен выпрямился: теперь его наряд был красивым и совсем не мешал двигаться. Карта засветилась, и золотой пунктир открыл дорогу на парижскую крышу. Персик держал компас, друзья улыбались, а Аэлита повела друзей на весёлый показ между шёлковыми флажками праздника стиля.",
+          "image_url": "https://api.wellflow.dev/v1/media/1a336f25-0884-4d9e-a5cc-63c916588cd7/0?exp=1794808800&sig=5962ce7c27c2d1d0c7422abefac8c0a737cd00d2acd9b4ccb180ef067c793419",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute 3-year-old girl named Аэлита, warm healthy peach complexion skin tone, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes, wearing cozy emerald green charming fairytale dress with gentle ruffles. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES. Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/75d83f1a-83ef-479d-8e11-f3d0bdbb764d/0?exp=1794808800&sig=843e2f269964be7412f6b8a3d7b33ca75abe0089c515a68f8186cf6796c46482 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Персик (A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.). [SCENE ACTION: Emotional close-medium shot focused on Aelita kindly sharing the glowing star button, joining the soft ribbons, adding a comfortable fastening, and smoothing the mannequin’s silk collar. The mannequin straightens proudly, Peach holds the compass at Aelita’s side, and the antique map shines open with a golden dotted route toward a Paris rooftop runway lined with fluttering silk pennants.]. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown long flowing hair reaching below her shoulders, neat smooth straight silky hair with a small ribbon, warm sparkling hazel-brown eyes, warm healthy peach complexion, wearing a cozy emerald green charming fairytale dress with gentle ruffles., with long flowing hair reaching below shoulders, neat hairstyle, consistent length Персик (companion): A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        },
+        {
+          "id": "scene_4",
+          "scene_index": 4,
+          "index": 4,
+          "text": "Под солнцем Парижа наряды мерцали, а ткани плавно колыхались на лёгком ветру. На крыше звучал тихий смех. Старинная карта лежала рядом с компасом, и золотой пунктир сиял, будто маленькая дорожка дружбы. Аэлита обняла Персика и почувствовала его мягкость. Манекен благодарно улыбался, прижимая к наряду звёздочку. Все вместе они поклонились гостям, а потом ещё долго выбирали ленты для новых красивых образов.",
+          "image_url": "https://api.wellflow.dev/v1/media/e198ae87-d9ad-4040-ac56-09615f1114e0/0?exp=1794808800&sig=bf52319f75c31bdeb9b729875aca3f80e9ac5c12e80cb43e335f180d1713833b",
+          "image_prompt": "[CHARACTER CONSISTENCY MANDATORY: 3D cartoon style, a cute 3-year-old girl named Аэлита, warm healthy peach complexion skin tone, warm sparkling hazel-brown eyes, soft light-brown silky straight hair, distinctly long flowing hair reaching below shoulders with a cute ribbon, identical hair length across all scenes, wearing cozy emerald green charming fairytale dress with gentle ruffles. EXACT SAME FACE, HAIR COLOR AND HAIR LENGTH ON ALL SCENES. Strictly maintain exact same long hair length flowing below shoulders, never short, never bob cut.] [Reference Avatar Image: https://api.wellflow.dev/v1/media/75d83f1a-83ef-479d-8e11-f3d0bdbb764d/0?exp=1794808800&sig=843e2f269964be7412f6b8a3d7b33ca75abe0089c515a68f8186cf6796c46482 - ensure the child face, hairstyle, hair color, eye color, and features strictly match this reference avatar]. Accompanied by Персик (A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.). [SCENE ACTION: Calming golden-hour rooftop scene above Paris, with outfits shimmering and fabrics swaying in a light breeze as Aelita warmly hugs Peach and feels the companion’s softness. The mannequin smiles gratefully while pressing the star button against its outfit; the antique map and wooden compass rest nearby with the golden dotted path glowing like a tiny friendship trail, and all three bow together before guests amid cozy laughter and ribbons.]. Cinematic storybook composition with a clear focal point, natural camera angle, and a layered, hand-crafted environment. Strictly depict ONLY the action and setting of this scene; no random animals, no cosmic whales, no extra hallucinated creatures. Characters in this image (strictly maintain exact immutable facial features, hairstyle, hair length, eye color, and clothing): Аэлита (hero): A young girl with soft light-brown long flowing hair reaching below her shoulders, neat smooth straight silky hair with a small ribbon, warm sparkling hazel-brown eyes, warm healthy peach complexion, wearing a cozy emerald green charming fairytale dress with gentle ruffles., with long flowing hair reaching below shoulders, neat hairstyle, consistent length Персик (companion): A small living peach-colored plush toy companion with hand-crafted seams, soft rounded fabric, friendly button eyes, one button eye ready to wink, tiny paws, and a gentle comforting expression.. Rendered as a high-end 3D animated children’s movie still in a charming 3D cartoon style: soft cinematic lighting, warm volumetric glow, tactile detailed materials, expressive rounded characters with large warm eyes, cozy fairytale atmosphere, gentle depth of field, rich natural colors, ultra-detailed, safe and comforting for young children, absolutely no text anywhere: no letters, no titles, no labels, no captions, no speech bubbles, no book spine text, no watermark, no logo, no signature, no UI. Any books, signs, or labels in the scene are completely blank."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q_1",
+          "after_scene": 2,
+          "question": "Какой детали не хватало наряду манекена?",
+          "parent_hint": "Попросите ребёнка показать на картинке ленты, пуговицы и удобную застёжку.",
+          "skill_tag": "memory"
+        },
+        {
+          "id": "q_2",
+          "after_scene": 4,
+          "question": "Какой наряд ты подарила бы своему другу?",
+          "parent_hint": "Предложите придумать цвет, ткань и одну удобную деталь.",
+          "skill_tag": "empathy"
+        }
+      ],
+      "can_upgrade": false,
+      "created_at": "2026-11-15T05:46:32.701Z"
     }
   },
   "daily_ideas": {
@@ -968,28 +1061,28 @@
       "created_at": "2026-11-07T10:33:25.790Z"
     },
     "child_test_2_2026-11-07": {
-      "id": "idea_30881063",
+      "id": "idea_415231131",
       "child_id": "child_test_2",
       "local_date": "2026-11-07",
-      "title": "Малыш и мостик через звонкий ручей",
-      "blurb": "Лесные зверята не могли перебраться на поляну праздника, пока Малыш и добрый динозаврик не собрали прочный мостик из цветных брёвнышек.",
-      "theme": "Дружба и взаимопомощь",
-      "cover_url": "/illustrations/cover_dino.jpg",
+      "title": "Малыш и секретный пояс добрых дел",
+      "blurb": "Малыш получает особый пояс с кристаллами, которые сияют только тогда, когда совершаешь бескорыстный добрый поступок.",
+      "theme": "Смелость",
+      "cover_url": "/illustrations/cover_star.jpg",
       "status": "REFRESHED",
       "is_saved": false,
       "suggested_params": {
         "childName": "Малыш",
         "gender": "boy",
         "age": 4,
-        "theme": "Дружба и взаимопомощь",
-        "mood": "Дружба",
+        "theme": "Смелость",
+        "mood": "Приключение",
         "interests": [
           "Волшебство"
         ],
-        "customWishes": "Умение делиться игрушками, командная работа и радость общего праздника."
+        "customWishes": "Супергеройская смелость, помощь друзьям и благородство."
       },
-      "created_at": "2026-11-12T16:49:23.091Z",
-      "_refreshCount": 27
+      "created_at": "2026-11-21T10:33:00.494Z",
+      "_refreshCount": 40
     },
     "child_test_3_2026-11-07": {
       "id": "idea_1981181318",
@@ -1180,6 +1273,30 @@
         "customWishes": "Умение договариваться, верность друзьям и взаимовыручка."
       },
       "created_at": "2026-11-11T09:06:02.116Z"
+    },
+    "child_1794043139177_lrq4_2026-11-15": {
+      "id": "idea_103888317",
+      "child_id": "child_1794043139177_lrq4",
+      "local_date": "2026-11-15",
+      "title": "Лев и плащ доброго защитника",
+      "blurb": "Сказка о настоящем супергерое: суперсила Льва — это не разрушительные молнии, а доброе сердце, чуткость и умение вовремя подать руку помощи.",
+      "theme": "Смелость и доброта",
+      "cover_url": "/illustrations/cover_star.jpg",
+      "status": "ACTIVE",
+      "is_saved": false,
+      "suggested_params": {
+        "childName": "Лев",
+        "gender": "boy",
+        "age": 6,
+        "theme": "Смелость и доброта",
+        "mood": "Приключение",
+        "interests": [
+          "Волшебство",
+          "Космос"
+        ],
+        "customWishes": "Истинный героизм в добрых поступках, поддержка слабых."
+      },
+      "created_at": "2026-11-15T05:41:30.509Z"
     }
   },
   "saved_ideas": {
@@ -1189,7 +1306,7 @@
       "user_id": "user_test_save",
       "title": "Малыш и мостик через звонкий ручей",
       "theme": "Дружба и взаимопомощь",
-      "saved_at": "2026-11-12T16:49:23.093Z"
+      "saved_at": "2026-11-21T10:33:00.497Z"
     }
   }
 }

@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "skills": {
+    "agent-desktop": {
+      "source": "vercel-labs/agent-desktop",
+      "commit": "e8934a5e95e1d212c74ead95cd3e4701c04eca31",
+      "sourceType": "github",
+      "skillPath": "skills/agent-desktop/SKILL.md",
+      "computedHash": "241993fe8465bd04f7ed582387b5f0d7ef1795355907c588ad553a8e98a88386",
+      "installMode": "copy"
+    },
+    "agent-desktop-macos": {
+      "source": "vercel-labs/agent-desktop",
+      "commit": "e8934a5e95e1d212c74ead95cd3e4701c04eca31",
+      "sourceType": "github",
+      "skillPath": "skills/agent-desktop-macos/SKILL.md",
+      "computedHash": "9bd2089004e16bf109f1665ed5a5dcfb772d23c9a5d40eb59f14935c70259155",
+      "installMode": "copy"
+    }
+  }
+}

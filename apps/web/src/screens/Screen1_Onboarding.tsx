@@ -322,8 +322,10 @@ export const Screen1_Onboarding: React.FC<Screen1OnboardingProps> = ({
 
       if (isRealGeneratedAvatar) {
         setPhotoAnalysisTip('✨ Персональный 3D-аватар малыша создан нейросетью!');
+      } else if (avatarRes?.status === 'fallback' && avatarRes.failureReason === 'network') {
+        setPhotoAnalysisTip('⚠️ Не удалось связаться с мастерской. Выбран канонический образ — можно повторить попытку позже.');
       } else if (avatarRes?.status === 'fallback') {
-        setPhotoAnalysisTip('⚠️ ИИ-мост временно недоступен. Выбран канонический образ. Можно повторить попытку.');
+        setPhotoAnalysisTip('Черты подобраны, но персональную иллюстрацию создать не удалось. Выбран канонический образ.');
       } else {
         setPhotoAnalysisTip('Внешность малыша определена!');
       }
