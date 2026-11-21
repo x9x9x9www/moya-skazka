@@ -81,6 +81,7 @@ export const Screen2_Home: React.FC<Screen2HomeProps> = ({
           skinTone: (activeChild.appearance as any)?.skinTone,
           distinctiveFeatures: (activeChild.appearance as any)?.distinctiveFeatures,
           avatar_id: (activeChild.appearance as any)?.avatar_id,
+          avatar_url: (activeChild.appearance as any)?.avatar_url || (activeChild as any).avatar_url,
         }
       : null
   );

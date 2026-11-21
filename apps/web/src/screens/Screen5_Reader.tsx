@@ -14,6 +14,7 @@ import { useLullabyAudio } from '../hooks/useLullabyAudio';
 import { FairytaleIllustration, ChildAppearanceProps } from '../components/FairytaleIllustration';
 import { FairyStarIcon } from '../components/FairytaleIcons';
 import { haptic } from '../hooks/useTelegram';
+import { preloadImage, preloadImages } from '../utils/imagePreloader';
 
 interface Screen5ReaderProps {
   book: BookDetailsDTO;
@@ -79,6 +80,27 @@ export const Screen5_Reader: React.FC<Screen5ReaderProps> = ({
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSceneIndex]);
+
+  // Фоновый Preloading всех иллюстраций сказки для мгновенного перелистывания без пауз
+  React.useEffect(() => {
+    if (book && Array.isArray(book.scenes)) {
+      const allUrls = [
+        book.cover_url,
+        ...book.scenes.map((s) => s.image_url),
+      ];
+      preloadImages(allUrls);
+    }
+  }, [book]);
+
+  // При смене сцены принудительно подгружаем соседние сцены вперёд и назад
+  React.useEffect(() => {
+    if (book && Array.isArray(book.scenes)) {
+      const nextScene = book.scenes.find((s) => s.scene_index === currentSceneIndex + 1);
+      const prevScene = book.scenes.find((s) => s.scene_index === currentSceneIndex - 1);
+      if (nextScene?.image_url) preloadImage(nextScene.image_url);
+      if (prevScene?.image_url) preloadImage(prevScene.image_url);
+    }
+  }, [currentSceneIndex, book]);
 
   // Свайп-жесты для перелистывания страниц пальцем (touch start / touch end)
   const handleTouchStart = (e: React.TouchEvent) => {

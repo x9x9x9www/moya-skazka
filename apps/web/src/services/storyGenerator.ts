@@ -508,7 +508,7 @@ async function pollJob<T>(
       throw error;
     }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.min(3500, remainingMs));
+    const timer = setTimeout(() => controller.abort(), Math.min(12000, remainingMs));
     try {
       return await fetch(url, { ...init, signal: controller.signal });
     } finally {

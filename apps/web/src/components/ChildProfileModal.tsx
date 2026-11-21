@@ -283,6 +283,7 @@ export const ChildProfileModal: React.FC<ChildProfileModalProps> = ({
                           skinTone: (child.appearance as any)?.skinTone,
                           distinctiveFeatures: (child.appearance as any)?.distinctiveFeatures,
                           avatar_id: (child.appearance as any)?.avatar_id,
+                          avatar_url: (child.appearance as any)?.avatar_url || (child as any).avatar_url,
                         })}
                         alt={child.name}
                         className="w-full h-full object-cover"

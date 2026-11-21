@@ -21,6 +21,7 @@ import { Screen12_Settings } from './screens/Screen12_Settings';
 import { BookDetailsDTO, BookSummaryDTO, ChildProfileDTO, DailyIdeaDTO, UserDTO } from '@moya-skazka/shared';
 import { applyBookImageUpdates, applyCoverImageUpdate, applySceneImageUpdate, generateDynamicStory, createMockStory, getBookImageUpdates, getFairytaleFallbackIllustration, isCoverImageUpdateDetail, isSceneImageUpdateDetail, resolveBookMedia, resolveMediaUrl, resolveAssetUrl, resetBadApiUrls, SCENE_IMAGE_UPDATED_EVENT, COVER_IMAGE_UPDATED_EVENT } from './services/storyGenerator';
 import { resolveChildAvatar } from './utils/avatarResolver';
+import { preloadImages } from './utils/imagePreloader';
 import { formatSafeCreationHeader, inferRussianNameGender } from './utils/russianGrammar';
 import { FairyStarIcon } from './components/FairytaleIcons';
 import { Clock } from 'lucide-react';
@@ -584,6 +585,90 @@ export const App: React.FC = () => {
     } catch {}
   };
 
+  const handleUpdateWizardData = (newDataOrUpdater: WizardHeroData | ((prev: WizardHeroData) => WizardHeroData)) => {
+    setWizardData((prev) => {
+      const next = typeof newDataOrUpdater === 'function' ? newDataOrUpdater(prev) : newDataOrUpdater;
+
+      const newAvatarUrl = next.appearance?.avatar_url;
+      const newAvatarId = next.appearance?.avatar_id;
+      const avatarChanged = newAvatarUrl !== prev.appearance?.avatar_url || newAvatarId !== prev.appearance?.avatar_id;
+      const nameChanged = next.childName && next.childName !== prev.childName;
+      const genderChanged = next.gender && next.gender !== prev.gender;
+      const ageChanged = next.age && next.age !== prev.age;
+
+      if (avatarChanged || nameChanged || genderChanged || ageChanged) {
+        setChildren((prevChildren) => {
+          let found = false;
+          const updatedChildren = prevChildren.map((c) => {
+            const isMatch = activeChildId ? c.id === activeChildId : c.name === prev.childName || prevChildren.length === 1;
+            if (isMatch && !found) {
+              found = true;
+              return {
+                ...c,
+                name: next.childName || c.name,
+                age: next.age || c.age,
+                appearance: {
+                  ...(c.appearance || {}),
+                  ...(next.appearance || {}),
+                  avatar_url: newAvatarUrl || c.appearance?.avatar_url,
+                  avatar_id: newAvatarId || c.appearance?.avatar_id,
+                  gender: next.gender || c.appearance?.gender,
+                },
+              };
+            }
+            return c;
+          });
+
+          if (!found && prevChildren.length === 0 && next.childName) {
+            const newId = `child_${Date.now()}`;
+            const newChild: ChildProfileDTO = {
+              id: newId,
+              user_id: currentUser?.id || 'user_demo',
+              name: next.childName,
+              age: next.age || 4,
+              interests: next.interests || ['Волшебство'],
+              appearance: {
+                ...(next.appearance || {}),
+                avatar_url: newAvatarUrl,
+                avatar_id: newAvatarId || 'hero_custom',
+                gender: next.gender,
+              } as any,
+              is_active: true,
+            };
+            setActiveChildId(newId);
+            try {
+              localStorage.setItem('ms_active_child_id', newId);
+              localStorage.setItem('ms_children', JSON.stringify([newChild]));
+            } catch {}
+            return [newChild];
+          }
+
+          try {
+            localStorage.setItem('ms_children', JSON.stringify(updatedChildren));
+          } catch {}
+
+          const targetId = activeChildId || updatedChildren[0]?.id;
+          if (targetId) {
+            api.updateChild(targetId, {
+              name: next.childName,
+              age: next.age,
+              appearance: {
+                ...(next.appearance || {}),
+                avatar_url: newAvatarUrl,
+                avatar_id: newAvatarId,
+                gender: next.gender,
+              },
+            }).catch(() => {});
+          }
+
+          return updatedChildren;
+        });
+      }
+
+      return next;
+    });
+  };
+
   const activeChild = children.find((c) => c.id === activeChildId) || null;
   const hasChildProfile = Boolean(
     (activeChild && activeChild.name?.trim()) ||
@@ -663,6 +748,13 @@ export const App: React.FC = () => {
           scene.image_url ||
           getFairytaleFallbackIllustration(resolved.title || wizardData.theme, idx + 1),
       }));
+
+      // Предварительная предзагрузка всех сцен и обложки в кэш браузера для мгновенного перелистывания
+      const urlsToPreload = [
+        resolved.cover_url,
+        ...resolved.scenes.map((s) => s.image_url),
+      ].filter(Boolean) as string[];
+      preloadImages(urlsToPreload);
     }
     setCurrentReadingBook(resolved);
     let initialScene = 1;
@@ -715,22 +807,22 @@ export const App: React.FC = () => {
     setJobProgress(15);
     updateCreationStage('writing');
     setCreationMessage('Сочиняем сюжет и диалоги...');
-    setRemainingSeconds(75);
+    setRemainingSeconds(52);
     haptic.medium();
 
-    // Плавный адаптивный таймер обратного отсчёта, синхронизированный с реальными этапами
+    // Плавный адаптивный таймер обратного отсчёта, синхронизированный с реальными этапами (~50с)
     const countdownInterval = setInterval(() => {
       const stage = creationStageRef.current;
       setRemainingSeconds((prev) => {
         if (stage === 'finishing') return Math.max(0, prev - 1);
         if (stage === 'drawing') return Math.max(2, prev - 1);
-        // writing: плавное движение от 75 к ~26s, затем мягкое замедление к 20s без резких остановок
-        if (prev > 26) return prev - 1;
-        if (prev > 20) return Math.random() < 0.35 ? prev - 1 : prev;
+        // writing: плавное движение от 52 к ~24s
+        if (prev > 24) return prev - 1;
+        if (prev > 18) return Math.random() < 0.4 ? prev - 1 : prev;
         return prev;
       });
       const stageCeiling = stage === 'writing' ? 48 : stage === 'drawing' ? 95 : 99;
-      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.35) : prev));
+      setJobProgress((prev) => (prev < stageCeiling ? Math.min(stageCeiling, prev + 0.45) : prev));
     }, 1000);
 
     const currentUserId =
@@ -1096,7 +1188,7 @@ export const App: React.FC = () => {
         {currentScreen === 'wizard_hero' && (
           <Screen3_WizardHero
             data={wizardData}
-            onChange={setWizardData}
+            onChange={handleUpdateWizardData}
             onNext={() => setCurrentScreen('wizard_details')}
             onBack={() => setCurrentScreen('home')}
           />
@@ -1110,7 +1202,7 @@ export const App: React.FC = () => {
             remainingSeconds={remainingSeconds}
             creationMessage={creationMessage}
             onEditHero={() => setCurrentScreen('wizard_hero')}
-            onUpdateHero={setWizardData}
+            onUpdateHero={handleUpdateWizardData}
             onSubmit={handleCreateStorySubmit}
           />
         )}

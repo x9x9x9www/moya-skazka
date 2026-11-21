@@ -409,7 +409,7 @@ async function generateWellflowStoryAI(params) {
   );
 
   let storyPrompt = null;
-  const enableTwoStage = params.useTwoStage !== false;
+  const enableTwoStage = params.useTwoStage === true;
   if (enableTwoStage) {
     try {
       const architectPrompt = buildArchitectPrompt(input, { dna });
@@ -513,44 +513,45 @@ async function generateWellflowStoryAI(params) {
       }
     }
 
-    // Двухуровневая литературная редактура (LLM-редактор + детерминированный ГОСТ-редактор)
+    // Литературная редактура: быстрый ГОСТ-редактор (мгновенно 5мс) + опциональный LLM-редактор
     try {
-      // Уровень 1: Интеллектуальный LLM-редактор (проверка согласования рода глаголов, падежей имени и литературности)
-      const linguisticPrompt = buildLinguisticEditorialPrompt(story, input);
-      console.log(`[StoryEngine/Этап 3] 📖 LLM-редактор вычитывает грамматику и литературный стиль...`);
-      try {
-        const editorialLlmContent = await callWithRetry(
-          [
-            { role: 'system', content: linguisticPrompt.system },
-            { role: 'user', content: linguisticPrompt.user },
-          ],
-          'linguistic-editorial',
-          1,
-          { max_tokens: 950, timeoutMs: 45000 }
-        );
-        const editorialLlmJson = parseJsonContent(editorialLlmContent, ['scenes', 'title', 'questions']);
-        if (editorialLlmJson && Array.isArray(editorialLlmJson.scenes) && editorialLlmJson.scenes.length === 4) {
-          story.title = editorialLlmJson.title || story.title;
-          for (const s of editorialLlmJson.scenes) {
-            const idx = s.index || s.scene_index;
-            const targetScene = story.scenes.find((sc) => sc.index === idx);
-            if (targetScene && typeof s.text === 'string' && s.text.length > 30) {
-              targetScene.text = s.text;
-            }
-          }
-          if (Array.isArray(editorialLlmJson.questions) && editorialLlmJson.questions.length >= 2) {
-            for (const q of editorialLlmJson.questions) {
-              const targetQ = story.questions.find((tq) => tq.after_scene === q.after_scene);
-              if (targetQ && q.question) {
-                targetQ.question = q.question;
-                if (q.parent_hint) targetQ.parent_hint = q.parent_hint;
+      if (params.useLlmEditorial === true) {
+        const linguisticPrompt = buildLinguisticEditorialPrompt(story, input);
+        console.log(`[StoryEngine/Этап 3] 📖 LLM-редактор вычитывает грамматику и литературный стиль...`);
+        try {
+          const editorialLlmContent = await callWithRetry(
+            [
+              { role: 'system', content: linguisticPrompt.system },
+              { role: 'user', content: linguisticPrompt.user },
+            ],
+            'linguistic-editorial',
+            1,
+            { max_tokens: 950, timeoutMs: 45000 }
+          );
+          const editorialLlmJson = parseJsonContent(editorialLlmContent, ['scenes', 'title', 'questions']);
+          if (editorialLlmJson && Array.isArray(editorialLlmJson.scenes) && editorialLlmJson.scenes.length === 4) {
+            story.title = editorialLlmJson.title || story.title;
+            for (const s of editorialLlmJson.scenes) {
+              const idx = s.index || s.scene_index;
+              const targetScene = story.scenes.find((sc) => sc.index === idx);
+              if (targetScene && typeof s.text === 'string' && s.text.length > 30) {
+                targetScene.text = s.text;
               }
             }
+            if (Array.isArray(editorialLlmJson.questions) && editorialLlmJson.questions.length >= 2) {
+              for (const q of editorialLlmJson.questions) {
+                const targetQ = story.questions.find((tq) => tq.after_scene === q.after_scene);
+                if (targetQ && q.question) {
+                  targetQ.question = q.question;
+                  if (q.parent_hint) targetQ.parent_hint = q.parent_hint;
+                }
+              }
+            }
+            console.log(`[StoryEngine/Этап 3] ✅ LLM-вычитка завершена успешно`);
           }
-          console.log(`[StoryEngine/Этап 3] ✅ LLM-вычитка завершена успешно`);
+        } catch (llmEdErr) {
+          console.warn(`[StoryEngine/Этап 3] ⚠️ Сбой LLM-редактора (${llmEdErr.message}), переходим к детерминированному агенту`);
         }
-      } catch (llmEdErr) {
-        console.warn(`[StoryEngine/Этап 3] ⚠️ Сбой LLM-редактора (${llmEdErr.message}), переходим к детерминированному агенту`);
       }
 
       // Уровень 2: Детерминированный ГОСТ-редактор (ёфикация, диалоги, тире, очистка от штампов)
@@ -1079,38 +1080,42 @@ async function generateFullStoryWithImagesAI(params, onProgress, jobId) {
   console.log(`[StoryEngine] 👤 Опорный референс персонажа (Image-to-Image): ${avatarReferenceUrl}`);
 
   // Этап 4: Арт-директор визуальных сцен (Visual Art Director)
-  // Читает утверждённый русский текст сказки и генерирует точные английские промпты
-  // с явным указанием осязаемых предметов (props), позы героя, повадки спутника и освещения
-  try {
-    const visualDirectorPrompt = buildVisualDirectorPrompt(story, params);
-    console.log(`[StoryEngine/Этап 4] 🎨 Арт-директор режиссирует сцены и реквизит из русского текста...`);
-    const visualDirectorContent = await callWithRetry(
-      [
-        { role: 'system', content: visualDirectorPrompt.system },
-        { role: 'user', content: visualDirectorPrompt.user },
-      ],
-      'visual-director',
-      1,
-      { max_tokens: 800, timeoutMs: 45000 }
-    );
-    const vdJson = parseJsonContent(visualDirectorContent, ['cover_visual', 'scenes']);
-    if (vdJson) {
-      if (typeof vdJson.cover_visual === 'string' && vdJson.cover_visual.length > 25) {
-        story.cover_visual = vdJson.cover_visual;
-      }
-      if (Array.isArray(vdJson.scenes)) {
-        for (const s of vdJson.scenes) {
-          const idx = s.index || s.scene_index;
-          const targetScene = story.scenes.find((sc) => sc.index === idx);
-          if (targetScene && typeof s.visual === 'string' && s.visual.length > 25) {
-            targetScene.visual = s.visual;
+  // Если у всех сцен уже есть утверждённые описания visual, используем их напрямую (экономия 25-30с)
+  const hasCompleteVisuals = story.cover_visual && Array.isArray(story.scenes) && story.scenes.length === 4 && story.scenes.every((s) => typeof s.visual === 'string' && s.visual.length > 25);
+  if (!hasCompleteVisuals && params.useVisualDirector === true) {
+    try {
+      const visualDirectorPrompt = buildVisualDirectorPrompt(story, params);
+      console.log(`[StoryEngine/Этап 4] 🎨 Арт-директор режиссирует сцены и реквизит из русского текста...`);
+      const visualDirectorContent = await callWithRetry(
+        [
+          { role: 'system', content: visualDirectorPrompt.system },
+          { role: 'user', content: visualDirectorPrompt.user },
+        ],
+        'visual-director',
+        1,
+        { max_tokens: 800, timeoutMs: 45000 }
+      );
+      const vdJson = parseJsonContent(visualDirectorContent, ['cover_visual', 'scenes']);
+      if (vdJson) {
+        if (typeof vdJson.cover_visual === 'string' && vdJson.cover_visual.length > 25) {
+          story.cover_visual = vdJson.cover_visual;
+        }
+        if (Array.isArray(vdJson.scenes)) {
+          for (const s of vdJson.scenes) {
+            const idx = s.index || s.scene_index;
+            const targetScene = story.scenes.find((sc) => sc.index === idx);
+            if (targetScene && typeof s.visual === 'string' && s.visual.length > 25) {
+              targetScene.visual = s.visual;
+            }
           }
         }
+        console.log(`[StoryEngine/Этап 4] ✅ Арт-директор утвердил детальные раскадровки сцен`);
       }
-      console.log(`[StoryEngine/Этап 4] ✅ Арт-директор утвердил детальные раскадровки сцен`);
+    } catch (vdErr) {
+      console.warn(`[StoryEngine/Этап 4] ⚠️ Сбой Visual Art Director (${vdErr.message}), используются базовые visual описания`);
     }
-  } catch (vdErr) {
-    console.warn(`[StoryEngine/Этап 4] ⚠️ Сбой Visual Art Director (${vdErr.message}), используются базовые visual описания`);
+  } else {
+    console.log(`[StoryEngine/Этап 4] ⚡️ Раскадровки сцен утверждены из Story Engine (быстрый режим)`);
   }
 
   const imageTasks = [

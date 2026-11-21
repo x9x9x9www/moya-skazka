@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FairyStarIcon, ArtPaletteIcon } from './FairytaleIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { isImagePreloaded, preloadImage } from '../utils/imagePreloader';
 
 export interface ChildAppearanceProps {
   gender?: 'boy' | 'girl';
@@ -36,15 +37,19 @@ export const FairytaleIllustration: React.FC<FairytaleIllustrationProps> = ({
   imageUrl,
 }) => {
   const [currentSrc, setCurrentSrc] = useState<string>(imageUrl || '');
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(() => isImagePreloaded(imageUrl));
   const [imageFailed, setImageFailed] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     if (imageUrl) {
       setCurrentSrc(imageUrl);
-      setImageLoaded(false);
+      const preloaded = isImagePreloaded(imageUrl);
+      setImageLoaded(preloaded);
       setImageFailed(false);
+      if (!preloaded) {
+        preloadImage(imageUrl).then(() => setImageLoaded(true));
+      }
     } else {
       setCurrentSrc('');
       setImageLoaded(false);

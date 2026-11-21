@@ -56,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
                     skinTone: (activeChild.appearance as any)?.skinTone,
                     distinctiveFeatures: (activeChild.appearance as any)?.distinctiveFeatures,
                     avatar_id: (activeChild.appearance as any)?.avatar_id,
+                    avatar_url: (activeChild.appearance as any)?.avatar_url || (activeChild as any).avatar_url,
                   })}
                   alt={activeChild.name}
                   className="w-full h-full object-cover"
